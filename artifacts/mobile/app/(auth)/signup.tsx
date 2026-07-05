@@ -7,7 +7,6 @@ import {
   Platform,
   KeyboardAvoidingView,
   ScrollView,
-  TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -15,8 +14,6 @@ import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
-
-type Role = 'passenger' | 'driver';
 
 export default function SignupScreen() {
   const insets = useSafeAreaInsets();
@@ -27,7 +24,6 @@ export default function SignupScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<Role>('passenger');
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -46,7 +42,7 @@ export default function SignupScreen() {
     }
     setLoading(true);
     try {
-      await signUpWithPassword(email.trim(), password, { fullName: fullName.trim(), role });
+      await signUpWithPassword(email.trim(), password, { fullName: fullName.trim() });
       setInfo('Check your email to confirm your account, then log in.');
     } catch (err: any) {
       setError(err?.message ?? 'Could not create your account. Please try again.');
@@ -100,32 +96,6 @@ export default function SignupScreen() {
           <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
           <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>or</Text>
           <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-        </View>
-
-        <View style={styles.roleRow}>
-          {(['passenger', 'driver'] as Role[]).map((r) => (
-            <TouchableOpacity
-              key={r}
-              onPress={() => setRole(r)}
-              style={[
-                styles.roleOption,
-                {
-                  borderColor: role === r ? colors.primary : colors.border,
-                  backgroundColor: role === r ? colors.secondary : colors.card,
-                },
-              ]}
-            >
-              <Text
-                style={{
-                  color: role === r ? colors.primary : colors.mutedForeground,
-                  fontFamily: 'Inter_600SemiBold',
-                  textTransform: 'capitalize',
-                }}
-              >
-                {r}
-              </Text>
-            </TouchableOpacity>
-          ))}
         </View>
 
         <Text style={[styles.label, { color: colors.mutedForeground }]}>Full name</Text>
@@ -217,19 +187,6 @@ const styles = StyleSheet.create({
   dividerText: {
     marginHorizontal: 12,
     fontFamily: 'Inter_400Regular',
-  },
-  roleRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 8,
-  },
-  roleOption: {
-    flex: 1,
-    height: 44,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   label: {
     fontSize: 13,

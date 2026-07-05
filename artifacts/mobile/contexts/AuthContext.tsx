@@ -7,11 +7,10 @@ import { setAuthTokenGetter, registerUser } from '@workspace/api-client-react';
 
 WebBrowser.maybeCompleteAuthSession();
 
-type SignUpRole = 'passenger' | 'driver';
-
+// This app is passenger-only. Drivers use a separate mobile app, so every
+// account created here is registered with the "passenger" role.
 interface SignUpDetails {
   fullName: string;
-  role: SignUpRole;
   phone?: string;
 }
 
@@ -44,7 +43,7 @@ async function ensureProfile(details: SignUpDetails) {
     await registerUser({
       fullName: details.fullName,
       phone: details.phone,
-      role: details.role,
+      role: 'passenger',
     });
   } catch (err: any) {
     // 409 just means the profile already exists — not an error for us.
@@ -104,10 +103,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
 
       async signInWithGoogle() {
-        // TEMP DEBUG: copy this exact value into Supabase → Authentication →
-        // URL Configuration → Redirect URLs, then remove this console.log.
-        console.log('[auth] redirectTo:', redirectTo);
-
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
@@ -117,10 +112,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         if (error) throw error;
         if (!data?.url) throw new Error('No OAuth URL returned from Supabase');
-
-        // TEMP DEBUG: paste this full URL somewhere you can inspect it
-        // (e.g. a notes app) and check the redirect_to= query param.
-        console.log('[auth] authorize URL:', data.url);
 
         const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
         if (result.type !== 'success' || !result.url) {
@@ -137,14 +128,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (exchangeError) throw exchangeError;
 
         // First-time Google sign-in: create the app-side profile too.
-        // Default new Google sign-ups to "passenger" — a driver can be
-        // upgraded later from their profile/admin flow.
         const fullName =
           sessionData.session?.user.user_metadata?.full_name ??
           sessionData.session?.user.user_metadata?.name ??
           sessionData.session?.user.email?.split('@')[0] ??
           'Rider';
-        await ensureProfile({ fullName, role: 'passenger' });
+        await ensureProfile({ fullName });
       },
 
       async signOut() {
