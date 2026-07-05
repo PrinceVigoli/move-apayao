@@ -1,0 +1,46 @@
+networks:
+  move-apayao:
+    driver: bridge
+
+volumes:
+  move-apayao-db-data:
+
+services:
+  db:
+    image: postgres:16
+    container_name: move-apayao-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: move_apayao
+    ports:
+      - "5432:5432"
+    volumes:
+      - move-apayao-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - move-apayao
+
+  redis:
+    image: redis:7
+    container_name: move-apayao-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - move-apayao
+
+  # Optional: a web UI for browsing the Postgres database.
+  # Open http://localhost:8080 (System: PostgreSQL, Server: db, User: postgres, Password: postgres, DB: move_apayao)
+  adminer:
+    image: adminer
+    container_name: move-apayao-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    networks:
+      - move-apayao

@@ -1,0 +1,1955 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 1.0.0
+  description: MOVE Apayao — Transit & Trip Booking API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication and user profile
+  - name: drivers
+    description: Driver GPS and availability
+  - name: trips
+    description: Point-to-point trip booking
+  - name: loops
+    description: Fixed-loop route tracking
+  - name: wallet
+    description: Fare wallet and transactions
+  - name: incidents
+    description: Incident reporting
+  - name: analytics
+    description: Reporting and analytics
+  - name: weather
+    description: Weather proxy
+  - name: subscriptions
+    description: Subscription management
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # ── Auth ────────────────────────────────────────────────────────────────────
+
+  /auth/register:
+    post:
+      operationId: registerUser
+      tags: [auth]
+      summary: Register user profile after Supabase sign-up
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterUserBody"
+      responses:
+        "201":
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterUserResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /auth/profile:
+    get:
+      operationId: getProfile
+      tags: [auth]
+      summary: Get current user profile
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileResponse"
+    patch:
+      operationId: updateProfile
+      tags: [auth]
+      summary: Update user profile
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileBody"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateProfileResponse"
+
+  /auth/users:
+    get:
+      operationId: listUsers
+      tags: [auth]
+      summary: List all users (admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: User list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListUsersResponse"
+
+  # ── Drivers ─────────────────────────────────────────────────────────────────
+
+  /drivers/location:
+    put:
+      operationId: updateDriverLocation
+      tags: [drivers]
+      summary: Push driver GPS location (driver only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLocationBody"
+      responses:
+        "200":
+          description: Location updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  /drivers/nearby:
+    get:
+      operationId: getNearbyDrivers
+      tags: [drivers]
+      summary: Get nearby available drivers
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: lon
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: radius
+          in: query
+          schema:
+            type: number
+            default: 5
+      responses:
+        "200":
+          description: Nearby drivers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NearbyDriversResponse"
+
+  /drivers/availability:
+    put:
+      operationId: updateDriverAvailability
+      tags: [drivers]
+      summary: Toggle driver availability (driver only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AvailabilityBody"
+      responses:
+        "200":
+          description: Availability updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DriverProfileResponse"
+
+  /drivers/me:
+    get:
+      operationId: getMyDriverProfile
+      tags: [drivers]
+      summary: Get own driver profile (driver only)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Driver profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DriverProfileResponse"
+
+  # ── Trips ────────────────────────────────────────────────────────────────────
+
+  /trips:
+    post:
+      operationId: createTrip
+      tags: [trips]
+      summary: Request a trip (passenger only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTripBody"
+      responses:
+        "201":
+          description: Trip created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TripResponse"
+    get:
+      operationId: listTrips
+      tags: [trips]
+      summary: Get trip history
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Trip list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListTripsResponse"
+
+  /trips/{id}:
+    get:
+      operationId: getTrip
+      tags: [trips]
+      summary: Get trip details
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Trip details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TripResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /trips/{id}/accept:
+    post:
+      operationId: acceptTrip
+      tags: [trips]
+      summary: Driver accepts a trip
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Trip accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TripResponse"
+
+  /trips/{id}/decline:
+    post:
+      operationId: declineTrip
+      tags: [trips]
+      summary: Driver declines a trip
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Trip declined and re-queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TripResponse"
+
+  /trips/{id}/complete:
+    post:
+      operationId: completeTrip
+      tags: [trips]
+      summary: Driver marks trip complete and deducts fare
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Trip completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TripResponse"
+
+  /trips/{id}/cancel:
+    post:
+      operationId: cancelTrip
+      tags: [trips]
+      summary: Cancel a trip
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        "200":
+          description: Trip cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TripResponse"
+
+  /trips/{id}/rate:
+    post:
+      operationId: rateTrip
+      tags: [trips]
+      summary: Rate a completed trip
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RateTripBody"
+      responses:
+        "201":
+          description: Rating submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TripRatingResponse"
+
+  # ── Loop Routes ──────────────────────────────────────────────────────────────
+
+  /loops:
+    get:
+      operationId: listLoopRoutes
+      tags: [loops]
+      summary: List all active loop routes
+      responses:
+        "200":
+          description: Loop routes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListLoopRoutesResponse"
+    post:
+      operationId: createLoopRoute
+      tags: [loops]
+      summary: Create a loop route with stops (admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLoopRouteBody"
+      responses:
+        "201":
+          description: Loop route created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoopRouteDetailResponse"
+
+  /loops/{id}:
+    get:
+      operationId: getLoopRoute
+      tags: [loops]
+      summary: Get loop route with stops
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Route detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoopRouteDetailResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /loops/{id}/vehicles:
+    get:
+      operationId: getLoopVehicles
+      tags: [loops]
+      summary: Get live vehicles on a route with ETAs
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: lat
+          in: query
+          schema:
+            type: number
+        - name: lon
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Vehicles with ETA
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoopVehiclesResponse"
+
+  /loops/{id}/vehicles/location:
+    put:
+      operationId: updateLoopVehicleLocation
+      tags: [loops]
+      summary: Push loop vehicle GPS location (driver only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLoopLocationBody"
+      responses:
+        "200":
+          description: Vehicle location updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoopVehicleResponse"
+
+  # ── Wallet ───────────────────────────────────────────────────────────────────
+
+  /wallet:
+    get:
+      operationId: getWallet
+      tags: [wallet]
+      summary: Get current user's wallet
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Wallet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletResponse"
+
+  /wallet/transactions:
+    get:
+      operationId: listTransactions
+      tags: [wallet]
+      summary: Get transaction history
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Transaction history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListTransactionsResponse"
+
+  /wallet/topup:
+    post:
+      operationId: topUpWallet
+      tags: [wallet]
+      summary: Admin-only direct wallet credit (cash kiosk, manual adjustment/refund)
+      description: >
+        Directly credits a wallet with no payment-provider step. Restricted to
+        admins. Passengers topping up their own wallet must use
+        /wallet/topup/intent, which requires a verified payment before the
+        ledger is touched.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TopUpBody"
+      responses:
+        "201":
+          description: Top-up successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopUpResponse"
+
+  /wallet/topup/intent:
+    post:
+      operationId: createTopUpIntent
+      tags: [wallet]
+      summary: Create a wallet top-up checkout session (passenger-callable)
+      description: >
+        Does not credit the wallet. Creates a pending top-up and returns a
+        payment-provider checkout URL; the wallet is only credited once the
+        provider confirms payment via /wallet/topup/webhook.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TopUpIntentBody"
+      responses:
+        "201":
+          description: Checkout session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopUpIntentResponse"
+
+  /wallet/tap:
+    post:
+      operationId: tapWallet
+      tags: [wallet]
+      summary: NFC/QR card tap — deduct fare (mock reader interface)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TapBody"
+      responses:
+        "200":
+          description: Tap processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TapResponse"
+        "402":
+          description: Insufficient balance
+
+  /wallet/admin/users:
+    get:
+      operationId: listWallets
+      tags: [wallet]
+      summary: List all user wallets (admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Wallet list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListWalletsResponse"
+
+  # ── Incidents ────────────────────────────────────────────────────────────────
+
+  /incidents:
+    post:
+      operationId: createIncident
+      tags: [incidents]
+      summary: Submit an incident report
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateIncidentBody"
+      responses:
+        "201":
+          description: Incident reported
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncidentResponse"
+    get:
+      operationId: listIncidents
+      tags: [incidents]
+      summary: List incidents
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Incident list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListIncidentsResponse"
+
+  /incidents/{id}:
+    get:
+      operationId: getIncident
+      tags: [incidents]
+      summary: Get incident details
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Incident
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncidentResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateIncident
+      tags: [incidents]
+      summary: Update incident status (admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateIncidentBody"
+      responses:
+        "200":
+          description: Updated incident
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncidentResponse"
+
+  # ── Analytics ────────────────────────────────────────────────────────────────
+
+  /analytics/daily:
+    get:
+      operationId: getDailyAnalytics
+      tags: [analytics]
+      summary: Daily trip metrics (admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Daily analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyAnalyticsResponse"
+
+  /analytics/summary:
+    get:
+      operationId: getAnalyticsSummary
+      tags: [analytics]
+      summary: Overall KPI summary (admin only)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Analytics summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsSummaryResponse"
+
+  /analytics/trips:
+    get:
+      operationId: getAllTrips
+      tags: [analytics]
+      summary: All trips with filtering (admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: driverId
+          in: query
+          schema:
+            type: string
+        - name: passengerId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Trip list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListTripsResponse"
+
+  /analytics/earnings:
+    get:
+      operationId: getEarnings
+      tags: [analytics]
+      summary: Driver earnings report
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: driverId
+          in: query
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Earnings by day
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EarningsResponse"
+
+  # ── Weather ───────────────────────────────────────────────────────────────────
+
+  /weather:
+    get:
+      operationId: getWeather
+      tags: [weather]
+      summary: Get current weather for a location
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: lat
+          in: query
+          schema:
+            type: number
+            default: 18.3
+        - name: lon
+          in: query
+          schema:
+            type: number
+            default: 121.2
+      responses:
+        "200":
+          description: Weather data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeatherResponse"
+
+  # ── Subscriptions ────────────────────────────────────────────────────────────
+
+  /subscriptions/me:
+    get:
+      operationId: getMySubscription
+      tags: [subscriptions]
+      summary: Get current user's subscription
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MySubscriptionResponse"
+
+  /subscriptions:
+    get:
+      operationId: listSubscriptions
+      tags: [subscriptions]
+      summary: List all subscriptions (admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Subscription list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListSubscriptionsResponse"
+    post:
+      operationId: createSubscription
+      tags: [subscriptions]
+      summary: Create/renew subscription for a user (admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSubscriptionBody"
+      responses:
+        "201":
+          description: Subscription created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionResponse"
+
+  /subscriptions/{id}:
+    patch:
+      operationId: updateSubscription
+      tags: [subscriptions]
+      summary: Update subscription status (admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSubscriptionBody"
+      responses:
+        "200":
+          description: Updated subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionResponse"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required: [ok]
+
+    # ── Users / Auth ─────────────────────────────────────────────────────────
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        fullName:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [passenger, driver, admin]
+        avatarUrl:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, email, role, isActive, createdAt, updatedAt]
+
+    RegisterUserBody:
+      type: object
+      properties:
+        fullName:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+          enum: [passenger, driver]
+        vehicleType:
+          type: string
+        licenseNumber:
+          type: string
+        plateNumber:
+          type: string
+        vehicleColor:
+          type: string
+      required: [fullName, role]
+
+    RegisterUserResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+      required: [user]
+
+    ProfileResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        wallet:
+          $ref: "#/components/schemas/Wallet"
+        subscription:
+          $ref: "#/components/schemas/Subscription"
+        driverProfile:
+          $ref: "#/components/schemas/DriverProfile"
+      required: [user]
+
+    UpdateProfileBody:
+      type: object
+      properties:
+        fullName:
+          type: string
+        phone:
+          type: string
+        avatarUrl:
+          type: string
+
+    UpdateProfileResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+      required: [user]
+
+    ListUsersResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        limit:
+          type: integer
+        offset:
+          type: integer
+      required: [users, limit, offset]
+
+    # ── Driver Profile ───────────────────────────────────────────────────────
+
+    DriverProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+          format: uuid
+        vehicleType:
+          type: string
+        licenseNumber:
+          type: string
+          nullable: true
+        plateNumber:
+          type: string
+          nullable: true
+        vehicleColor:
+          type: string
+          nullable: true
+        isAvailable:
+          type: boolean
+        currentLat:
+          type: number
+          nullable: true
+        currentLon:
+          type: number
+          nullable: true
+        rating:
+          type: number
+        totalTrips:
+          type: integer
+      required: [id, userId, vehicleType, isAvailable, rating, totalTrips]
+
+    DriverProfileResponse:
+      type: object
+      properties:
+        profile:
+          $ref: "#/components/schemas/DriverProfile"
+      required: [profile]
+
+    UpdateLocationBody:
+      type: object
+      properties:
+        lat:
+          type: number
+        lon:
+          type: number
+      required: [lat, lon]
+
+    AvailabilityBody:
+      type: object
+      properties:
+        isAvailable:
+          type: boolean
+      required: [isAvailable]
+
+    NearbyDriver:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        vehicleType:
+          type: string
+        vehicleColor:
+          type: string
+          nullable: true
+        plateNumber:
+          type: string
+          nullable: true
+        isAvailable:
+          type: boolean
+        currentLat:
+          type: number
+          nullable: true
+        currentLon:
+          type: number
+          nullable: true
+        rating:
+          type: number
+        totalTrips:
+          type: integer
+        fullName:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          nullable: true
+        distanceKm:
+          type: number
+      required: [userId, vehicleType, isAvailable, rating, totalTrips, distanceKm]
+
+    NearbyDriversResponse:
+      type: object
+      properties:
+        drivers:
+          type: array
+          items:
+            $ref: "#/components/schemas/NearbyDriver"
+      required: [drivers]
+
+    # ── Trips ────────────────────────────────────────────────────────────────
+
+    Trip:
+      type: object
+      properties:
+        id:
+          type: integer
+        passengerId:
+          type: string
+          format: uuid
+        driverId:
+          type: string
+          format: uuid
+          nullable: true
+        pickupLat:
+          type: number
+        pickupLon:
+          type: number
+        pickupAddress:
+          type: string
+          nullable: true
+        dropoffLat:
+          type: number
+        dropoffLon:
+          type: number
+        dropoffAddress:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [requested, matched, in_progress, completed, cancelled]
+        fareAmount:
+          type: number
+          nullable: true
+        distanceKm:
+          type: number
+          nullable: true
+        cancelReason:
+          type: string
+          nullable: true
+        matchedAt:
+          type: string
+          format: date-time
+          nullable: true
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, passengerId, pickupLat, pickupLon, dropoffLat, dropoffLon, status, createdAt]
+
+    TripResponse:
+      type: object
+      properties:
+        trip:
+          $ref: "#/components/schemas/Trip"
+      required: [trip]
+
+    ListTripsResponse:
+      type: object
+      properties:
+        trips:
+          type: array
+          items:
+            $ref: "#/components/schemas/Trip"
+        limit:
+          type: integer
+        offset:
+          type: integer
+      required: [trips, limit, offset]
+
+    CreateTripBody:
+      type: object
+      properties:
+        pickupLat:
+          type: number
+        pickupLon:
+          type: number
+        pickupAddress:
+          type: string
+        dropoffLat:
+          type: number
+        dropoffLon:
+          type: number
+        dropoffAddress:
+          type: string
+      required: [pickupLat, pickupLon, dropoffLat, dropoffLon]
+
+    TripRating:
+      type: object
+      properties:
+        id:
+          type: integer
+        tripId:
+          type: integer
+        raterId:
+          type: string
+          format: uuid
+        rateeId:
+          type: string
+          format: uuid
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, tripId, raterId, rateeId, rating, createdAt]
+
+    TripRatingResponse:
+      type: object
+      properties:
+        rating:
+          $ref: "#/components/schemas/TripRating"
+      required: [rating]
+
+    RateTripBody:
+      type: object
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+      required: [rating]
+
+    # ── Loop Routes ──────────────────────────────────────────────────────────
+
+    LoopRoute:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        baseFare:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, isActive, baseFare, createdAt]
+
+    LoopStop:
+      type: object
+      properties:
+        id:
+          type: integer
+        routeId:
+          type: integer
+        name:
+          type: string
+        sequence:
+          type: integer
+        lat:
+          type: number
+        lon:
+          type: number
+        distanceKm:
+          type: number
+          nullable: true
+        etaMinutes:
+          type: integer
+          nullable: true
+      required: [id, routeId, name, sequence, lat, lon]
+
+    LoopVehicle:
+      type: object
+      properties:
+        id:
+          type: integer
+        routeId:
+          type: integer
+        driverId:
+          type: string
+          format: uuid
+        status:
+          type: string
+        currentLat:
+          type: number
+          nullable: true
+        currentLon:
+          type: number
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+        distanceFromUserKm:
+          type: number
+          nullable: true
+        etaFromUserMinutes:
+          type: integer
+          nullable: true
+      required: [id, routeId, driverId, status, updatedAt]
+
+    ListLoopRoutesResponse:
+      type: object
+      properties:
+        routes:
+          type: array
+          items:
+            $ref: "#/components/schemas/LoopRoute"
+      required: [routes]
+
+    LoopRouteDetailResponse:
+      type: object
+      properties:
+        route:
+          $ref: "#/components/schemas/LoopRoute"
+        stops:
+          type: array
+          items:
+            $ref: "#/components/schemas/LoopStop"
+      required: [route, stops]
+
+    LoopVehiclesResponse:
+      type: object
+      properties:
+        vehicles:
+          type: array
+          items:
+            $ref: "#/components/schemas/LoopVehicle"
+      required: [vehicles]
+
+    LoopVehicleResponse:
+      type: object
+      properties:
+        vehicle:
+          $ref: "#/components/schemas/LoopVehicle"
+      required: [vehicle]
+
+    CreateLoopRouteBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        baseFare:
+          type: number
+          default: 0
+        stops:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              sequence:
+                type: integer
+              lat:
+                type: number
+              lon:
+                type: number
+            required: [name, sequence, lat, lon]
+          minItems: 2
+      required: [name, stops]
+
+    UpdateLoopLocationBody:
+      type: object
+      properties:
+        vehicleId:
+          type: integer
+        lat:
+          type: number
+        lon:
+          type: number
+        currentStopId:
+          type: integer
+      required: [vehicleId, lat, lon]
+
+    # ── Wallet ───────────────────────────────────────────────────────────────
+
+    Wallet:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+          format: uuid
+        balance:
+          type: number
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, userId, balance, updatedAt]
+
+    FareTransaction:
+      type: object
+      properties:
+        id:
+          type: integer
+        walletId:
+          type: integer
+        userId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        type:
+          type: string
+          enum: [top_up, deduct, refund, adjustment]
+        description:
+          type: string
+          nullable: true
+        referenceId:
+          type: string
+          nullable: true
+        balanceBefore:
+          type: number
+        balanceAfter:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, walletId, userId, amount, type, balanceBefore, balanceAfter, createdAt]
+
+    WalletResponse:
+      type: object
+      properties:
+        wallet:
+          $ref: "#/components/schemas/Wallet"
+      required: [wallet]
+
+    ListTransactionsResponse:
+      type: object
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/FareTransaction"
+        limit:
+          type: integer
+        offset:
+          type: integer
+      required: [transactions, limit, offset]
+
+    TopUpBody:
+      type: object
+      description: Admin-only direct credit.
+      properties:
+        userId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        referenceId:
+          type: string
+      required: [userId, amount]
+
+    TopUpResponse:
+      type: object
+      properties:
+        transaction:
+          $ref: "#/components/schemas/FareTransaction"
+        newBalance:
+          type: number
+      required: [transaction, newBalance]
+
+    TopUpIntentBody:
+      type: object
+      description: Passenger-callable. Does not credit the wallet directly.
+      properties:
+        amount:
+          type: number
+          maximum: 50000
+      required: [amount]
+
+    TopUpIntentResponse:
+      type: object
+      properties:
+        checkoutUrl:
+          type: string
+      required: [checkoutUrl]
+
+    TapBody:
+      type: object
+      properties:
+        cardId:
+          type: string
+        amount:
+          type: number
+        tripId:
+          type: integer
+        idempotencyKey:
+          type: string
+          description: Reader-generated dedup key so a network retry can't double-deduct.
+      required: [cardId, amount, idempotencyKey]
+
+    TapResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        newBalance:
+          type: number
+        transactionId:
+          type: integer
+      required: [ok, newBalance, transactionId]
+
+    ListWalletsResponse:
+      type: object
+      properties:
+        wallets:
+          type: array
+          items:
+            $ref: "#/components/schemas/Wallet"
+        limit:
+          type: integer
+        offset:
+          type: integer
+      required: [wallets, limit, offset]
+
+    # ── Incidents ────────────────────────────────────────────────────────────
+
+    IncidentReport:
+      type: object
+      properties:
+        id:
+          type: integer
+        reporterId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [accident, flood, fleet_issue]
+        lat:
+          type: number
+        lon:
+          type: number
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+        description:
+          type: string
+          nullable: true
+        photoUrl:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [open, reviewing, resolved]
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        resolvedBy:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, reporterId, type, lat, lon, severity, status, createdAt]
+
+    IncidentResponse:
+      type: object
+      properties:
+        report:
+          $ref: "#/components/schemas/IncidentReport"
+      required: [report]
+
+    ListIncidentsResponse:
+      type: object
+      properties:
+        reports:
+          type: array
+          items:
+            $ref: "#/components/schemas/IncidentReport"
+        limit:
+          type: integer
+        offset:
+          type: integer
+      required: [reports, limit, offset]
+
+    CreateIncidentBody:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [accident, flood, fleet_issue]
+        lat:
+          type: number
+        lon:
+          type: number
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+        description:
+          type: string
+        photoUrl:
+          type: string
+          format: uri
+      required: [type, lat, lon, severity]
+
+    UpdateIncidentBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [reviewing, resolved]
+      required: [status]
+
+    # ── Analytics ────────────────────────────────────────────────────────────
+
+    DailyTripMetric:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        tripCount:
+          type: integer
+        completedCount:
+          type: integer
+        cancelledCount:
+          type: integer
+        uniquePassengers:
+          type: integer
+        totalFareCollected:
+          type: number
+        avgTripDurationMinutes:
+          type: number
+      required: [date, tripCount, completedCount, cancelledCount, uniquePassengers, totalFareCollected, avgTripDurationMinutes]
+
+    DailyAnalyticsResponse:
+      type: object
+      properties:
+        dailyTrips:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyTripMetric"
+        startDate:
+          type: string
+        endDate:
+          type: string
+      required: [dailyTrips, startDate, endDate]
+
+    AnalyticsSummaryResponse:
+      type: object
+      properties:
+        trips:
+          type: object
+          properties:
+            total:
+              type: integer
+            completed:
+              type: integer
+            cancelled:
+              type: integer
+            inProgress:
+              type: integer
+            totalRevenue:
+              type: number
+          required: [total, completed, cancelled, inProgress, totalRevenue]
+        users:
+          type: object
+          properties:
+            totalUsers:
+              type: integer
+            passengers:
+              type: integer
+            drivers:
+              type: integer
+            admins:
+              type: integer
+          required: [totalUsers, passengers, drivers, admins]
+        incidents:
+          type: object
+          properties:
+            total:
+              type: integer
+            open:
+              type: integer
+            accidents:
+              type: integer
+            floods:
+              type: integer
+          required: [total, open, accidents, floods]
+      required: [trips, users, incidents]
+
+    EarningDay:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        tripCount:
+          type: integer
+        totalEarnings:
+          type: number
+        avgFare:
+          type: number
+      required: [date, tripCount, totalEarnings, avgFare]
+
+    EarningsResponse:
+      type: object
+      properties:
+        earnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/EarningDay"
+        driverId:
+          type: string
+        startDate:
+          type: string
+        endDate:
+          type: string
+      required: [earnings, driverId, startDate, endDate]
+
+    # ── Weather ──────────────────────────────────────────────────────────────
+
+    WeatherResponse:
+      type: object
+      properties:
+        mock:
+          type: boolean
+        location:
+          type: object
+          properties:
+            lat:
+              type: number
+            lon:
+              type: number
+            name:
+              type: string
+          required: [lat, lon]
+        weather:
+          type: object
+          properties:
+            main:
+              type: string
+            description:
+              type: string
+            temp:
+              type: number
+            feelsLike:
+              type: number
+            humidity:
+              type: number
+            windSpeed:
+              type: number
+            icon:
+              type: string
+          required: [main, description, temp, feelsLike, humidity, windSpeed]
+        timestamp:
+          type: string
+          format: date-time
+      required: [mock, location, weather, timestamp]
+
+    # ── Subscriptions ────────────────────────────────────────────────────────
+
+    Subscription:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+          format: uuid
+        plan:
+          type: string
+        status:
+          type: string
+          enum: [active, expired, cancelled]
+        startsAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, userId, plan, status, startsAt, expiresAt, createdAt]
+
+    SubscriptionResponse:
+      type: object
+      properties:
+        subscription:
+          $ref: "#/components/schemas/Subscription"
+      required: [subscription]
+
+    MySubscriptionResponse:
+      type: object
+      properties:
+        subscription:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/Subscription"
+      required: [subscription]
+
+    ListSubscriptionsResponse:
+      type: object
+      properties:
+        subscriptions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Subscription"
+        limit:
+          type: integer
+        offset:
+          type: integer
+      required: [subscriptions, limit, offset]
+
+    CreateSubscriptionBody:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        plan:
+          type: string
+          default: annual
+        startsAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+      required: [userId]
+
+    UpdateSubscriptionBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [active, expired, cancelled]
+      required: [status]

@@ -1,0 +1,37 @@
+# Dockerfile for artifacts/api-server
+# Build context MUST be the repo root (this is a pnpm workspace, api-server
+# depends on the sibling `@workspace/db` and `@workspace/api-zod` packages).
+#
+# Local build/run:
+#   docker build -f Dockerfile.api-server -t move-apayao-api .
+#   docker run -p 5000:5000 --env-file artifacts/api-server/.env.local move-apayao-api
+
+FROM node:24-slim AS base
+RUN corepack enable
+WORKDIR /repo
+
+FROM base AS deps
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY artifacts/api-server/package.json artifacts/api-server/package.json
+COPY lib/db/package.json lib/db/package.json
+COPY lib/api-zod/package.json lib/api-zod/package.json
+COPY lib/api-spec/package.json lib/api-spec/package.json
+COPY lib/api-client-react/package.json lib/api-client-react/package.json
+COPY scripts/package.json scripts/package.json
+# pnpm-workspace.yaml enforces a 1-day minimum package release age — this is
+# intentional (supply-chain safety), leave it as-is.
+RUN pnpm install --frozen-lockfile
+
+FROM deps AS build
+COPY . .
+RUN pnpm --filter @workspace/api-server... run build
+
+FROM node:24-slim AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build /repo/artifacts/api-server/dist ./dist
+COPY --from=build /repo/node_modules ./node_modules
+COPY --from=build /repo/artifacts/api-server/node_modules ./artifacts/api-server/node_modules
+
+EXPOSE 5000
+CMD ["node", "--enable-source-maps", "./dist/index.mjs"]
