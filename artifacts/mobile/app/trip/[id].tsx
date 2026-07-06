@@ -11,7 +11,6 @@ import {
   Linking,
   Platform,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
@@ -19,6 +18,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { RouteMap } from '@/components/RouteMap';
 import { Feather } from '@expo/vector-icons';
 import {
   useGetTrip,
@@ -29,30 +29,6 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
-
-/**
- * Builds a static map image URL that shows the pickup and dropoff points with
- * a connecting line. Uses the free staticmap.openstreetmap.de renderer so it
- * works in Expo Go with zero native modules (no react-native-maps rebuild).
- */
-function buildStaticMapUrl(
-  pickupLat: number,
-  pickupLon: number,
-  dropoffLat: number,
-  dropoffLon: number,
-  width: number,
-  height: number,
-): string {
-  const markers = [
-    `markers=${pickupLat},${pickupLon},lightblue1`,
-    `markers=${dropoffLat},${dropoffLon},red1`,
-  ].join('&');
-  const path = `path=color:blue|weight:4|${pickupLat},${pickupLon}|${dropoffLat},${dropoffLon}`;
-  return (
-    `https://staticmap.openstreetmap.de/staticmap.php?` +
-    `size=${Math.round(width)}x${Math.round(height)}&${markers}&${path}`
-  );
-}
 
 function openInMaps(lat: number, lon: number, label: string) {
   const encodedLabel = encodeURIComponent(label);
@@ -156,6 +132,9 @@ export default function TripDetailScreen() {
   const MAP_W = 600;
   const MAP_H = 400;
 
+  const canTrack =
+    !!trip?.driverId && (trip?.status === 'matched' || trip?.status === 'in_progress');
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.modalHeader}>
@@ -175,30 +154,32 @@ export default function TripDetailScreen() {
               <Badge label={trip.status} variant={getStatusVariant(trip.status)} />
             </View>
 
+            {/* Embedded interactive route map */}
             <Pressable
-              onPress={() =>
-                openInMaps(trip.dropoffLat, trip.dropoffLon, trip.dropoffAddress || 'Dropoff')
-              }
+              onPress={() => {
+                if (canTrack) {
+                  router.push(`/trip/${tripId}/track`);
+                } else {
+                  openInMaps(trip.dropoffLat, trip.dropoffLon, trip.dropoffAddress || 'Dropoff');
+                }
+              }}
             >
               <Card style={styles.mapCard}>
-                <Image
-                  source={{
-                    uri: buildStaticMapUrl(
-                      trip.pickupLat,
-                      trip.pickupLon,
-                      trip.dropoffLat,
-                      trip.dropoffLon,
-                      MAP_W,
-                      MAP_H,
-                    ),
-                  }}
-                  style={styles.mapImage}
-                  contentFit="cover"
-                  transition={200}
+                <RouteMap
+                  pickup={{ latitude: trip.pickupLat, longitude: trip.pickupLon }}
+                  dropoff={{ latitude: trip.dropoffLat, longitude: trip.dropoffLon }}
+                  interactive={false}
+                  style={StyleSheet.absoluteFill}
                 />
-                <View style={[styles.mapHint, { backgroundColor: colors.card }]}>
-                  <Feather name="external-link" size={13} color={colors.primary} />
-                  <Text style={[styles.mapHintText, { color: colors.primary }]}>Open in Maps</Text>
+                <View style={[styles.mapHint, { backgroundColor: colors.card }]} pointerEvents="none">
+                  <Feather
+                    name={canTrack ? 'navigation' : 'external-link'}
+                    size={13}
+                    color={colors.primary}
+                  />
+                  <Text style={[styles.mapHintText, { color: colors.primary }]}>
+                    {canTrack ? 'Track Driver' : 'Open in Maps'}
+                  </Text>
                 </View>
               </Card>
             </Pressable>
@@ -242,13 +223,23 @@ export default function TripDetailScreen() {
               </View>
             </Card>
 
+            {canTrack && (
+              <Button
+                title="Track Driver Live"
+                variant="default"
+                onPress={() => router.push(`/trip/${tripId}/track`)}
+                icon={<Feather name="navigation" size={18} color={colors.primaryForeground} />}
+                style={{ marginTop: 24 }}
+              />
+            )}
+
             {trip.status === 'requested' || trip.status === 'matched' ? (
               <Button
                 title="Cancel Trip"
                 variant="destructive"
                 onPress={handleCancel}
                 loading={cancelTrip.isPending}
-                style={{ marginTop: 24 }}
+                style={{ marginTop: 12 }}
               />
             ) : null}
 
@@ -355,7 +346,6 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 24, fontFamily: 'Inter_700Bold' },
   mapCard: { height: 200, padding: 0, overflow: 'hidden', marginBottom: 20 },
-  mapImage: { width: '100%', height: '100%' },
   mapHint: {
     position: 'absolute',
     bottom: 10,

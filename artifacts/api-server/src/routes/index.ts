@@ -10,6 +10,7 @@ import analyticsRouter from "./analytics";
 import weatherRouter from "./weather";
 import subscriptionsRouter from "./subscriptions";
 import auditLogsRouter from "./audit-logs";
+import trackingRouter from "./tracking";
 
 const router = Router();
 
@@ -24,6 +25,7 @@ router.use(analyticsRouter);
 router.use(weatherRouter);
 router.use(subscriptionsRouter);
 router.use(auditLogsRouter);
+router.use(trackingRouter);
 
 
 export default router;

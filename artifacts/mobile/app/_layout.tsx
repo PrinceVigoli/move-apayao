@@ -15,6 +15,7 @@ import {
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { setBaseUrl } from '@workspace/api-client-react';
+import { API_BASE_URL } from '@/lib/api-config';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { useColors } from '@/hooks/useColors';
 
@@ -22,9 +23,7 @@ import { useColors } from '@/hooks/useColors';
 // - Local dev outside Replit: set EXPO_PUBLIC_API_URL (see LOCAL_SETUP.md §8),
 //   e.g. EXPO_PUBLIC_API_URL=http://192.168.1.23:5000
 // - Running on Replit: falls back to the Replit tunnel domain automatically.
-setBaseUrl(
-  process.env.EXPO_PUBLIC_API_URL ?? `https://${process.env.EXPO_PUBLIC_DOMAIN}`,
-);
+setBaseUrl(API_BASE_URL);
 
 SplashScreen.preventAutoHideAsync();
 
@@ -70,6 +69,7 @@ function RootLayoutNav() {
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="trip/[id]" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="trip/[id]/track" options={{ headerShown: false }} />
       <Stack.Screen name="route/[id]" options={{ presentation: 'card' }} />
       <Stack.Screen name="transaction/[id]" options={{ presentation: 'modal' }} />
     </Stack>
