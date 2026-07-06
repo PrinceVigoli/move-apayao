@@ -7,12 +7,14 @@ import {
   driverProfilesTable,
   fareWalletsTable,
   fareTransactionsTable,
+  type Trip,
 } from "@workspace/db";
 import { requireAuth, requireRole, type AuthenticatedRequest } from "../middlewares/auth";
 import {
-  findNearestDrivers,
+  claimNearestAvailableDriver,
   publishTripUpdate,
 } from "../lib/redis";
+import { markDriverAvailable, markDriverUnavailable } from "../lib/driver-availability";
 import { logger } from "../lib/logger";
 import { z } from "zod";
 import { parseIdParam, parsePagination } from "../lib/http";
@@ -46,12 +48,24 @@ async function safePublishTripUpdate(tripId: number, payload: object): Promise<v
   }
 }
 
-async function safeFindNearestDrivers(lat: number, lon: number, radiusKm: number, count: number) {
+// Postgres unique_violation. Used to detect the (extremely unlikely, given
+// the atomic Redis claim above) case where the DB's partial unique index on
+// active trips-per-driver is what ends up catching a double-booking.
+function isUniqueViolation(err: unknown): boolean {
+  return typeof err === "object" && err !== null && (err as { code?: string }).code === "23505";
+}
+
+async function safeClaimNearestAvailableDriver(
+  lat: number,
+  lon: number,
+  radiusKm: number,
+  excludeDriverId?: string,
+): Promise<string | null> {
   try {
-    return await findNearestDrivers(lat, lon, radiusKm, count);
+    return await claimNearestAvailableDriver(lat, lon, radiusKm, excludeDriverId);
   } catch (err) {
-    logger.warn({ err }, "Redis geo query failed (non-fatal)");
-    return [];
+    logger.warn({ err }, "Redis driver claim failed (non-fatal)");
+    return null;
   }
 }
 
@@ -79,28 +93,59 @@ router.post("/trips", requireAuth, requireRole("passenger"), async (req, res): P
   const distanceKm = haversineKm(body.pickupLat, body.pickupLon, body.dropoffLat, body.dropoffLon);
   const fareAmount = estimateFare(distanceKm);
 
-  const nearby = await safeFindNearestDrivers(body.pickupLat, body.pickupLon, 10, 1);
+  let claimedDriverId = await safeClaimNearestAvailableDriver(body.pickupLat, body.pickupLon, 10);
 
-  const [trip] = await db
-    .insert(tripsTable)
-    .values({
-      passengerId: authReq.user.id,
-      pickupLat: body.pickupLat,
-      pickupLon: body.pickupLon,
-      pickupAddress: body.pickupAddress,
-      dropoffLat: body.dropoffLat,
-      dropoffLon: body.dropoffLon,
-      dropoffAddress: body.dropoffAddress,
-      distanceKm,
-      fareAmount,
-      status: nearby.length > 0 ? "matched" : "requested",
-      driverId: nearby.length > 0 ? nearby[0].driverId : null,
-      matchedAt: nearby.length > 0 ? new Date() : null,
-    })
-    .returning();
+  const baseTripValues = {
+    passengerId: authReq.user.id,
+    pickupLat: body.pickupLat,
+    pickupLon: body.pickupLon,
+    pickupAddress: body.pickupAddress,
+    dropoffLat: body.dropoffLat,
+    dropoffLon: body.dropoffLon,
+    dropoffAddress: body.dropoffAddress,
+    distanceKm,
+    fareAmount,
+  };
 
-  if (nearby.length > 0) {
-    await safePublishTripUpdate(trip.id, { event: "matched", trip, driverId: nearby[0].driverId });
+  let trip: Trip;
+  try {
+    [trip] = await db
+      .insert(tripsTable)
+      .values({
+        ...baseTripValues,
+        status: claimedDriverId ? "matched" : "requested",
+        driverId: claimedDriverId,
+        matchedAt: claimedDriverId ? new Date() : null,
+      })
+      .returning();
+  } catch (err) {
+    if (claimedDriverId && isUniqueViolation(err)) {
+      // The atomic Redis claim above should make this unreachable in
+      // practice — but if it's ever wrong (e.g. the DB row was already in
+      // an active state some other way), the DB constraint is the last
+      // line of defense. Hand the driver back and create an unmatched
+      // trip instead of failing the passenger's request outright.
+      logger.warn(
+        { err, claimedDriverId },
+        "Active-trip unique constraint hit at creation — falling back to unmatched trip",
+      );
+      await markDriverAvailable(claimedDriverId);
+      claimedDriverId = null;
+      [trip] = await db
+        .insert(tripsTable)
+        .values({ ...baseTripValues, status: "requested", driverId: null, matchedAt: null })
+        .returning();
+    } else {
+      throw err;
+    }
+  }
+
+  if (claimedDriverId) {
+    // DB isAvailable flip for consistency (the Redis geo index was already
+    // atomically claimed above — this just keeps the driver's own profile
+    // state, and any UI reading it, in sync with that).
+    await markDriverUnavailable(claimedDriverId);
+    await safePublishTripUpdate(trip.id, { event: "matched", trip, driverId: claimedDriverId });
   }
 
   res.status(201).json({ trip });
@@ -223,28 +268,64 @@ router.post(
       return;
     }
 
-    const nearby = await safeFindNearestDrivers(trip.pickupLat, trip.pickupLon, 10, 5);
-    const nextDriver = nearby.find((n) => n.driverId !== authReq.user.id);
+    let nextDriverId = await safeClaimNearestAvailableDriver(
+      trip.pickupLat,
+      trip.pickupLon,
+      10,
+      authReq.user.id,
+    );
 
-    const [updated] = await db
-      .update(tripsTable)
-      .set({
-        status: nextDriver ? "matched" : "requested",
-        driverId: nextDriver ? nextDriver.driverId : null,
-        matchedAt: nextDriver ? new Date() : null,
-      })
-      .where(
-        and(
-          eq(tripsTable.id, tripId),
-          eq(tripsTable.driverId, authReq.user.id),
-          eq(tripsTable.status, "matched"),
-        ),
-      )
-      .returning();
+    let updated: Trip | undefined;
+    try {
+      [updated] = await db
+        .update(tripsTable)
+        .set({
+          status: nextDriverId ? "matched" : "requested",
+          driverId: nextDriverId,
+          matchedAt: nextDriverId ? new Date() : null,
+        })
+        .where(
+          and(
+            eq(tripsTable.id, tripId),
+            eq(tripsTable.driverId, authReq.user.id),
+            eq(tripsTable.status, "matched"),
+          ),
+        )
+        .returning();
+    } catch (err) {
+      if (nextDriverId && isUniqueViolation(err)) {
+        logger.warn(
+          { err, tripId, nextDriverId },
+          "Active-trip unique constraint hit at decline rematch — falling back to unmatched trip",
+        );
+        await markDriverAvailable(nextDriverId);
+        nextDriverId = null;
+        [updated] = await db
+          .update(tripsTable)
+          .set({ status: "requested", driverId: null, matchedAt: null })
+          .where(
+            and(
+              eq(tripsTable.id, tripId),
+              eq(tripsTable.driverId, authReq.user.id),
+              eq(tripsTable.status, "matched"),
+            ),
+          )
+          .returning();
+      } else {
+        throw err;
+      }
+    }
 
     if (!updated) {
       res.status(400).json({ error: "Trip not available to decline" });
       return;
+    }
+
+    // The declining driver is free again; whoever (if anyone) was just
+    // claimed above takes over as unavailable.
+    await markDriverAvailable(authReq.user.id);
+    if (nextDriverId) {
+      await markDriverUnavailable(nextDriverId);
     }
 
     await safePublishTripUpdate(tripId, { event: "declined", trip: updated });
@@ -345,6 +426,7 @@ router.post(
         return completedTrip;
       });
 
+      await markDriverAvailable(authReq.user.id);
       await safePublishTripUpdate(tripId, { event: "completed", trip: updated });
       res.json({ trip: updated });
     } catch (err: unknown) {
@@ -403,6 +485,12 @@ router.post("/trips/:id/cancel", requireAuth, async (req, res): Promise<void> =>
   if (!updated) {
     res.status(400).json({ error: "Trip cannot be cancelled at this stage" });
     return;
+  }
+
+  // A cancel from "requested" has no driver attached yet; a cancel from
+  // "matched" does, and that driver is no longer tied up.
+  if (updated.driverId) {
+    await markDriverAvailable(updated.driverId);
   }
 
   await safePublishTripUpdate(tripId, { event: "cancelled", trip: updated });

@@ -97,6 +97,41 @@ export async function removeDriverGeo(driverId: string): Promise<void> {
   await redis.zrem(DRIVER_GEO_KEY, driverId);
 }
 
+/**
+ * Atomically claim the nearest available driver for a trip.
+ *
+ * `findNearestDrivers` is a read — two concurrent callers (two passengers
+ * requesting at nearly the same instant) can both read back the same
+ * driver and both proceed to match them. This function closes that race:
+ * ZREM on a sorted set is atomic and returns 1 only to the single caller
+ * that actually removed the member, 0 to everyone else. So "did I remove
+ * them" doubles as "did I win the claim" — at most one caller can ever get
+ * a 1 for a given driver, even under concurrent requests.
+ *
+ * Walks candidates nearest-first and returns the first one successfully
+ * claimed, or null if none of the top candidates could be claimed (all
+ * taken concurrently, or none online within radiusKm).
+ */
+export async function claimNearestAvailableDriver(
+  lat: number,
+  lon: number,
+  radiusKm = 10,
+  excludeDriverId?: string,
+): Promise<string | null> {
+  const redis = getRedis();
+  const candidates = await findNearestDrivers(lat, lon, radiusKm, 10);
+
+  for (const { driverId } of candidates) {
+    if (driverId === excludeDriverId) continue;
+    const removed = await redis.zrem(DRIVER_GEO_KEY, driverId);
+    if (removed === 1) return driverId;
+    // removed === 0: someone else claimed (or removed) them between our
+    // read and this write — move on to the next-nearest candidate.
+  }
+
+  return null;
+}
+
 // Publish trip status update
 export async function publishTripUpdate(tripId: number, payload: object): Promise<void> {
   const pub = getRedisPub();

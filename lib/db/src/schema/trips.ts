@@ -7,7 +7,9 @@ import {
   timestamp,
   integer,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -50,6 +52,15 @@ export const tripsTable = pgTable(
     ),
     driverCreatedIdx: index("trips_driver_created_idx").on(table.driverId, table.createdAt),
     statusIdx: index("trips_status_idx").on(table.status),
+    // Belt-and-suspenders against double-booking a driver: even if
+    // application logic (matching, decline-rematch, etc.) ever has a bug,
+    // Postgres itself refuses a second row that would give one driver two
+    // simultaneously "live" trips. NULLs (trips with no driver yet, e.g.
+    // status = 'requested') never conflict with each other or with this
+    // index, since a partial index only covers rows matching the WHERE.
+    activeDriverUniqueIdx: uniqueIndex("trips_active_driver_unique_idx")
+      .on(table.driverId)
+      .where(sql`${table.status} in ('matched', 'in_progress')`),
   }),
 );
 

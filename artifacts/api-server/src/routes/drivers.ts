@@ -9,6 +9,7 @@ import {
   findNearestDrivers,
   publishDriverLocation,
 } from "../lib/redis";
+import { markDriverAvailable, markDriverUnavailable } from "../lib/driver-availability";
 import { logger } from "../lib/logger";
 import { z } from "zod";
 
@@ -80,15 +81,23 @@ router.put(
     const { lat, lon } = parsed.data;
     const driverId = authReq.user.id;
 
-    await db
+    const [profile] = await db
       .update(driverProfilesTable)
       .set({ currentLat: lat, currentLon: lon, lastLocationAt: new Date(), updatedAt: new Date() })
-      .where(eq(driverProfilesTable.userId, driverId));
+      .where(eq(driverProfilesTable.userId, driverId))
+      .returning({ isAvailable: driverProfilesTable.isAvailable });
 
-    await Promise.all([
-      safeUpdateDriverGeo(driverId, lat, lon),
-      safePublishDriverLocation(driverId, lat, lon),
-    ]);
+    // Location pings keep flowing while a driver is mid-trip (that's what
+    // feeds the passenger's live tracking map) — but this geo index is what
+    // NEW-trip matching reads from. Only an available driver should be
+    // discoverable there; a busy driver's ping must not re-add them (and
+    // actively removes them if they're somehow still present), otherwise
+    // they'd be matchable to a second trip while already driving one.
+    const geoUpdate = profile?.isAvailable
+      ? safeUpdateDriverGeo(driverId, lat, lon)
+      : safeRemoveDriverGeo(driverId);
+
+    await Promise.all([geoUpdate, safePublishDriverLocation(driverId, lat, lon)]);
 
     res.json({ ok: true });
   },
@@ -181,15 +190,16 @@ router.put(
       return;
     }
 
-    const [profile] = await db
-      .update(driverProfilesTable)
-      .set({ isAvailable: parsed.data.isAvailable, updatedAt: new Date() })
-      .where(eq(driverProfilesTable.userId, authReq.user.id))
-      .returning();
-
-    if (!parsed.data.isAvailable) {
-      await safeRemoveDriverGeo(authReq.user.id);
+    if (parsed.data.isAvailable) {
+      await markDriverAvailable(authReq.user.id);
+    } else {
+      await markDriverUnavailable(authReq.user.id);
     }
+
+    const [profile] = await db
+      .select()
+      .from(driverProfilesTable)
+      .where(eq(driverProfilesTable.userId, authReq.user.id));
 
     res.json({ profile });
   },
