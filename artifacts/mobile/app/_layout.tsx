@@ -68,6 +68,7 @@ function RootLayoutNav() {
     <Stack screenOptions={{ headerBackTitle: 'Back', headerShown: false }}>
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="history" options={{ headerShown: false, presentation: 'card' }} />
       <Stack.Screen name="trip/[id]" options={{ presentation: 'modal' }} />
       <Stack.Screen name="trip/[id]/track" options={{ headerShown: false }} />
       <Stack.Screen name="route/[id]" options={{ presentation: 'card' }} />

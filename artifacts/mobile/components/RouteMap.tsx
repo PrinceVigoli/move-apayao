@@ -6,18 +6,35 @@ import { Feather } from '@expo/vector-icons';
 
 type LatLng = { latitude: number; longitude: number };
 
+export type NearbyDriverPin = {
+  id: string;
+  latitude: number;
+  longitude: number;
+  label?: string;
+};
+
 interface RouteMapProps {
-  pickup: LatLng;
-  dropoff: LatLng;
+  /** Trip mode: draws a pickup->dropoff route line. */
+  pickup?: LatLng;
+  dropoff?: LatLng;
+  /** Assigned driver being tracked (single moving pin). */
   driver?: LatLng | null;
-  /** When true, the map recenters to keep the driver in view as they move. */
+  /** Nearby-available-drivers mode: multiple pins, no route line. */
+  nearbyDrivers?: NearbyDriverPin[];
+  /** The passenger's own location (blue dot style pin). */
+  userLocation?: LatLng | null;
+  /** Recenter to keep the tracked driver in view as they move. */
   followDriver?: boolean;
   style?: any;
-  /** Disable gestures for a small embedded preview. */
   interactive?: boolean;
+  onDriverPress?: (id: string) => void;
 }
 
-function regionFor(points: LatLng[]): Region {
+function regionFor(points: LatLng[], fallback?: LatLng): Region {
+  if (points.length === 0) {
+    const c = fallback ?? { latitude: 18.3121, longitude: 121.3214 };
+    return { ...c, latitudeDelta: 0.05, longitudeDelta: 0.05 };
+  }
   const lats = points.map((p) => p.latitude);
   const lons = points.map((p) => p.longitude);
   const minLat = Math.min(...lats);
@@ -35,29 +52,46 @@ function regionFor(points: LatLng[]): Region {
 }
 
 /**
- * Interactive Google map used both as an embedded preview in the trip detail
- * screen and full-screen in the live tracker. Requires react-native-maps +
- * a Google Maps API key (see app.json / EAS setup) — works in an EAS dev/prod
- * build, not in stock Expo Go.
+ * Interactive Google map with three modes that can combine:
+ *  - Route mode: pass pickup + dropoff to draw the trip line.
+ *  - Tracking mode: pass driver (+ followDriver) for a live moving pin.
+ *  - Nearby mode: pass nearbyDrivers for a Grab-style scatter of available
+ *    e-trikes around the user.
+ *
+ * Requires react-native-maps + a Google Maps API key (app.json). Works in an
+ * EAS dev/prod build, not stock Expo Go.
  */
 export function RouteMap({
   pickup,
   dropoff,
   driver,
+  nearbyDrivers,
+  userLocation,
   followDriver = false,
   style,
   interactive = true,
+  onDriverPress,
 }: RouteMapProps) {
   const colors = useColors();
   const mapRef = useRef<MapView | null>(null);
 
-  const points = [pickup, dropoff, ...(driver ? [driver] : [])];
-  const initialRegion = regionFor([pickup, dropoff]);
+  const framePoints: LatLng[] = [
+    ...(pickup ? [pickup] : []),
+    ...(dropoff ? [dropoff] : []),
+    ...(driver ? [driver] : []),
+    ...(userLocation ? [userLocation] : []),
+    ...((nearbyDrivers ?? []).map((d) => ({ latitude: d.latitude, longitude: d.longitude }))),
+  ];
 
-  // Keep the driver framed as their position updates.
+  const initialRegion = regionFor(
+    pickup && dropoff ? [pickup, dropoff] : framePoints,
+    userLocation ?? undefined,
+  );
+
   useEffect(() => {
     if (!followDriver || !driver || !mapRef.current) return;
-    mapRef.current.animateToRegion(regionFor(points), 600);
+    const pts = [driver, ...(pickup ? [pickup] : []), ...(dropoff ? [dropoff] : [])];
+    mapRef.current.animateToRegion(regionFor(pts), 600);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [driver?.latitude, driver?.longitude, followDriver]);
 
@@ -72,35 +106,37 @@ export function RouteMap({
         zoomEnabled={interactive}
         rotateEnabled={interactive}
         pitchEnabled={interactive}
-        showsUserLocation={false}
+        showsUserLocation={!!userLocation}
+        showsMyLocationButton={false}
         toolbarEnabled={false}
       >
-        <Polyline
-          coordinates={[pickup, dropoff]}
-          strokeColor={colors.primary}
-          strokeWidth={4}
-          lineDashPattern={[1]}
-        />
+        {pickup && dropoff && (
+          <Polyline
+            coordinates={[pickup, dropoff]}
+            strokeColor={colors.primary}
+            strokeWidth={4}
+            lineDashPattern={[1]}
+          />
+        )}
 
-        <Marker coordinate={pickup} title="Pickup" anchor={{ x: 0.5, y: 0.5 }}>
-          <View style={[styles.pin, { backgroundColor: colors.primary }]}>
-            <Feather name="navigation" size={14} color={colors.primaryForeground} />
-          </View>
-        </Marker>
+        {pickup && (
+          <Marker coordinate={pickup} title="Pickup" anchor={{ x: 0.5, y: 0.5 }}>
+            <View style={[styles.pin, { backgroundColor: colors.primary }]}>
+              <Feather name="navigation" size={14} color={colors.primaryForeground} />
+            </View>
+          </Marker>
+        )}
 
-        <Marker coordinate={dropoff} title="Dropoff" anchor={{ x: 0.5, y: 0.5 }}>
-          <View style={[styles.pin, { backgroundColor: colors.destructive }]}>
-            <Feather name="map-pin" size={14} color="#fff" />
-          </View>
-        </Marker>
+        {dropoff && (
+          <Marker coordinate={dropoff} title="Dropoff" anchor={{ x: 0.5, y: 0.5 }}>
+            <View style={[styles.pin, { backgroundColor: colors.destructive }]}>
+              <Feather name="map-pin" size={14} color="#fff" />
+            </View>
+          </Marker>
+        )}
 
         {driver && (
-          <Marker
-            coordinate={driver}
-            title="Driver"
-            anchor={{ x: 0.5, y: 0.5 }}
-            flat
-          >
+          <Marker coordinate={driver} title="Driver" anchor={{ x: 0.5, y: 0.5 }} flat>
             <View style={styles.driverPin}>
               <View style={[styles.driverInner, { backgroundColor: colors.accent }]}>
                 <Feather name="truck" size={14} color="#fff" />
@@ -108,6 +144,23 @@ export function RouteMap({
             </View>
           </Marker>
         )}
+
+        {(nearbyDrivers ?? []).map((d) => (
+          <Marker
+            key={d.id}
+            coordinate={{ latitude: d.latitude, longitude: d.longitude }}
+            title={d.label ?? 'Available e-trike'}
+            anchor={{ x: 0.5, y: 0.5 }}
+            flat
+            onPress={() => onDriverPress?.(d.id)}
+          >
+            <View style={styles.etrikePin}>
+              <View style={[styles.etrikeInner, { backgroundColor: colors.primary }]}>
+                <Feather name="truck" size={13} color={colors.primaryForeground} />
+              </View>
+            </View>
+          </Marker>
+        ))}
       </MapView>
     </View>
   );
@@ -136,10 +189,7 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  driverPin: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  driverPin: { alignItems: 'center', justifyContent: 'center' },
   driverInner: {
     width: 34,
     height: 34,
@@ -154,6 +204,25 @@ const styles = StyleSheet.create({
         shadowColor: '#000',
         shadowOpacity: 0.3,
         shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
+      },
+    }),
+  },
+  etrikePin: { alignItems: 'center', justifyContent: 'center' },
+  etrikeInner: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+    ...Platform.select({
+      android: { elevation: 4 },
+      default: {
+        shadowColor: '#000',
+        shadowOpacity: 0.25,
+        shadowRadius: 3,
         shadowOffset: { width: 0, height: 2 },
       },
     }),
