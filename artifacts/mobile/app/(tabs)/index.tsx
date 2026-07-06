@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useLocation } from '@/hooks/useLocation';
 import {
   useGetWeather,
   useGetNearbyDrivers,
@@ -19,12 +20,11 @@ export default function HomeScreen() {
   const colors = useColors();
   const router = useRouter();
 
-  const mockLat = 18.3121; // Example Apayao coordinates
-  const mockLon = 121.3214;
+  const { lat, lon, isFallback, loading: isLoadingLocation } = useLocation();
 
   const { data: profileData, isLoading: isLoadingProfile } = useGetProfile();
-  const { data: weatherData, isLoading: isLoadingWeather } = useGetWeather({ lat: mockLat, lon: mockLon });
-  const { data: nearbyData, isLoading: isLoadingNearby } = useGetNearbyDrivers({ lat: mockLat, lon: mockLon });
+  const { data: weatherData, isLoading: isLoadingWeather } = useGetWeather({ lat, lon });
+  const { data: nearbyData, isLoading: isLoadingNearby } = useGetNearbyDrivers({ lat, lon });
   const { data: tripsData, isLoading: isLoadingTrips } = useListTrips({ limit: 1 });
 
   return (
@@ -101,12 +101,21 @@ export default function HomeScreen() {
                   </Text>
                 </View>
                 <Text style={[styles.widgetLabel, { color: colors.mutedForeground }]}>
-                  Apayao Weather
+                  {isFallback ? 'Apayao Weather' : 'Local Weather'}
                 </Text>
               </>
             )}
           </Card>
         </View>
+
+        {isFallback && !isLoadingLocation && (
+          <View style={styles.locationNotice}>
+            <Feather name="map-pin" size={13} color={colors.mutedForeground} />
+            <Text style={[styles.locationNoticeText, { color: colors.mutedForeground }]}>
+              Location off — showing Apayao area. Enable location for nearby rides.
+            </Text>
+          </View>
+        )}
 
         {/* Recent Trip */}
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Recent Trip</Text>
@@ -195,6 +204,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 16,
     marginBottom: 24,
+  },
+  locationNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: -8,
+    marginBottom: 20,
+    paddingHorizontal: 4,
+  },
+  locationNoticeText: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    flex: 1,
   },
   widgetCard: {
     flex: 1,

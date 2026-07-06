@@ -25,13 +25,7 @@ export default function Trips() {
     { query: { queryKey: ["list-trips", 50, 0] } }
   )
 
-  // Mock data in case API fails or returns nothing during dev
-  const trips = data?.trips || [
-    { id: 101, passengerId: "p1", driverId: "d1", status: "completed", pickupAddress: "Luna Town Plaza", dropoffAddress: "Apayao Provincial Capitol", fareAmount: 120, distanceKm: 5.2, createdAt: new Date().toISOString() },
-    { id: 102, passengerId: "p2", driverId: "d2", status: "in_progress", pickupAddress: "Pudtol Market", dropoffAddress: "San Isidro Sur", fareAmount: 85, distanceKm: 3.1, createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString() },
-    { id: 103, passengerId: "p3", driverId: null, status: "requested", pickupAddress: "Conner District Hospital", dropoffAddress: "Kabugao Central", fareAmount: 240, distanceKm: 12.5, createdAt: new Date(Date.now() - 1000 * 60 * 2).toISOString() },
-    { id: 104, passengerId: "p4", driverId: "d3", status: "cancelled", pickupAddress: "Flora National High School", dropoffAddress: "Marcela Site", fareAmount: 45, distanceKm: 1.2, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString() },
-  ] as unknown as Trip[]
+  const trips: Trip[] = data?.trips ?? []
 
   const filteredTrips = statusFilter === "all" ? trips : trips.filter(t => t.status === statusFilter)
 

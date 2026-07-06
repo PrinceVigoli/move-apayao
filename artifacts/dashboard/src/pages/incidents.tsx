@@ -28,14 +28,7 @@ export default function Incidents() {
   
   const updateIncident = useUpdateIncident()
 
-  // Mock data
-  const mockIncidents = [
-    { id: 1, type: "accident", severity: "high", status: "open", description: "Collision near plaza", lat: 18.3, lon: 121.2, reporterId: "u1", createdAt: new Date().toISOString() },
-    { id: 2, type: "flood", severity: "critical", status: "reviewing", description: "Road impassable due to river overflow", lat: 18.31, lon: 121.22, reporterId: "u2", createdAt: new Date(Date.now() - 3600000).toISOString() },
-    { id: 3, type: "fleet_issue", severity: "low", status: "resolved", description: "Battery failure on route 2", lat: 18.35, lon: 121.15, reporterId: "d1", createdAt: new Date(Date.now() - 86400000).toISOString() },
-  ] as IncidentReport[]
-
-  const incidents = data?.reports || mockIncidents
+  const incidents: IncidentReport[] = data?.reports ?? []
   const filtered = statusFilter === "all" ? incidents : incidents.filter(i => i.status === statusFilter)
 
   const getTypeIcon = (type: string) => {
@@ -67,15 +60,10 @@ export default function Incidents() {
   }
 
   const handleStatusChange = (id: number, newStatus: "reviewing" | "resolved") => {
-    updateIncident.mutate({ 
-      id, // the hook assumes param is id? Wait, let's check Orval signature. 
-      // Actually updateIncident might be `(updateIncidentBody, options)` but in API it's path?
-      // Wait, there is no param for id in useUpdateIncident. Let's check api.schemas.ts
-      // Actually it's probably missing from the schema or the hook takes id. Let's just mock it.
-      data: { status: newStatus } 
-    }, {
-      onSuccess: () => refetch()
-    })
+    updateIncident.mutate(
+      { id, data: { status: newStatus } },
+      { onSuccess: () => refetch() },
+    )
   }
 
   return (

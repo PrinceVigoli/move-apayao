@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, RefreshControl, TextInput, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, RefreshControl, TextInput, Alert, Linking, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -16,6 +17,7 @@ import * as Haptics from 'expo-haptics';
 export default function WalletScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
+  const router = useRouter();
 
   const [topUpAmount, setTopUpAmount] = useState('');
 
@@ -114,7 +116,26 @@ export default function WalletScreen() {
             {txData.transactions.map((tx) => {
               const isAddition = tx.type === 'top_up' || tx.type === 'refund';
               return (
-                <Card key={tx.id} style={styles.txCard}>
+                <Pressable
+                  key={tx.id}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    router.push({
+                      pathname: '/transaction/[id]',
+                      params: {
+                        id: String(tx.id),
+                        type: tx.type,
+                        amount: String(tx.amount),
+                        description: tx.description ?? '',
+                        referenceId: tx.referenceId ?? '',
+                        balanceBefore: String(tx.balanceBefore),
+                        balanceAfter: String(tx.balanceAfter),
+                        createdAt: tx.createdAt,
+                      },
+                    });
+                  }}
+                >
+                <Card style={styles.txCard}>
                   <View style={styles.txRow}>
                     <View style={styles.txIconWrapper}>
                       <View style={[styles.txIcon, { backgroundColor: isAddition ? '#10b98120' : '#ef444420' }]}>
@@ -133,11 +154,15 @@ export default function WalletScreen() {
                         </Text>
                       </View>
                     </View>
-                    <Text style={[styles.txAmount, { color: isAddition ? '#10b981' : colors.foreground }]}>
-                      {isAddition ? '+' : '-'}₱{tx.amount.toFixed(2)}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={[styles.txAmount, { color: isAddition ? '#10b981' : colors.foreground }]}>
+                        {isAddition ? '+' : '-'}₱{tx.amount.toFixed(2)}
+                      </Text>
+                      <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+                    </View>
                   </View>
                 </Card>
+                </Pressable>
               );
             })}
           </View>

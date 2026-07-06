@@ -1,5 +1,17 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, Alert } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  Modal,
+  Pressable,
+  TextInput,
+  Linking,
+  Platform,
+} from 'react-native';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
@@ -8,9 +20,53 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Feather } from '@expo/vector-icons';
-import { useGetTrip, useCancelTrip, getGetTripQueryKey, getListTripsQueryKey } from '@workspace/api-client-react';
+import {
+  useGetTrip,
+  useCancelTrip,
+  useRateTrip,
+  getGetTripQueryKey,
+  getListTripsQueryKey,
+} from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
+
+/**
+ * Builds a static map image URL that shows the pickup and dropoff points with
+ * a connecting line. Uses the free staticmap.openstreetmap.de renderer so it
+ * works in Expo Go with zero native modules (no react-native-maps rebuild).
+ */
+function buildStaticMapUrl(
+  pickupLat: number,
+  pickupLon: number,
+  dropoffLat: number,
+  dropoffLon: number,
+  width: number,
+  height: number,
+): string {
+  const markers = [
+    `markers=${pickupLat},${pickupLon},lightblue1`,
+    `markers=${dropoffLat},${dropoffLon},red1`,
+  ].join('&');
+  const path = `path=color:blue|weight:4|${pickupLat},${pickupLon}|${dropoffLat},${dropoffLon}`;
+  return (
+    `https://staticmap.openstreetmap.de/staticmap.php?` +
+    `size=${Math.round(width)}x${Math.round(height)}&${markers}&${path}`
+  );
+}
+
+function openInMaps(lat: number, lon: number, label: string) {
+  const encodedLabel = encodeURIComponent(label);
+  const url = Platform.select({
+    ios: `maps://?q=${encodedLabel}&ll=${lat},${lon}`,
+    android: `geo:${lat},${lon}?q=${lat},${lon}(${encodedLabel})`,
+    default: `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=17/${lat}/${lon}`,
+  });
+  Linking.openURL(url as string).catch(() =>
+    Linking.openURL(
+      `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=17/${lat}/${lon}`,
+    ),
+  );
+}
 
 export default function TripDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -20,16 +76,23 @@ export default function TripDetailScreen() {
   const colors = useColors();
   const queryClient = useQueryClient();
 
+  const [rateVisible, setRateVisible] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+
   const { data, isLoading } = useGetTrip(tripId, {
     query: { queryKey: getGetTripQueryKey(tripId), enabled: !!tripId },
   });
   const cancelTrip = useCancelTrip();
+  const rateTrip = useRateTrip();
+
+  const trip = data?.trip;
 
   const handleCancel = () => {
     Alert.alert('Cancel Trip', 'Are you sure you want to cancel this trip?', [
       { text: 'No', style: 'cancel' },
-      { 
-        text: 'Yes, Cancel', 
+      {
+        text: 'Yes, Cancel',
         style: 'destructive',
         onPress: () => {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -40,33 +103,67 @@ export default function TripDetailScreen() {
                 queryClient.invalidateQueries({ queryKey: getGetTripQueryKey(tripId) });
                 queryClient.invalidateQueries({ queryKey: getListTripsQueryKey() });
                 router.back();
-              }
-            }
+              },
+            },
           );
-        }
-      }
+        },
+      },
     ]);
+  };
+
+  const submitRating = () => {
+    if (rating < 1) {
+      Alert.alert('Select a rating', 'Please tap a star from 1 to 5.');
+      return;
+    }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    rateTrip.mutate(
+      { id: tripId, data: { rating, comment: comment.trim() || undefined } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetTripQueryKey(tripId) });
+          setRateVisible(false);
+          setRating(0);
+          setComment('');
+          Alert.alert('Thank you!', 'Your rating has been submitted.');
+        },
+        onError: (err: any) => {
+          const msg =
+            err?.response?.data?.error ??
+            err?.message ??
+            'Could not submit your rating. Please try again.';
+          Alert.alert('Rating failed', String(msg));
+        },
+      },
+    );
   };
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case 'completed': return 'success';
-      case 'in_progress': return 'warning';
-      case 'cancelled': return 'destructive';
-      case 'matched': return 'secondary';
-      default: return 'outline';
+      case 'completed':
+        return 'success';
+      case 'in_progress':
+        return 'warning';
+      case 'cancelled':
+        return 'destructive';
+      case 'matched':
+        return 'secondary';
+      default:
+        return 'outline';
     }
   };
 
+  const MAP_W = 600;
+  const MAP_H = 400;
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header Modal Handle */}
       <View style={styles.modalHeader}>
         <View style={[styles.handle, { backgroundColor: colors.border }]} />
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 40 }}>
-        {isLoading || !data?.trip ? (
+        {isLoading || !trip ? (
           <View style={{ gap: 20, marginTop: 20 }}>
             <Skeleton style={{ height: 120, width: '100%' }} />
             <Skeleton style={{ height: 200, width: '100%' }} />
@@ -75,20 +172,45 @@ export default function TripDetailScreen() {
           <>
             <View style={styles.header}>
               <Text style={[styles.title, { color: colors.foreground }]}>Trip Details</Text>
-              <Badge label={data.trip.status} variant={getStatusVariant(data.trip.status)} />
+              <Badge label={trip.status} variant={getStatusVariant(trip.status)} />
             </View>
 
-            <Card style={styles.mapPlaceholder}>
-              <Feather name="map" size={48} color={colors.mutedForeground} />
-              <Text style={{ color: colors.mutedForeground, marginTop: 8 }}>Live tracking map</Text>
-            </Card>
+            <Pressable
+              onPress={() =>
+                openInMaps(trip.dropoffLat, trip.dropoffLon, trip.dropoffAddress || 'Dropoff')
+              }
+            >
+              <Card style={styles.mapCard}>
+                <Image
+                  source={{
+                    uri: buildStaticMapUrl(
+                      trip.pickupLat,
+                      trip.pickupLon,
+                      trip.dropoffLat,
+                      trip.dropoffLon,
+                      MAP_W,
+                      MAP_H,
+                    ),
+                  }}
+                  style={styles.mapImage}
+                  contentFit="cover"
+                  transition={200}
+                />
+                <View style={[styles.mapHint, { backgroundColor: colors.card }]}>
+                  <Feather name="external-link" size={13} color={colors.primary} />
+                  <Text style={[styles.mapHintText, { color: colors.primary }]}>Open in Maps</Text>
+                </View>
+              </Card>
+            </Pressable>
 
             <Card style={styles.detailsCard}>
               <View style={styles.locationRow}>
                 <Feather name="navigation" size={20} color={colors.primary} style={styles.icon} />
                 <View style={styles.locationText}>
                   <Text style={[styles.locationLabel, { color: colors.mutedForeground }]}>Pickup</Text>
-                  <Text style={[styles.locationValue, { color: colors.foreground }]}>{data.trip.pickupAddress || 'Current Location'}</Text>
+                  <Text style={[styles.locationValue, { color: colors.foreground }]}>
+                    {trip.pickupAddress || 'Current Location'}
+                  </Text>
                 </View>
               </View>
 
@@ -98,7 +220,9 @@ export default function TripDetailScreen() {
                 <Feather name="map-pin" size={20} color={colors.secondaryForeground} style={styles.icon} />
                 <View style={styles.locationText}>
                   <Text style={[styles.locationLabel, { color: colors.mutedForeground }]}>Dropoff</Text>
-                  <Text style={[styles.locationValue, { color: colors.foreground }]}>{data.trip.dropoffAddress || 'Destination'}</Text>
+                  <Text style={[styles.locationValue, { color: colors.foreground }]}>
+                    {trip.dropoffAddress || 'Destination'}
+                  </Text>
                 </View>
               </View>
             </Card>
@@ -107,116 +231,172 @@ export default function TripDetailScreen() {
               <View style={styles.fareRow}>
                 <Text style={[styles.fareLabel, { color: colors.mutedForeground }]}>Estimated Fare</Text>
                 <Text style={[styles.fareValue, { color: colors.foreground }]}>
-                  {data.trip.fareAmount ? `₱${data.trip.fareAmount.toFixed(2)}` : '₱40.00'}
+                  {trip.fareAmount != null ? `₱${trip.fareAmount.toFixed(2)}` : '--'}
                 </Text>
               </View>
               <View style={styles.fareRow}>
                 <Text style={[styles.fareLabel, { color: colors.mutedForeground }]}>Distance</Text>
                 <Text style={[styles.fareValue, { color: colors.foreground }]}>
-                  {data.trip.distanceKm ? `${data.trip.distanceKm.toFixed(1)} km` : '--'}
+                  {trip.distanceKm != null ? `${trip.distanceKm.toFixed(1)} km` : '--'}
                 </Text>
               </View>
             </Card>
 
-            {data.trip.status === 'requested' || data.trip.status === 'matched' ? (
-              <Button 
-                title="Cancel Trip" 
-                variant="destructive" 
+            {trip.status === 'requested' || trip.status === 'matched' ? (
+              <Button
+                title="Cancel Trip"
+                variant="destructive"
                 onPress={handleCancel}
                 loading={cancelTrip.isPending}
                 style={{ marginTop: 24 }}
               />
             ) : null}
 
-            {data.trip.status === 'completed' && (
-              <Button 
-                title="Rate Trip" 
-                variant="default" 
-                onPress={() => Alert.alert('Coming Soon', 'Rating feature is not available yet.')}
+            {trip.status === 'completed' && (
+              <Button
+                title="Rate Trip"
+                variant="default"
+                onPress={() => setRateVisible(true)}
                 style={{ marginTop: 24 }}
               />
             )}
           </>
         )}
       </ScrollView>
+
+      <Modal
+        visible={rateVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setRateVisible(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setRateVisible(false)}>
+          <Pressable
+            style={[
+              styles.ratingSheet,
+              { backgroundColor: colors.card, paddingBottom: insets.bottom + 24 },
+            ]}
+            onPress={() => {}}
+          >
+            <View
+              style={[
+                styles.handle,
+                { backgroundColor: colors.border, alignSelf: 'center', marginBottom: 20 },
+              ]}
+            />
+            <Text style={[styles.ratingTitle, { color: colors.foreground }]}>Rate your trip</Text>
+            <Text style={[styles.ratingSub, { color: colors.mutedForeground }]}>How was your ride?</Text>
+
+            <View style={styles.starsRow}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Pressable
+                  key={star}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setRating(star);
+                  }}
+                  hitSlop={8}
+                  style={{ marginHorizontal: 4 }}
+                >
+                  <Feather
+                    name="star"
+                    size={40}
+                    color={star <= rating ? colors.primary : colors.border}
+                  />
+                </Pressable>
+              ))}
+            </View>
+
+            <TextInput
+              value={comment}
+              onChangeText={setComment}
+              placeholder="Add a comment (optional)"
+              placeholderTextColor={colors.mutedForeground}
+              multiline
+              style={[
+                styles.commentInput,
+                {
+                  color: colors.foreground,
+                  borderColor: colors.border,
+                  backgroundColor: colors.background,
+                },
+              ]}
+            />
+
+            <Button
+              title="Submit Rating"
+              variant="default"
+              onPress={submitRating}
+              loading={rateTrip.isPending}
+              style={{ marginTop: 16 }}
+            />
+            <Button
+              title="Not now"
+              variant="ghost"
+              onPress={() => setRateVisible(false)}
+              style={{ marginTop: 8 }}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  modalHeader: {
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-  },
+  container: { flex: 1 },
+  modalHeader: { alignItems: 'center', paddingVertical: 12 },
+  handle: { width: 40, height: 4, borderRadius: 2 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
   },
-  title: {
-    fontSize: 24,
-    fontFamily: 'Inter_700Bold',
-  },
-  mapPlaceholder: {
-    height: 200,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-    backgroundColor: '#f1f5f9',
-  },
-  detailsCard: {
-    padding: 16,
-    marginBottom: 20,
-  },
-  locationRow: {
+  title: { fontSize: 24, fontFamily: 'Inter_700Bold' },
+  mapCard: { height: 200, padding: 0, overflow: 'hidden', marginBottom: 20 },
+  mapImage: { width: '100%', height: '100%' },
+  mapHint: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    opacity: 0.95,
   },
-  icon: {
-    marginRight: 16,
+  mapHintText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+  detailsCard: { padding: 16, marginBottom: 20 },
+  locationRow: { flexDirection: 'row', alignItems: 'center' },
+  icon: { marginRight: 16 },
+  locationText: { flex: 1 },
+  locationLabel: { fontSize: 12, fontFamily: 'Inter_500Medium', marginBottom: 2 },
+  locationValue: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
+  divider: { height: 1, backgroundColor: '#e2e8f0', marginVertical: 16, marginLeft: 36 },
+  fareCard: { padding: 16, gap: 12 },
+  fareRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  fareLabel: { fontSize: 14, fontFamily: 'Inter_500Medium' },
+  fareValue: { fontSize: 16, fontFamily: 'Inter_700Bold' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  ratingSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingTop: 12,
   },
-  locationText: {
-    flex: 1,
-  },
-  locationLabel: {
-    fontSize: 12,
-    fontFamily: 'Inter_500Medium',
-    marginBottom: 2,
-  },
-  locationValue: {
-    fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#e2e8f0',
-    marginVertical: 16,
-    marginLeft: 36,
-  },
-  fareCard: {
-    padding: 16,
-    gap: 12,
-  },
-  fareRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  fareLabel: {
-    fontSize: 14,
-    fontFamily: 'Inter_500Medium',
-  },
-  fareValue: {
-    fontSize: 16,
-    fontFamily: 'Inter_700Bold',
+  ratingTitle: { fontSize: 22, fontFamily: 'Inter_700Bold', marginBottom: 4 },
+  ratingSub: { fontSize: 14, fontFamily: 'Inter_400Regular', marginBottom: 20 },
+  starsRow: { flexDirection: 'row', justifyContent: 'center', marginBottom: 20 },
+  commentInput: {
+    minHeight: 80,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 15,
+    fontFamily: 'Inter_400Regular',
+    textAlignVertical: 'top',
   },
 });
