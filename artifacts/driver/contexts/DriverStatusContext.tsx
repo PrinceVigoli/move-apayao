@@ -13,6 +13,10 @@ import {
   useUpdateDriverLocation,
 } from '@workspace/api-client-react';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  startBackgroundLocation,
+  stopBackgroundLocation,
+} from '@/lib/location-task';
 
 type Coords = { lat: number; lon: number };
 
@@ -28,20 +32,16 @@ interface DriverStatusValue {
 
 const DriverStatusContext = createContext<DriverStatusValue | undefined>(undefined);
 
-// How often we push the driver's position while online. The passenger's live
-// tracking map and the nearby-drivers booking map both read from this.
-const LOCATION_PING_MS = 5000;
-
 /**
  * Owns the driver's online/offline state and, while online, continuously
  * broadcasts GPS to the backend (PUT /drivers/location) so passengers can see
  * and match with them. Going offline flips availability off and stops pings.
  *
- * Uses a foreground location watch + a throttled ping loop. Keeps the screen
- * awake while online so the OS doesn't suspend the JS timers mid-shift. For a
- * production build you'd graduate this to a true background task
- * (expo-task-manager + background location); this foreground approach is the
- * reliable v1 that works in an EAS build without extra native setup.
+ * Broadcasting uses an OS-level BACKGROUND location task (expo-task-manager),
+ * so pings continue when the app is backgrounded or the phone is locked. A
+ * foreground watch runs in parallel purely to move the on-screen marker while
+ * the app is open. Requires the background-location permission + the native
+ * foreground-service config in app.json (both are set up).
  */
 export function DriverStatusProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -51,7 +51,6 @@ export function DriverStatusProvider({ children }: { children: React.ReactNode }
   const [error, setError] = useState<string | null>(null);
 
   const watchRef = useRef<Location.LocationSubscription | null>(null);
-  const pingTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const latestCoords = useRef<Coords | null>(null);
 
   const updateAvailability = useUpdateDriverAvailability();
@@ -60,14 +59,11 @@ export function DriverStatusProvider({ children }: { children: React.ReactNode }
   // Keep the device awake only while on shift.
   useKeepAwake(isOnline ? 'driver-online' : undefined);
 
-  const pushLocation = useCallback(() => {
-    const c = latestCoords.current;
-    if (!c) return;
-    updateLocation.mutate({ data: { lat: c.lat, lon: c.lon } });
-  }, [updateLocation]);
-
   const startBroadcasting = useCallback(async () => {
-    // Foreground watch: updates latestCoords as the driver moves.
+    // Foreground watch: updates the on-screen marker while the app is open.
+    // The actual backend pings are sent by the BACKGROUND task below, which
+    // keeps broadcasting even when the app is backgrounded or the phone is
+    // locked.
     watchRef.current = await Location.watchPositionAsync(
       { accuracy: Location.Accuracy.High, distanceInterval: 10, timeInterval: 4000 },
       (pos) => {
@@ -77,29 +73,38 @@ export function DriverStatusProvider({ children }: { children: React.ReactNode }
       },
     );
 
-    // Throttled ping loop so we send at a steady cadence even when stationary.
-    pingTimer.current = setInterval(pushLocation, LOCATION_PING_MS);
-  }, [pushLocation]);
+    // Start OS-level background location updates. Survives backgrounding/lock.
+    await startBackgroundLocation();
+  }, []);
 
   const stopBroadcasting = useCallback(() => {
     if (watchRef.current) {
       watchRef.current.remove();
       watchRef.current = null;
     }
-    if (pingTimer.current) {
-      clearInterval(pingTimer.current);
-      pingTimer.current = null;
-    }
+    // Fire-and-forget: stop the background task too.
+    void stopBackgroundLocation();
   }, []);
 
   const goOnline = useCallback(async () => {
     setError(null);
     setToggling(true);
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
+      const fg = await Location.requestForegroundPermissionsAsync();
+      if (fg.status !== 'granted') {
         setError('Location permission is required to go online.');
         return;
+      }
+
+      // Background permission lets us keep broadcasting when the app is
+      // backgrounded or the phone is locked. If the driver only grants
+      // "while using", we still go online — pings just pause when the app
+      // isn't foregrounded (and resume when they reopen it).
+      const bg = await Location.requestBackgroundPermissionsAsync();
+      if (bg.status !== 'granted') {
+        setError(
+          'Tip: allow location "Always" so you keep receiving rides when the app is in the background.',
+        );
       }
 
       // Seed an immediate fix so the backend has a position right away.

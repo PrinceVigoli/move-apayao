@@ -17,7 +17,9 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.moveapayao.driver",
       "infoPlist": {
-        "UIBackgroundModes": ["location"]
+        "UIBackgroundModes": [
+          "location"
+        ]
       },
       "config": {
         "googleMapsApiKey": "REPLACE_WITH_YOUR_IOS_GOOGLE_MAPS_API_KEY"
@@ -28,6 +30,7 @@
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_LOCATION"
       ],
@@ -55,7 +58,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "MOVE Apayao Driver uses your location to broadcast your position to nearby passengers and match you with ride requests.",
           "locationWhenInUsePermission": "MOVE Apayao Driver uses your location to broadcast your position to nearby passengers and match you with ride requests.",
-          "isAndroidForegroundServiceEnabled": true
+          "isAndroidForegroundServiceEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
         }
       ]
     ],
@@ -65,8 +69,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "REPLACE_WITH_NEW_EAS_PROJECT_ID"
+        "projectId": "53adf49c-d688-4cea-9eda-8aff2cb6ca6d"
       }
-    }
+    },
+    "owner": "keypass123"
   }
 }

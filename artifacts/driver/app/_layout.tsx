@@ -19,6 +19,9 @@ import { API_BASE_URL } from '@/lib/api-config';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { DriverStatusProvider } from '@/contexts/DriverStatusContext';
 import { useColors } from '@/hooks/useColors';
+// Registering the background location task must happen at module load, before
+// any call to start location updates. Importing for side effects only.
+import '@/lib/location-task';
 
 setBaseUrl(API_BASE_URL);
 
