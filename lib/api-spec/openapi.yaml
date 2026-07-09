@@ -1113,6 +1113,9 @@ components:
           format: uuid
         vehicleType:
           type: string
+        capacity:
+          type: integer
+          description: Total passenger seats this vehicle can carry.
         licenseNumber:
           type: string
           nullable: true
@@ -1134,7 +1137,7 @@ components:
           type: number
         totalTrips:
           type: integer
-      required: [id, userId, vehicleType, isAvailable, rating, totalTrips]
+      required: [id, userId, vehicleType, capacity, isAvailable, rating, totalTrips]
 
     DriverProfileResponse:
       type: object
@@ -1232,6 +1235,9 @@ components:
         dropoffAddress:
           type: string
           nullable: true
+        passengerCount:
+          type: integer
+          description: Seats requested for this booking (group booking).
         status:
           type: string
           enum: [requested, matched, in_progress, completed, cancelled]
@@ -1300,6 +1306,12 @@ components:
           type: number
         dropoffAddress:
           type: string
+        passengerCount:
+          type: integer
+          minimum: 1
+          maximum: 16
+          default: 1
+          description: Seats requested for this booking (group booking).
       required: [pickupLat, pickupLon, dropoffLat, dropoffLon]
 
     TripRating:

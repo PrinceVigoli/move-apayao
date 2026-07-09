@@ -14,7 +14,15 @@ import { useColors } from '@/hooks/useColors';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 
-const VEHICLE_TYPES = ['e-trike', 'tricycle', 'jeepney', 'van'];
+// Mirrors the defaults in artifacts/api-server/src/lib/vehicle-capacity.ts —
+// shown here so drivers know how many passengers their vehicle type can
+// carry (the actual capacity is set server-side at registration).
+const VEHICLE_TYPES: { value: string; label: string; capacity: number }[] = [
+  { value: 'e-trike', label: 'e-trike', capacity: 4 },
+  { value: 'tricycle', label: 'tricycle', capacity: 4 },
+  { value: 'jeepney', label: 'jeepney', capacity: 12 },
+  { value: 'van', label: 'van', capacity: 15 },
+];
 
 export default function DriverSignupScreen() {
   const insets = useSafeAreaInsets();
@@ -121,11 +129,11 @@ export default function DriverSignupScreen() {
         <Text style={[styles.label, { color: colors.mutedForeground }]}>Vehicle type</Text>
         <View style={styles.chips}>
           {VEHICLE_TYPES.map((t) => {
-            const active = vehicleType === t;
+            const active = vehicleType === t.value;
             return (
               <Text
-                key={t}
-                onPress={() => setVehicleType(t)}
+                key={t.value}
+                onPress={() => setVehicleType(t.value)}
                 style={[
                   styles.chip,
                   {
@@ -135,7 +143,7 @@ export default function DriverSignupScreen() {
                   },
                 ]}
               >
-                {t}
+                {t.label} · up to {t.capacity}
               </Text>
             );
           })}

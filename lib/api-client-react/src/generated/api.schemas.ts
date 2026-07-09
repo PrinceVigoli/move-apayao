@@ -90,6 +90,8 @@ export interface DriverProfile {
   id: number;
   userId: string;
   vehicleType: string;
+  /** Total passenger seats this vehicle can carry. */
+  capacity: number;
   licenseNumber?: string | null;
   plateNumber?: string | null;
   vehicleColor?: string | null;
@@ -176,6 +178,8 @@ export interface Trip {
   dropoffLat: number;
   dropoffLon: number;
   dropoffAddress?: string | null;
+  /** Seats requested for this booking (group booking). */
+  passengerCount?: number;
   status: TripStatus;
   fareAmount?: number | null;
   distanceKm?: number | null;
@@ -204,6 +208,12 @@ export interface CreateTripBody {
   dropoffLat: number;
   dropoffLon: number;
   dropoffAddress?: string;
+  /**
+     * Seats requested for this booking (group booking).
+     * @minimum 1
+     * @maximum 16
+     */
+  passengerCount?: number;
 }
 
 export interface TripRating {
@@ -337,8 +347,10 @@ export interface ListTransactionsResponse {
   offset: number;
 }
 
+/**
+ * Admin-only direct credit.
+ */
 export interface TopUpBody {
-  /** Admin only — self-service top-up must go through TopUpIntentBody below. */
   userId: string;
   amount: number;
   referenceId?: string;
@@ -349,8 +361,11 @@ export interface TopUpResponse {
   newBalance: number;
 }
 
-/** Passenger-callable: creates a pending top-up + payment checkout session. */
+/**
+ * Passenger-callable. Does not credit the wallet directly.
+ */
 export interface TopUpIntentBody {
+  /** @maximum 50000 */
   amount: number;
 }
 
@@ -362,7 +377,7 @@ export interface TapBody {
   cardId: string;
   amount: number;
   tripId?: number;
-  /** Required so a hardware reader's network retry can't double-deduct a tap. */
+  /** Reader-generated dedup key so a network retry can't double-deduct. */
   idempotencyKey: string;
 }
 

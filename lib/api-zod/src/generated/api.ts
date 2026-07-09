@@ -78,6 +78,7 @@ export const GetProfileResponse = zod.object({
   "id": zod.number(),
   "userId": zod.string().uuid(),
   "vehicleType": zod.string(),
+  "capacity": zod.number().describe('Total passenger seats this vehicle can carry.'),
   "licenseNumber": zod.string().nullish(),
   "plateNumber": zod.string().nullish(),
   "vehicleColor": zod.string().nullish(),
@@ -196,6 +197,7 @@ export const UpdateDriverAvailabilityResponse = zod.object({
   "id": zod.number(),
   "userId": zod.string().uuid(),
   "vehicleType": zod.string(),
+  "capacity": zod.number().describe('Total passenger seats this vehicle can carry.'),
   "licenseNumber": zod.string().nullish(),
   "plateNumber": zod.string().nullish(),
   "vehicleColor": zod.string().nullish(),
@@ -216,6 +218,7 @@ export const GetMyDriverProfileResponse = zod.object({
   "id": zod.number(),
   "userId": zod.string().uuid(),
   "vehicleType": zod.string(),
+  "capacity": zod.number().describe('Total passenger seats this vehicle can carry.'),
   "licenseNumber": zod.string().nullish(),
   "plateNumber": zod.string().nullish(),
   "vehicleColor": zod.string().nullish(),
@@ -231,13 +234,19 @@ export const GetMyDriverProfileResponse = zod.object({
 /**
  * @summary Request a trip (passenger only)
  */
+export const createTripBodyPassengerCountDefault = 1;
+export const createTripBodyPassengerCountMax = 16;
+
+
+
 export const CreateTripBody = zod.object({
   "pickupLat": zod.number(),
   "pickupLon": zod.number(),
   "pickupAddress": zod.string().optional(),
   "dropoffLat": zod.number(),
   "dropoffLon": zod.number(),
-  "dropoffAddress": zod.string().optional()
+  "dropoffAddress": zod.string().optional(),
+  "passengerCount": zod.number().min(1).max(createTripBodyPassengerCountMax).default(createTripBodyPassengerCountDefault).describe('Seats requested for this booking (group booking).')
 })
 
 export const CreateTripResponse = zod.object({
@@ -251,6 +260,7 @@ export const CreateTripResponse = zod.object({
   "dropoffLat": zod.number(),
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
+  "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -286,6 +296,7 @@ export const ListTripsResponse = zod.object({
   "dropoffLat": zod.number(),
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
+  "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -319,6 +330,7 @@ export const GetTripResponse = zod.object({
   "dropoffLat": zod.number(),
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
+  "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -350,6 +362,7 @@ export const AcceptTripResponse = zod.object({
   "dropoffLat": zod.number(),
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
+  "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -381,6 +394,7 @@ export const DeclineTripResponse = zod.object({
   "dropoffLat": zod.number(),
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
+  "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -412,6 +426,7 @@ export const CompleteTripResponse = zod.object({
   "dropoffLat": zod.number(),
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
+  "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -447,6 +462,7 @@ export const CancelTripResponse = zod.object({
   "dropoffLat": zod.number(),
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
+  "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -678,13 +694,14 @@ export const ListTransactionsResponse = zod.object({
 
 
 /**
- * @summary Top up wallet balance
+ * Directly credits a wallet with no payment-provider step. Restricted to admins. Passengers topping up their own wallet must use /wallet/topup/intent, which requires a verified payment before the ledger is touched.
+ * @summary Admin-only direct wallet credit (cash kiosk, manual adjustment/refund)
  */
 export const TopUpWalletBody = zod.object({
-  "userId": zod.string().uuid().optional(),
+  "userId": zod.string().uuid(),
   "amount": zod.number(),
   "referenceId": zod.string().optional()
-})
+}).describe('Admin-only direct credit.')
 
 export const TopUpWalletResponse = zod.object({
   "transaction": zod.object({
@@ -704,12 +721,30 @@ export const TopUpWalletResponse = zod.object({
 
 
 /**
+ * Does not credit the wallet. Creates a pending top-up and returns a payment-provider checkout URL; the wallet is only credited once the provider confirms payment via /wallet/topup/webhook.
+ * @summary Create a wallet top-up checkout session (passenger-callable)
+ */
+export const createTopUpIntentBodyAmountMax = 50000;
+
+
+
+export const CreateTopUpIntentBody = zod.object({
+  "amount": zod.number().max(createTopUpIntentBodyAmountMax)
+}).describe('Passenger-callable. Does not credit the wallet directly.')
+
+export const CreateTopUpIntentResponse = zod.object({
+  "checkoutUrl": zod.string()
+})
+
+
+/**
  * @summary NFC/QR card tap — deduct fare (mock reader interface)
  */
 export const TapWalletBody = zod.object({
   "cardId": zod.string(),
   "amount": zod.number(),
-  "tripId": zod.number().optional()
+  "tripId": zod.number().optional(),
+  "idempotencyKey": zod.string().describe('Reader-generated dedup key so a network retry can\'t double-deduct.')
 })
 
 export const TapWalletResponse = zod.object({
@@ -931,6 +966,7 @@ export const GetAllTripsResponse = zod.object({
   "dropoffLat": zod.number(),
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
+  "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),

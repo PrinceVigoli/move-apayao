@@ -98,6 +98,20 @@ export async function removeDriverGeo(driverId: string): Promise<void> {
 }
 
 /**
+ * Atomically attempts to claim a single driver (removes them from the geo
+ * set). Returns true if this call was the one that removed them — false if
+ * they'd already been claimed or removed by someone else. Used by the
+ * capacity-aware matcher in lib/matching.ts, which needs to check a driver's
+ * vehicle capacity (a Postgres read) before deciding whether to claim them,
+ * so it can't reuse the all-in-one claimNearestAvailableDriver below.
+ */
+export async function claimDriver(driverId: string): Promise<boolean> {
+  const redis = getRedis();
+  const removed = await redis.zrem(DRIVER_GEO_KEY, driverId);
+  return removed === 1;
+}
+
+/**
  * Atomically claim the nearest available driver for a trip.
  *
  * `findNearestDrivers` is a read — two concurrent callers (two passengers

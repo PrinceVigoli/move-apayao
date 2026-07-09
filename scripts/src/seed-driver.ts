@@ -14,7 +14,7 @@
  * Usage:
  *   pnpm --filter @workspace/scripts run seed:driver -- \
  *     --email=juan@example.com --password=testpass123 --name="Juan Dela Cruz" \
- *     --plate="ABC 1234" --vehicle=e-trike --license=N01-23-456789 --color=Red
+ *     --plate="ABC 1234" --vehicle=jeepney --capacity=12 --license=N01-23-456789 --color=Red
  *
  * Required env vars (reads from artifacts/api-server/.env.local automatically):
  *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL
@@ -55,6 +55,18 @@ async function main() {
   const plateNumber = args.plate ?? "TEST-0001";
   const vehicleColor = args.color ?? "Blue";
   const licenseNumber = args.license ?? "N00-00-000000";
+  // Same defaults as artifacts/api-server/src/lib/vehicle-capacity.ts —
+  // override with --capacity=N to test group-booking matching against a
+  // specific seat count regardless of vehicle type.
+  const defaultCapacityByType: Record<string, number> = {
+    "e-trike": 4,
+    tricycle: 4,
+    jeepney: 12,
+    van: 15,
+  };
+  const capacity = args.capacity
+    ? parseInt(args.capacity, 10)
+    : (defaultCapacityByType[vehicleType.toLowerCase()] ?? 4);
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -77,7 +89,7 @@ async function main() {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  console.log(`\nSeeding driver account: ${email}`);
+  console.log(`\nSeeding driver account: ${email} (${vehicleType}, capacity ${capacity})`);
 
   // 1. Create (or reuse) the Supabase Auth user, pre-confirmed.
   let authUserId: string;
@@ -157,13 +169,14 @@ async function main() {
   if (existingProfile) {
     await db
       .update(driverProfilesTable)
-      .set({ vehicleType, plateNumber, vehicleColor, licenseNumber, updatedAt: new Date() })
+      .set({ vehicleType, capacity, plateNumber, vehicleColor, licenseNumber, updatedAt: new Date() })
       .where(eq(driverProfilesTable.userId, authUserId));
     console.log("  Updated existing driver_profiles row.");
   } else {
     await db.insert(driverProfilesTable).values({
       userId: authUserId,
       vehicleType,
+      capacity,
       plateNumber,
       vehicleColor,
       licenseNumber,

@@ -68,9 +68,9 @@ import type {
   TapBody,
   TapResponse,
   TopUpBody,
-  TopUpResponse,
   TopUpIntentBody,
   TopUpIntentResponse,
+  TopUpResponse,
   TripRatingResponse,
   TripResponse,
   UpdateIncidentBody,
@@ -1926,7 +1926,8 @@ export const getTopUpWalletUrl = () => {
 }
 
 /**
- * @summary Top up wallet balance
+ * Directly credits a wallet with no payment-provider step. Restricted to admins. Passengers topping up their own wallet must use /wallet/topup/intent, which requires a verified payment before the ledger is touched.
+ * @summary Admin-only direct wallet credit (cash kiosk, manual adjustment/refund)
  */
 export const topUpWallet = async (topUpBody: TopUpBody, options?: RequestInit): Promise<TopUpResponse> => {
 
@@ -1974,7 +1975,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type TopUpWalletMutationError = ErrorType<unknown>
 
     /**
- * @summary Top up wallet balance
+ * @summary Admin-only direct wallet credit (cash kiosk, manual adjustment/refund)
  */
 export const useTopUpWallet = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof topUpWallet>>, TError,{data: BodyType<TopUpBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1989,11 +1990,15 @@ export const useTopUpWallet = <TError = ErrorType<unknown>,
 
 export const getCreateTopUpIntentUrl = () => {
 
+
+
+
   return `/api/wallet/topup/intent`
 }
 
 /**
- * @summary Create a wallet top-up checkout session (passenger-callable — does not credit the wallet directly)
+ * Does not credit the wallet. Creates a pending top-up and returns a payment-provider checkout URL; the wallet is only credited once the provider confirms payment via /wallet/topup/webhook.
+ * @summary Create a wallet top-up checkout session (passenger-callable)
  */
 export const createTopUpIntent = async (topUpIntentBody: TopUpIntentBody, options?: RequestInit): Promise<TopUpIntentResponse> => {
 
@@ -2032,6 +2037,8 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
+
+
   return  { mutationFn, ...mutationOptions }}
 
     export type CreateTopUpIntentMutationResult = NonNullable<Awaited<ReturnType<typeof createTopUpIntent>>>
@@ -2039,7 +2046,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateTopUpIntentMutationError = ErrorType<unknown>
 
     /**
- * @summary Create a wallet top-up checkout session (passenger-callable — does not credit the wallet directly)
+ * @summary Create a wallet top-up checkout session (passenger-callable)
  */
 export const useCreateTopUpIntent = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTopUpIntent>>, TError,{data: BodyType<TopUpIntentBody>}, TContext>, request?: SecondParameter<typeof customFetch>}

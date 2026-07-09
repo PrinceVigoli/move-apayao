@@ -10,10 +10,8 @@ import {
   type Trip,
 } from "@workspace/db";
 import { requireAuth, requireRole, type AuthenticatedRequest } from "../middlewares/auth";
-import {
-  claimNearestAvailableDriver,
-  publishTripUpdate,
-} from "../lib/redis";
+import { publishTripUpdate } from "../lib/redis";
+import { matchDriverForTrip } from "../lib/matching";
 import { markDriverAvailable, markDriverUnavailable } from "../lib/driver-availability";
 import { logger } from "../lib/logger";
 import { z } from "zod";
@@ -23,9 +21,18 @@ const router: IRouter = Router();
 
 const BASE_FARE_PHP = 40;
 const PER_KM_PHP = 8;
+// Group booking surcharge: the base fare covers hiring the vehicle itself
+// for a point-to-point trip (not a per-seat shared-route fare), but a bigger
+// party means more fuel/wear/time loading, so each seat beyond the first
+// adds a modest flat fee. Adjust this if your actual fare policy differs —
+// it's a simple default, not something derived from real pricing data.
+const EXTRA_PASSENGER_FEE_PHP = 10;
 
-function estimateFare(distanceKm: number): number {
-  return Math.round(BASE_FARE_PHP + distanceKm * PER_KM_PHP);
+function estimateFare(distanceKm: number, passengerCount: number): number {
+  const extraPassengers = Math.max(0, passengerCount - 1);
+  return Math.round(
+    BASE_FARE_PHP + distanceKm * PER_KM_PHP + extraPassengers * EXTRA_PASSENGER_FEE_PHP,
+  );
 }
 
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -55,16 +62,18 @@ function isUniqueViolation(err: unknown): boolean {
   return typeof err === "object" && err !== null && (err as { code?: string }).code === "23505";
 }
 
-async function safeClaimNearestAvailableDriver(
+async function safeMatchDriverForTrip(
   lat: number,
   lon: number,
+  passengerCount: number,
   radiusKm: number,
   excludeDriverId?: string,
 ): Promise<string | null> {
   try {
-    return await claimNearestAvailableDriver(lat, lon, radiusKm, excludeDriverId);
+    const result = await matchDriverForTrip(lat, lon, passengerCount, radiusKm, excludeDriverId);
+    return result?.driverId ?? null;
   } catch (err) {
-    logger.warn({ err }, "Redis driver claim failed (non-fatal)");
+    logger.warn({ err }, "Driver matching failed (non-fatal)");
     return null;
   }
 }
@@ -76,6 +85,12 @@ const CreateTripBody = z.object({
   dropoffLat: z.number(),
   dropoffLon: z.number(),
   dropoffAddress: z.string().optional(),
+  // Seats requested for this booking (group booking). Defaults to 1 for
+  // backward compatibility with existing clients. Capped at 16 — anything
+  // bigger than the largest vehicle type (van, 15) can never be matched
+  // anyway, so reject it up front with a clear error instead of leaving the
+  // trip stuck unmatched forever.
+  passengerCount: z.number().int().min(1).max(16).default(1),
 });
 
 /**
@@ -91,9 +106,14 @@ router.post("/trips", requireAuth, requireRole("passenger"), async (req, res): P
   const body = parsed.data;
 
   const distanceKm = haversineKm(body.pickupLat, body.pickupLon, body.dropoffLat, body.dropoffLon);
-  const fareAmount = estimateFare(distanceKm);
+  const fareAmount = estimateFare(distanceKm, body.passengerCount);
 
-  let claimedDriverId = await safeClaimNearestAvailableDriver(body.pickupLat, body.pickupLon, 10);
+  let claimedDriverId = await safeMatchDriverForTrip(
+    body.pickupLat,
+    body.pickupLon,
+    body.passengerCount,
+    10,
+  );
 
   const baseTripValues = {
     passengerId: authReq.user.id,
@@ -103,6 +123,7 @@ router.post("/trips", requireAuth, requireRole("passenger"), async (req, res): P
     dropoffLat: body.dropoffLat,
     dropoffLon: body.dropoffLon,
     dropoffAddress: body.dropoffAddress,
+    passengerCount: body.passengerCount,
     distanceKm,
     fareAmount,
   };
@@ -268,9 +289,10 @@ router.post(
       return;
     }
 
-    let nextDriverId = await safeClaimNearestAvailableDriver(
+    let nextDriverId = await safeMatchDriverForTrip(
       trip.pickupLat,
       trip.pickupLon,
+      trip.passengerCount,
       10,
       authReq.user.id,
     );

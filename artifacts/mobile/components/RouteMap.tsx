@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { StyleSheet, View, Platform } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { StyleSheet, View, Platform, Pressable } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 import { useColors } from '@/hooks/useColors';
 import { Feather } from '@expo/vector-icons';
@@ -13,6 +13,10 @@ export type NearbyDriverPin = {
   label?: string;
 };
 
+// Grab-style tight zoom for "here's where you are" — roughly a few blocks
+// across, not the wide province-level view used as a loading fallback.
+const USER_ZOOM_DELTA = 0.01;
+
 interface RouteMapProps {
   /** Trip mode: draws a pickup->dropoff route line. */
   pickup?: LatLng;
@@ -21,13 +25,23 @@ interface RouteMapProps {
   driver?: LatLng | null;
   /** Nearby-available-drivers mode: multiple pins, no route line. */
   nearbyDrivers?: NearbyDriverPin[];
-  /** The passenger's own location (blue dot style pin). */
+  /** The passenger's/driver's own location (blue dot style pin). */
   userLocation?: LatLng | null;
+  /**
+   * True while userLocation is still a placeholder (e.g. the Apayao-center
+   * fallback used before the first GPS fix arrives). While true, the map
+   * will NOT auto-zoom there — it waits for a real fix.
+   */
+  userLocationIsFallback?: boolean;
   /** Recenter to keep the tracked driver in view as they move. */
   followDriver?: boolean;
+  /** Show a Grab-style floating button to snap back to the user's location. */
+  showRecenterButton?: boolean;
   style?: any;
   interactive?: boolean;
   onDriverPress?: (id: string) => void;
+  /** Fires with the tapped coordinate when the user taps anywhere on the map. */
+  onMapPress?: (coord: LatLng) => void;
 }
 
 function regionFor(points: LatLng[], fallback?: LatLng): Region {
@@ -51,12 +65,23 @@ function regionFor(points: LatLng[], fallback?: LatLng): Region {
   };
 }
 
+function userRegion(u: LatLng): Region {
+  return { ...u, latitudeDelta: USER_ZOOM_DELTA, longitudeDelta: USER_ZOOM_DELTA };
+}
+
 /**
  * Interactive Google map with three modes that can combine:
  *  - Route mode: pass pickup + dropoff to draw the trip line.
  *  - Tracking mode: pass driver (+ followDriver) for a live moving pin.
  *  - Nearby mode: pass nearbyDrivers for a Grab-style scatter of available
  *    e-trikes around the user.
+ *
+ * Grab-style auto-centering: when only userLocation is provided (no
+ * pickup/dropoff route to frame), the map automatically animates to a tight
+ * zoom on the user's location as soon as a REAL GPS fix arrives — not the
+ * wide fallback region used while location is still loading. This only fires
+ * once per fix (so it doesn't fight the user for control while they're
+ * panning); a floating recenter button lets them snap back anytime after.
  *
  * Requires react-native-maps + a Google Maps API key (app.json). Works in an
  * EAS dev/prod build, not stock Expo Go.
@@ -67,13 +92,20 @@ export function RouteMap({
   driver,
   nearbyDrivers,
   userLocation,
+  userLocationIsFallback = false,
   followDriver = false,
+  showRecenterButton,
   style,
   interactive = true,
   onDriverPress,
+  onMapPress,
 }: RouteMapProps) {
   const colors = useColors();
   const mapRef = useRef<MapView | null>(null);
+  const hasAutoCenteredRef = useRef(false);
+  const [mapReady, setMapReady] = useState(false);
+
+  const isRouteMode = !!(pickup && dropoff);
 
   const framePoints: LatLng[] = [
     ...(pickup ? [pickup] : []),
@@ -84,16 +116,39 @@ export function RouteMap({
   ];
 
   const initialRegion = regionFor(
-    pickup && dropoff ? [pickup, dropoff] : framePoints,
+    isRouteMode ? [pickup!, dropoff!] : framePoints,
     userLocation ?? undefined,
   );
 
+  // Keep the tracked driver in view as they move (trip tracking screen).
   useEffect(() => {
-    if (!followDriver || !driver || !mapRef.current) return;
+    if (!followDriver || !driver || !mapRef.current || !mapReady) return;
     const pts = [driver, ...(pickup ? [pickup] : []), ...(dropoff ? [dropoff] : [])];
     mapRef.current.animateToRegion(regionFor(pts), 600);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [driver?.latitude, driver?.longitude, followDriver]);
+  }, [driver?.latitude, driver?.longitude, followDriver, mapReady]);
+
+  // Grab-style auto-center: the very first time a REAL (non-fallback) user
+  // location shows up in "my location" / "nearby drivers" mode (i.e. no
+  // pickup->dropoff route to frame instead), snap to a tight zoom on it.
+  useEffect(() => {
+    if (isRouteMode) return; // route framing takes priority over user-centering
+    if (!userLocation || userLocationIsFallback) return;
+    if (hasAutoCenteredRef.current) return;
+    if (!mapRef.current || !mapReady) return;
+
+    mapRef.current.animateToRegion(userRegion(userLocation), 500);
+    hasAutoCenteredRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userLocation?.latitude, userLocation?.longitude, userLocationIsFallback, isRouteMode, mapReady]);
+
+  const handleRecenter = () => {
+    if (!userLocation || !mapRef.current) return;
+    mapRef.current.animateToRegion(userRegion(userLocation), 400);
+  };
+
+  const shouldShowRecenter =
+    showRecenterButton ?? (!!userLocation && !userLocationIsFallback && !isRouteMode);
 
   return (
     <View style={[styles.wrap, style]}>
@@ -102,6 +157,12 @@ export function RouteMap({
         provider={PROVIDER_GOOGLE}
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
+        onMapReady={() => setMapReady(true)}
+        onPress={
+          onMapPress
+            ? (e) => onMapPress(e.nativeEvent.coordinate)
+            : undefined
+        }
         scrollEnabled={interactive}
         zoomEnabled={interactive}
         rotateEnabled={interactive}
@@ -110,9 +171,9 @@ export function RouteMap({
         showsMyLocationButton={false}
         toolbarEnabled={false}
       >
-        {pickup && dropoff && (
+        {isRouteMode && (
           <Polyline
-            coordinates={[pickup, dropoff]}
+            coordinates={[pickup!, dropoff!]}
             strokeColor={colors.primary}
             strokeWidth={4}
             lineDashPattern={[1]}
@@ -162,6 +223,16 @@ export function RouteMap({
           </Marker>
         ))}
       </MapView>
+
+      {shouldShowRecenter && (
+        <Pressable
+          onPress={handleRecenter}
+          style={[styles.recenterBtn, { backgroundColor: colors.card }]}
+          hitSlop={8}
+        >
+          <Feather name="crosshair" size={20} color={colors.primary} />
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -226,5 +297,20 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
       },
     }),
+  },
+  recenterBtn: {
+    position: 'absolute',
+    right: 16,
+    bottom: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
 });

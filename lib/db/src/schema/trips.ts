@@ -8,6 +8,7 @@ import {
   integer,
   index,
   uniqueIndex,
+  check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -28,6 +29,10 @@ export const tripsTable = pgTable(
     dropoffLat: doublePrecision("dropoff_lat").notNull(),
     dropoffLon: doublePrecision("dropoff_lon").notNull(),
     dropoffAddress: text("dropoff_address"),
+    // Seats requested for this booking (group booking — one passenger books
+    // for their party). Matching only claims a driver whose vehicle
+    // capacity can fit this many people; fare scales with it too.
+    passengerCount: integer("passenger_count").notNull().default(1),
     // requested -> matched -> in_progress -> completed | cancelled
     // "completing" is a transient claim-lock used only inside the
     // /trips/:id/complete transaction; it is never committed on its own,
@@ -61,6 +66,10 @@ export const tripsTable = pgTable(
     activeDriverUniqueIdx: uniqueIndex("trips_active_driver_unique_idx")
       .on(table.driverId)
       .where(sql`${table.status} in ('matched', 'in_progress')`),
+    passengerCountPositiveCheck: check(
+      "trips_passenger_count_positive_check",
+      sql`${table.passengerCount} > 0`,
+    ),
   }),
 );
 

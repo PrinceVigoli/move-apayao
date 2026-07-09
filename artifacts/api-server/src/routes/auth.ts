@@ -10,6 +10,7 @@ import {
 import { requireAuth, requireJwt, type AuthenticatedRequest } from "../middlewares/auth";
 import { parsePagination } from "../lib/http";
 import { sensitiveActionLimiter } from "../lib/rate-limit";
+import { defaultCapacityForVehicleType } from "../lib/vehicle-capacity";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -85,6 +86,7 @@ router.post("/auth/register", requireJwt, sensitiveActionLimiter, async (req, re
       await trx.insert(driverProfilesTable).values({
         userId: user.id,
         vehicleType: body.vehicleType ?? "e-trike",
+        capacity: defaultCapacityForVehicleType(body.vehicleType),
         licenseNumber: body.licenseNumber,
         plateNumber: body.plateNumber,
         vehicleColor: body.vehicleColor,
