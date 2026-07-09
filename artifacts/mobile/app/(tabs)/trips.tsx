@@ -250,9 +250,7 @@ export default function BookRideScreen() {
         pickup={pickupCoord ?? undefined}
         dropoff={dropoffCoord ?? undefined}
         userLocation={{ latitude: lat, longitude: lon }}
-        userLocationIsFallback={isFallback}
-        nearbyDrivers={bothSet ? undefined : driverPins}
-        onMapPress={handleMapPress}
+        nearbyDrivers={driverPins}
         interactive
         style={StyleSheet.absoluteFill}
       />

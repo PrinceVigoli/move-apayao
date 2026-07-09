@@ -157,12 +157,6 @@ export function RouteMap({
         provider={PROVIDER_GOOGLE}
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
-        onMapReady={() => setMapReady(true)}
-        onPress={
-          onMapPress
-            ? (e) => onMapPress(e.nativeEvent.coordinate)
-            : undefined
-        }
         scrollEnabled={interactive}
         zoomEnabled={interactive}
         rotateEnabled={interactive}
