@@ -91,6 +91,7 @@ export default function BookRideScreen() {
       {/* Full-screen map */}
       <RouteMap
         userLocation={{ latitude: lat, longitude: lon }}
+        userLocationIsFallback={isFallback}
         nearbyDrivers={driverPins}
         interactive
         style={StyleSheet.absoluteFill}
