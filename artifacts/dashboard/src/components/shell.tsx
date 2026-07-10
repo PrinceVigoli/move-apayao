@@ -13,6 +13,7 @@ import {
   Menu,
   PanelLeft,
   ShieldCheck,
+  LocateFixed,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/", label: "Overview", icon: Activity },
   { href: "/trips", label: "Trips", icon: MapIcon },
   { href: "/drivers", label: "Drivers", icon: CarFront },
+  { href: "/fleet", label: "Fleet Map", icon: LocateFixed },
   { href: "/incidents", label: "Incidents", icon: AlertTriangle },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/wallets", label: "Wallets", icon: Wallet },

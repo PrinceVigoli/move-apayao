@@ -8,6 +8,7 @@ import { Shell } from '@/components/shell';
 import Overview from '@/pages/index';
 import Trips from '@/pages/trips';
 import Drivers from '@/pages/drivers';
+import FleetMap from '@/pages/fleet-map';
 import Incidents from '@/pages/incidents';
 import Analytics from '@/pages/analytics';
 import Wallets from '@/pages/wallets';
@@ -49,6 +50,7 @@ function ProtectedApp() {
         <Route path="/" component={Overview} />
         <Route path="/trips" component={Trips} />
         <Route path="/drivers" component={Drivers} />
+        <Route path="/fleet" component={FleetMap} />
         <Route path="/incidents" component={Incidents} />
         <Route path="/analytics" component={Analytics} />
         <Route path="/wallets" component={Wallets} />

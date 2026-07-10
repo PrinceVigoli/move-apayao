@@ -24,6 +24,9 @@ router.get(
         completedCount: sql<number>`count(*) filter (where ${tripsTable.status} = 'completed')::int`,
         cancelledCount: sql<number>`count(*) filter (where ${tripsTable.status} = 'cancelled')::int`,
         uniquePassengers: sql<number>`count(distinct ${tripsTable.passengerId})::int`,
+        // SOW "passenger count": actual riders moved, not distinct accounts —
+        // a group booking of 5 counts as 5. Only completed trips count.
+        totalPassengers: sql<number>`coalesce(sum(${tripsTable.passengerCount}) filter (where ${tripsTable.status} = 'completed'), 0)::int`,
         totalFareCollected: sql<number>`coalesce(sum(${tripsTable.fareAmount}) filter (where ${tripsTable.status} = 'completed'), 0)`,
         avgTripDurationMinutes: sql<number>`
           coalesce(avg(

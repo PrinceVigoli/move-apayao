@@ -1,168 +1,147 @@
-import React, { useState } from "react"
-import { useListUsers } from "@workspace/api-client-react"
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import { useState } from "react"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Search, Star, Car, UserCircle } from "lucide-react"
+import { Search, Star, MapPin } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Link } from "wouter"
+import { useLiveDrivers, formatLastSeen, type FleetDriverStatus } from "@/lib/fleet"
 
-// We simulate drivers by fetching users and filtering locally or assuming listUsers takes a role param if it did
+const STATUS_BADGE: Record<FleetDriverStatus, { label: string; className: string }> = {
+  available: { label: "Available", className: "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" },
+  on_trip: { label: "On Trip", className: "bg-blue-100 text-blue-700 hover:bg-blue-100" },
+  offline: { label: "Offline", className: "bg-gray-100 text-gray-600 hover:bg-gray-100" },
+}
+
 export default function Drivers() {
-  const { data, isLoading } = useListUsers(
-    { limit: 100, offset: 0 },
-    { query: { queryKey: ["list-users", 100, 0] } }
-  )
-
+  // Same live feed the Fleet Map uses (GET /api/admin/drivers/live) —
+  // real driver profiles, no mock data. Poll a little slower here since a
+  // table doesn't need map-level freshness.
+  const { data, isLoading } = useLiveDrivers({ pollMs: 15000 })
   const [search, setSearch] = useState("")
 
-  type DriverProfile = {
-    vehicleType: string
-    plateNumber: string
-    rating: number
-    totalTrips: number
-    isAvailable: boolean
-  }
-
-  // Mock data specifically for drivers, merged with whatever comes back
-  const mockDrivers: Array<{
-    id: string
-    fullName: string
-    phone: string
-    role: string
-    driverProfile?: DriverProfile
-  }> = [
-    { id: "d1", fullName: "Juan Dela Cruz", phone: "0917-123-4567", role: "driver", driverProfile: { vehicleType: "E-Trike", plateNumber: "AXY-123", rating: 4.8, totalTrips: 342, isAvailable: true } },
-    { id: "d2", fullName: "Maria Santos", phone: "0918-987-6543", role: "driver", driverProfile: { vehicleType: "E-Trike", plateNumber: "BZC-456", rating: 4.9, totalTrips: 512, isAvailable: false } },
-    { id: "d3", fullName: "Pedro Penduko", phone: "0919-555-4444", role: "driver", driverProfile: { vehicleType: "Tricycle", plateNumber: "TR-999", rating: 4.5, totalTrips: 128, isAvailable: true } },
-    { id: "d4", fullName: "Leni Robredo", phone: "0920-111-2222", role: "driver", driverProfile: { vehicleType: "Jeepney", plateNumber: "JEEP-1", rating: 5.0, totalTrips: 890, isAvailable: true } },
-  ]
-
-  // Filter to drivers only if API returns all users.
-  // The API's User type has no driverProfile field yet, so normalize it to
-  // the same optional-driverProfile shape as mockDrivers.
-  const apiDrivers = (data?.users.filter(u => u.role === "driver") || []).map(u => ({
-    ...u,
-    driverProfile: undefined as DriverProfile | undefined,
-  }))
-  const driversList = apiDrivers.length > 0 ? apiDrivers : mockDrivers
-
-  const filtered = driversList.filter(d => 
-    (d.fullName?.toLowerCase() || "").includes(search.toLowerCase()) ||
-    (d.phone?.toLowerCase() || "").includes(search.toLowerCase()) ||
-    (d.driverProfile?.plateNumber?.toLowerCase() || "").includes(search.toLowerCase())
+  const drivers = data?.drivers ?? []
+  const q = search.trim().toLowerCase()
+  const filtered = drivers.filter(
+    (d) =>
+      !q ||
+      (d.fullName ?? "").toLowerCase().includes(q) ||
+      (d.phone ?? "").toLowerCase().includes(q) ||
+      (d.plateNumber ?? "").toLowerCase().includes(q) ||
+      d.vehicleType.toLowerCase().includes(q),
   )
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-6 p-4 md:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Driver Roster</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your fleet operators and their vehicles.
+          <h1 className="text-2xl font-bold tracking-tight">Drivers</h1>
+          <p className="text-sm text-muted-foreground">
+            {drivers.length} registered driver{drivers.length === 1 ? "" : "s"} ·{" "}
+            <Link href="/fleet" className="text-primary underline-offset-2 hover:underline">
+              view on map
+            </Link>
           </p>
+        </div>
+        <div className="relative w-full max-w-xs">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search name, plate, phone…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
         </div>
       </div>
 
       <Card>
-        <CardHeader className="pb-3 border-b">
-          <div className="flex items-center justify-between">
-            <div className="relative w-full sm:max-w-md">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search name, phone, or plate number..."
-                className="w-full pl-9 bg-muted/50 border-transparent focus-visible:bg-background focus-visible:border-primary"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
+        <CardHeader className="pb-0" />
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-3 py-4">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader className="bg-muted/30">
-              <TableRow>
-                <TableHead>Driver</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Vehicle Info</TableHead>
-                <TableHead>Performance</TableHead>
-                <TableHead className="text-right">Total Trips</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><div className="flex items-center gap-3"><Skeleton className="h-10 w-10 rounded-full" /><Skeleton className="h-6 w-32" /></div></TableCell>
-                    <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-                    <TableCell><Skeleton className="h-10 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-16" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-6 w-10 ml-auto" /></TableCell>
-                  </TableRow>
-                ))
-              ) : filtered.length === 0 ? (
+          ) : filtered.length === 0 ? (
+            <p className="py-12 text-center text-sm text-muted-foreground">
+              {drivers.length === 0
+                ? "No drivers registered yet."
+                : "No drivers match your search."}
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
-                    No drivers found.
-                  </TableCell>
+                  <TableHead>Driver</TableHead>
+                  <TableHead>Vehicle</TableHead>
+                  <TableHead>Plate</TableHead>
+                  <TableHead className="text-center">Seats</TableHead>
+                  <TableHead className="text-center">Rating</TableHead>
+                  <TableHead className="text-center">Trips</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Last Seen</TableHead>
                 </TableRow>
-              ) : (
-                filtered.map((driver) => (
-                  <TableRow key={driver.id} className="cursor-pointer hover:bg-muted/50 transition-colors">
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10 border border-border">
-                          <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                            {driver.fullName?.substring(0, 2).toUpperCase() || <UserCircle className="h-5 w-5" />}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col">
-                          <span className="font-semibold">{driver.fullName || "Unknown Driver"}</span>
-                          <span className="text-xs text-muted-foreground font-mono">{driver.phone}</span>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((d) => {
+                  const badge = STATUS_BADGE[d.status]
+                  return (
+                    <TableRow key={d.userId}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback>
+                              {(d.fullName ?? "D").charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium">{d.fullName ?? "Driver"}</div>
+                            <div className="text-xs text-muted-foreground">{d.phone ?? "—"}</div>
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {driver.driverProfile?.isAvailable ? (
-                        <Badge variant="success" className="px-2.5">Available</Badge>
-                      ) : (
-                        <Badge variant="secondary" className="px-2.5 text-muted-foreground">Offline</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-1.5 text-sm font-medium">
-                          <Car className="h-3.5 w-3.5 text-muted-foreground" />
-                          {driver.driverProfile?.vehicleType || "E-Trike"}
-                        </div>
-                        <Badge variant="outline" className="w-fit text-[10px] font-mono tracking-wider h-5 bg-card">
-                          {driver.driverProfile?.plateNumber || "NO PLATE"}
+                      </TableCell>
+                      <TableCell className="capitalize">{d.vehicleType}</TableCell>
+                      <TableCell>{d.plateNumber ?? "—"}</TableCell>
+                      <TableCell className="text-center">{d.capacity}</TableCell>
+                      <TableCell className="text-center">
+                        <span className="inline-flex items-center gap-1">
+                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                          {d.rating.toFixed(1)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">{d.totalTrips}</TableCell>
+                      <TableCell>
+                        <Badge className={badge.className} variant="secondary">
+                          {badge.label}
                         </Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1.5 bg-accent/10 w-fit px-2 py-1 rounded border border-accent/20">
-                        <Star className="h-3.5 w-3.5 text-accent fill-accent" />
-                        <span className="text-sm font-semibold">{driver.driverProfile?.rating?.toFixed(1) || "New"}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className="font-mono font-medium text-muted-foreground">{driver.driverProfile?.totalTrips || 0}</span>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                        {d.activeTrip && (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            Trip #{d.activeTrip.id}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                          <MapPin className="h-3.5 w-3.5" />
+                          {formatLastSeen(d.lastSeenSecondsAgo)}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

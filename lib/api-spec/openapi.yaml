@@ -1755,11 +1755,14 @@ components:
           type: integer
         uniquePassengers:
           type: integer
+        totalPassengers:
+          type: integer
+          description: Sum of passenger headcount on completed trips (group bookings count all seats).
         totalFareCollected:
           type: number
         avgTripDurationMinutes:
           type: number
-      required: [date, tripCount, completedCount, cancelledCount, uniquePassengers, totalFareCollected, avgTripDurationMinutes]
+      required: [date, tripCount, completedCount, cancelledCount, uniquePassengers, totalPassengers, totalFareCollected, avgTripDurationMinutes]
 
     DailyAnalyticsResponse:
       type: object

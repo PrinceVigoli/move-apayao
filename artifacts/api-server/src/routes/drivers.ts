@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { driverProfilesTable, usersTable } from "@workspace/db";
+import { driverProfilesTable, usersTable, tripsTable } from "@workspace/db";
 import { requireAuth, requireRole, type AuthenticatedRequest } from "../middlewares/auth";
 import {
   updateDriverGeo,
@@ -226,6 +226,85 @@ router.get(
     }
 
     res.json({ profile });
+  },
+);
+
+/**
+ * GET /api/admin/drivers/live
+ *
+ * Admin-only fleet view: EVERY driver (not just available ones, no radius
+ * filter — unlike /drivers/nearby which serves passenger matching). Includes
+ * last-known position, availability, how stale the last GPS ping is, and the
+ * driver's current active trip if they're mid-ride, so the dashboard map can
+ * distinguish idle-available / busy-on-trip / offline at a glance.
+ */
+router.get(
+  "/admin/drivers/live",
+  requireAuth,
+  requireRole("admin"),
+  async (_req, res): Promise<void> => {
+    const rows = await db
+      .select({
+        userId: driverProfilesTable.userId,
+        fullName: usersTable.fullName,
+        phone: usersTable.phone,
+        vehicleType: driverProfilesTable.vehicleType,
+        capacity: driverProfilesTable.capacity,
+        plateNumber: driverProfilesTable.plateNumber,
+        isAvailable: driverProfilesTable.isAvailable,
+        currentLat: driverProfilesTable.currentLat,
+        currentLon: driverProfilesTable.currentLon,
+        lastLocationAt: driverProfilesTable.lastLocationAt,
+        rating: driverProfilesTable.rating,
+        totalTrips: driverProfilesTable.totalTrips,
+        activeTripId: tripsTable.id,
+        activeTripStatus: tripsTable.status,
+        activeTripDropoff: tripsTable.dropoffAddress,
+      })
+      .from(driverProfilesTable)
+      .innerJoin(usersTable, eq(usersTable.id, driverProfilesTable.userId))
+      .leftJoin(
+        tripsTable,
+        and(
+          eq(tripsTable.driverId, driverProfilesTable.userId),
+          inArray(tripsTable.status, ["matched", "in_progress"]),
+        ),
+      );
+
+    const now = Date.now();
+    const drivers = rows.map((r) => {
+      const lastSeenMs = r.lastLocationAt ? now - new Date(r.lastLocationAt).getTime() : null;
+      // Status precedence: on a trip > available > offline. "Offline" also
+      // covers available-flagged drivers whose GPS has gone silent for over
+      // 3 minutes — the app may have died mid-shift, and an operator should
+      // see that as a stale/offline marker, not a healthy green one.
+      const stale = lastSeenMs == null || lastSeenMs > 3 * 60 * 1000;
+      const status: "on_trip" | "available" | "offline" = r.activeTripId
+        ? "on_trip"
+        : r.isAvailable && !stale
+          ? "available"
+          : "offline";
+      return {
+        userId: r.userId,
+        fullName: r.fullName,
+        phone: r.phone,
+        vehicleType: r.vehicleType,
+        capacity: r.capacity,
+        plateNumber: r.plateNumber,
+        rating: r.rating,
+        totalTrips: r.totalTrips,
+        lat: r.currentLat,
+        lon: r.currentLon,
+        lastLocationAt: r.lastLocationAt,
+        lastSeenSecondsAgo: lastSeenMs != null ? Math.round(lastSeenMs / 1000) : null,
+        status,
+        activeTrip: r.activeTripId
+          ? { id: r.activeTripId, status: r.activeTripStatus, dropoffAddress: r.activeTripDropoff }
+          : null,
+      };
+    });
+
+    res.json({ drivers, generatedAt: new Date().toISOString() });
   },
 );
 

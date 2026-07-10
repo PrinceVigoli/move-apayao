@@ -10,6 +10,7 @@ import {
   TextInput,
   Linking,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -57,7 +58,17 @@ export default function TripDetailScreen() {
   const [comment, setComment] = useState('');
 
   const { data, isLoading } = useGetTrip(tripId, {
-    query: { queryKey: getGetTripQueryKey(tripId), enabled: !!tripId },
+    query: {
+      queryKey: getGetTripQueryKey(tripId),
+      enabled: !!tripId,
+      // While the trip is still being matched (or awaiting driver accept),
+      // poll so the background sweeper's rematch/expiry shows up without a
+      // manual refresh. Stops polling once the trip reaches a settled state.
+      refetchInterval: (query) => {
+        const s = query.state.data?.trip?.status;
+        return s === 'requested' || s === 'matched' ? 5000 : false;
+      },
+    },
   });
   const cancelTrip = useCancelTrip();
   const rateTrip = useRateTrip();
@@ -153,6 +164,35 @@ export default function TripDetailScreen() {
               <Text style={[styles.title, { color: colors.foreground }]}>Trip Details</Text>
               <Badge label={trip.status} variant={getStatusVariant(trip.status)} />
             </View>
+
+            {/* Searching / no-driver states */}
+            {trip.status === 'requested' && (
+              <Card style={[styles.stateCard, { borderColor: colors.primary }]}>
+                <ActivityIndicator color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.stateTitle, { color: colors.foreground }]}>
+                    Looking for a driver…
+                  </Text>
+                  <Text style={[styles.stateSub, { color: colors.mutedForeground }]}>
+                    We keep searching for up to 5 minutes as drivers come online nearby.
+                  </Text>
+                </View>
+              </Card>
+            )}
+            {trip.status === 'cancelled' && trip.cancelReason === 'no_driver_available' && (
+              <Card style={[styles.stateCard, { borderColor: colors.destructive }]}>
+                <Feather name="alert-circle" size={22} color={colors.destructive} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.stateTitle, { color: colors.foreground }]}>
+                    No driver available
+                  </Text>
+                  <Text style={[styles.stateSub, { color: colors.mutedForeground }]}>
+                    We couldn't find an available e-trike nearby. Please try booking again in a
+                    little while.
+                  </Text>
+                </View>
+              </Card>
+            )}
 
             {/* Embedded interactive route map */}
             <Pressable
@@ -346,6 +386,16 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 24, fontFamily: 'Inter_700Bold' },
   mapCard: { height: 200, padding: 0, overflow: 'hidden', marginBottom: 20 },
+  stateCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 16,
+    borderWidth: 1.5,
+    marginBottom: 20,
+  },
+  stateTitle: { fontSize: 16, fontFamily: 'Inter_700Bold', marginBottom: 2 },
+  stateSub: { fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 18 },
   mapHint: {
     position: 'absolute',
     bottom: 10,

@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, Pressable } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { Card } from '@/components/ui/Card';
@@ -13,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
+  const router = useRouter();
   const { signOut } = useAuth();
 
   const { data: profileData, isLoading: isLoadingProfile } = useGetProfile();
@@ -100,6 +102,11 @@ export default function ProfileScreen() {
             <Text style={[styles.settingText, { color: colors.foreground }]}>Help & Support</Text>
             <Feather name="chevron-right" size={20} color={colors.mutedForeground} style={{ marginLeft: 'auto' }} />
           </View>
+          <Pressable style={styles.settingRow} onPress={() => router.push('/report' as never)}>
+            <Feather name="alert-triangle" size={20} color={colors.foreground} />
+            <Text style={[styles.settingText, { color: colors.foreground }]}>Report an Issue</Text>
+            <Feather name="chevron-right" size={20} color={colors.mutedForeground} style={{ marginLeft: 'auto' }} />
+          </Pressable>
         </Card>
 
         <Button 

@@ -907,6 +907,7 @@ export const GetDailyAnalyticsResponse = zod.object({
   "completedCount": zod.number(),
   "cancelledCount": zod.number(),
   "uniquePassengers": zod.number(),
+  "totalPassengers": zod.number().describe('Sum of passenger headcount on completed trips (group bookings count all seats).'),
   "totalFareCollected": zod.number(),
   "avgTripDurationMinutes": zod.number()
 })),

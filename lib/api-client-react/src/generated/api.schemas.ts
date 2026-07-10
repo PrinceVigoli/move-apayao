@@ -492,6 +492,8 @@ export interface DailyTripMetric {
   completedCount: number;
   cancelledCount: number;
   uniquePassengers: number;
+  /** Sum of passenger headcount on completed trips (group bookings count all seats). */
+  totalPassengers: number;
   totalFareCollected: number;
   avgTripDurationMinutes: number;
 }

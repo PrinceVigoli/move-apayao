@@ -53,7 +53,7 @@ export default function Analytics() {
       trips: r.tripCount,
       completed: r.completedCount,
       cancelled: r.cancelledCount,
-      passengers: r.uniquePassengers,
+      passengers: r.totalPassengers,
       revenue: r.totalFareCollected,
       avgDuration: Math.round(r.avgTripDurationMinutes),
     }))

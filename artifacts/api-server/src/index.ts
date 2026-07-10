@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { startTripSweeper } from "./lib/trip-sweeper";
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +23,8 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  // Background rescue loop for trips that couldn't be matched at booking
+  // time (retries matching, expires stale requests). See lib/trip-sweeper.ts.
+  startTripSweeper();
 });
