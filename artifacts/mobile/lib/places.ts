@@ -31,27 +31,37 @@ function base(): string {
   return API_BASE_URL.replace(/\/+$/, '');
 }
 
+export type PlaceSearchResult = {
+  predictions: PlacePrediction[];
+  /** True when the server has no Places key configured or the call failed —
+   * the UI should tell the user to tap the map instead of showing nothing. */
+  unavailable: boolean;
+};
+
 /**
- * Text autocomplete via the backend Places proxy. Returns a short pick-list.
- * On any failure (no key configured, network, Places API disabled) it resolves
- * to an empty list so the caller cleanly falls back to "tap the map instead".
+ * Text autocomplete via the backend Places proxy. Returns a short pick-list
+ * plus an `unavailable` flag so the caller can show "search unavailable — tap
+ * the map instead" rather than a silent empty dropdown.
  */
 export async function searchPlaces(
   query: string,
   sessionToken: string,
-): Promise<PlacePrediction[]> {
+): Promise<PlaceSearchResult> {
   const q = query.trim();
-  if (q.length < 2 || !API_BASE_URL) return [];
+  if (q.length < 2 || !API_BASE_URL) return { predictions: [], unavailable: !API_BASE_URL };
   try {
     const url = new URL(`${base()}/api/places/search`);
     url.searchParams.set('q', q);
     url.searchParams.set('sessiontoken', sessionToken);
     const resp = await fetch(url.toString(), { headers: await authHeaders() });
-    if (!resp.ok) return [];
-    const data = (await resp.json()) as { predictions?: PlacePrediction[] };
-    return data.predictions ?? [];
+    if (!resp.ok) return { predictions: [], unavailable: true };
+    const data = (await resp.json()) as {
+      predictions?: PlacePrediction[];
+      unavailable?: boolean;
+    };
+    return { predictions: data.predictions ?? [], unavailable: !!data.unavailable };
   } catch {
-    return [];
+    return { predictions: [], unavailable: true };
   }
 }
 

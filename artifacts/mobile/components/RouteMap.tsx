@@ -40,8 +40,19 @@ interface RouteMapProps {
   style?: any;
   interactive?: boolean;
   onDriverPress?: (id: string) => void;
-  /** Fires with the tapped coordinate when the user taps anywhere on the map. */
-  onMapPress?: (coord: LatLng) => void;
+  /**
+   * Fires with the tapped coordinate when the user taps anywhere on the map.
+   * Also fires for taps on labeled POIs (stores, churches, terminals — the
+   * named places people naturally tap as a destination); in that case the
+   * POI's own name is passed as `label`, which is a better address than a
+   * reverse geocode. On Android these are two DIFFERENT native events
+   * (onPress vs onPoiClick) — wiring only onPress silently swallows POI taps.
+   */
+  onMapPress?: (coord: LatLng, label?: string) => void;
+  /** Makes the pickup pin draggable; fires with the final position. */
+  onPickupDragEnd?: (coord: LatLng) => void;
+  /** Makes the dropoff pin draggable; fires with the final position. */
+  onDropoffDragEnd?: (coord: LatLng) => void;
 }
 
 function regionFor(points: LatLng[], fallback?: LatLng): Region {
@@ -99,10 +110,13 @@ export function RouteMap({
   interactive = true,
   onDriverPress,
   onMapPress,
+  onPickupDragEnd,
+  onDropoffDragEnd,
 }: RouteMapProps) {
   const colors = useColors();
   const mapRef = useRef<MapView | null>(null);
   const hasAutoCenteredRef = useRef(false);
+  const lastFramedRef = useRef<string>('');
   const [mapReady, setMapReady] = useState(false);
 
   const isRouteMode = !!(pickup && dropoff);
@@ -147,6 +161,25 @@ export function RouteMap({
     mapRef.current.animateToRegion(userRegion(userLocation), 400);
   };
 
+  // Whenever a pickup or dropoff pin is set/moved, bring it into view — a
+  // pin chosen from text search can otherwise land off-screen with zero
+  // visual feedback. Frames both points when both exist, else zooms tight on
+  // the one that changed. Keyed on the coordinate string so it fires exactly
+  // once per change and never fights the user's own panning.
+  useEffect(() => {
+    if (!mapRef.current || !mapReady || followDriver) return;
+    const key = `${pickup?.latitude ?? ''},${pickup?.longitude ?? ''}|${dropoff?.latitude ?? ''},${dropoff?.longitude ?? ''}`;
+    if (key === lastFramedRef.current || key === '|,') return;
+    if (!pickup && !dropoff) return;
+    lastFramedRef.current = key;
+    if (pickup && dropoff) {
+      mapRef.current.animateToRegion(regionFor([pickup, dropoff]), 500);
+    } else {
+      mapRef.current.animateToRegion(userRegion((dropoff ?? pickup)!), 500);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickup?.latitude, pickup?.longitude, dropoff?.latitude, dropoff?.longitude, mapReady, followDriver]);
+
   const shouldShowRecenter =
     showRecenterButton ?? (!!userLocation && !userLocationIsFallback && !isRouteMode);
 
@@ -157,6 +190,21 @@ export function RouteMap({
         provider={PROVIDER_GOOGLE}
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
+        onMapReady={() => setMapReady(true)}
+        onPress={
+          onMapPress
+            ? (e) => onMapPress(e.nativeEvent.coordinate)
+            : undefined
+        }
+        onPoiClick={
+          onMapPress
+            ? (e) =>
+                onMapPress(
+                  e.nativeEvent.coordinate,
+                  e.nativeEvent.name?.replace(/\n/g, ', '),
+                )
+            : undefined
+        }
         scrollEnabled={interactive}
         zoomEnabled={interactive}
         rotateEnabled={interactive}
@@ -175,7 +223,17 @@ export function RouteMap({
         )}
 
         {pickup && (
-          <Marker coordinate={pickup} title="Pickup" anchor={{ x: 0.5, y: 0.5 }}>
+          <Marker
+            coordinate={pickup}
+            title="Pickup"
+            anchor={{ x: 0.5, y: 0.5 }}
+            draggable={!!onPickupDragEnd}
+            onDragEnd={
+              onPickupDragEnd
+                ? (e) => onPickupDragEnd(e.nativeEvent.coordinate)
+                : undefined
+            }
+          >
             <View style={[styles.pin, { backgroundColor: colors.primary }]}>
               <Feather name="navigation" size={14} color={colors.primaryForeground} />
             </View>
@@ -183,7 +241,17 @@ export function RouteMap({
         )}
 
         {dropoff && (
-          <Marker coordinate={dropoff} title="Dropoff" anchor={{ x: 0.5, y: 0.5 }}>
+          <Marker
+            coordinate={dropoff}
+            title="Dropoff"
+            anchor={{ x: 0.5, y: 0.5 }}
+            draggable={!!onDropoffDragEnd}
+            onDragEnd={
+              onDropoffDragEnd
+                ? (e) => onDropoffDragEnd(e.nativeEvent.coordinate)
+                : undefined
+            }
+          >
             <View style={[styles.pin, { backgroundColor: colors.destructive }]}>
               <Feather name="map-pin" size={14} color="#fff" />
             </View>

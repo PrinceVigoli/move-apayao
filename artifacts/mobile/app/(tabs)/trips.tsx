@@ -7,7 +7,10 @@ import {
   Alert,
   Pressable,
   ActivityIndicator,
+  Linking,
+  Keyboard,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { Button } from '@/components/ui/Button';
@@ -31,13 +34,11 @@ import {
 import * as Haptics from 'expo-haptics';
 
 type LatLng = { latitude: number; longitude: number };
-type SelectMode = 'pickup' | 'dropoff' | null;
+type SelectMode = 'pickup' | 'dropoff';
 
-// Turns a coordinate into a short human-readable label using expo-location's
-// built-in reverse geocoder (no extra API key/cost — it rides on the OS
-// geocoder). Reverse geocoding a REAL tapped point is far more reliable in
-// rural areas than forward-geocoding a typed barangay name, which is why the
-// booking flow is tap-first. Falls back to coordinates if nothing resolves.
+// Reverse-geocodes a coordinate into a short human-readable label using the
+// free OS geocoder. Only used for taps on UNLABELED map spots — POI taps
+// carry their own name, which is better. Falls back to raw coordinates.
 async function labelForCoord(coord: LatLng): Promise<string> {
   try {
     const results = await Location.reverseGeocodeAsync({
@@ -49,7 +50,6 @@ async function labelForCoord(coord: LatLng): Promise<string> {
       const parts = [r.name, r.street, r.district, r.subregion, r.city].filter(
         (p) => p && p.trim().length > 0,
       );
-      // De-duplicate consecutive identical parts (common in sparse rural data).
       const deduped = parts.filter((p, i) => p !== parts[i - 1]);
       if (deduped.length > 0) return deduped.slice(0, 3).join(', ');
     }
@@ -65,27 +65,28 @@ export default function BookRideScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { lat, lon, isFallback, loading: locLoading } = useLocation();
+  const { lat, lon, isFallback, loading: locLoading, permission, refresh } = useLocation();
 
-  // Real coordinates for pickup/dropoff. Pickup defaults to the device GPS
-  // fix once it arrives; both are fully re-selectable by tapping the map.
   const [pickupCoord, setPickupCoord] = useState<LatLng | null>(null);
   const [dropoffCoord, setDropoffCoord] = useState<LatLng | null>(null);
   const [pickupLabel, setPickupLabel] = useState('');
   const [dropoffLabel, setDropoffLabel] = useState('');
+  // Which point the next map tap sets. Never null — the map should always
+  // respond to a tap. Defaults to dropoff (the thing people adjust most).
   const [selectMode, setSelectMode] = useState<SelectMode>('dropoff');
   const [geocoding, setGeocoding] = useState(false);
   const [passengerCount, setPassengerCount] = useState(1);
+  // Collapse the booking sheet to a slim peek bar so the map is actually
+  // tappable on small screens (Grab-style).
+  const [sheetCollapsed, setSheetCollapsed] = useState(false);
 
-  // Text-search state: which field is being searched, the query, the result
-  // predictions, and a Google session token linking autocomplete->details.
-  const [searchField, setSearchField] = useState<'pickup' | 'dropoff' | null>(null);
+  const [searchField, setSearchField] = useState<SelectMode | null>(null);
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [searching, setSearching] = useState(false);
+  const [searchUnavailable, setSearchUnavailable] = useState(false);
   const sessionTokenRef = useRef<string>(newPlacesSessionToken());
 
-  // Seed pickup from the first real GPS fix (unless the user already tapped a
-  // custom pickup, or we're still on the Apayao fallback).
+  // Seed pickup from the first real GPS fix (unless already set manually).
   useEffect(() => {
     if (pickupCoord || isFallback || locLoading) return;
     const coord = { latitude: lat, longitude: lon };
@@ -110,39 +111,49 @@ export default function BookRideScreen() {
 
   const availableCount = nearbyData?.drivers?.length ?? 0;
 
-  // A tap on the map sets whichever point is currently being selected, then
-  // reverse-geocodes it into an editable label.
-  const handleMapPress = useCallback(
-    async (coord: LatLng) => {
-      if (!selectMode) return;
+  const applyPoint = useCallback(
+    async (mode: SelectMode, coord: LatLng, presetLabel?: string) => {
       Haptics.selectionAsync();
+      Keyboard.dismiss();
       setPredictions([]);
       setSearchField(null);
-      if (selectMode === 'pickup') {
+      if (mode === 'pickup') {
         setPickupCoord(coord);
-        setPickupLabel('Locating…');
+        setPickupLabel(presetLabel ?? 'Locating…');
       } else {
         setDropoffCoord(coord);
-        setDropoffLabel('Locating…');
+        setDropoffLabel(presetLabel ?? 'Locating…');
       }
-      setGeocoding(true);
-      const label = await labelForCoord(coord);
-      if (selectMode === 'pickup') setPickupLabel(label);
-      else setDropoffLabel(label);
-      setGeocoding(false);
-      // After setting dropoff, stop selection so the user can pan freely.
-      setSelectMode((m) => (m === 'dropoff' ? null : m));
+      if (!presetLabel) {
+        setGeocoding(true);
+        const label = await labelForCoord(coord);
+        if (mode === 'pickup') setPickupLabel(label);
+        else setDropoffLabel(label);
+        setGeocoding(false);
+      }
+      // After a pickup tap, switch back to dropoff (the common next step);
+      // after a dropoff tap, STAY on dropoff so repeat taps keep adjusting it
+      // instead of being silently ignored.
+      setSelectMode('dropoff');
     },
-    [selectMode],
+    [],
   );
 
-  // Debounced text search. When the user types in a field, query the Places
-  // proxy ~350ms after they stop typing.
-  const runSearch = useCallback((field: 'pickup' | 'dropoff', text: string) => {
+  // Map taps: POI taps arrive with the place's own name as `label`;
+  // blank-map taps get reverse-geocoded.
+  const handleMapPress = useCallback(
+    (coord: LatLng, label?: string) => {
+      void applyPoint(selectMode, coord, label);
+    },
+    [selectMode, applyPoint],
+  );
+
+  // Debounced text search with availability feedback.
+  const runSearch = useCallback((field: SelectMode, text: string) => {
     if (field === 'pickup') setPickupLabel(text);
     else setDropoffLabel(text);
     setSearchField(field);
-
+    setSearchUnavailable(false);
     if (text.trim().length < 2) {
       setPredictions([]);
       return;
@@ -159,55 +170,44 @@ export default function BookRideScreen() {
       return;
     }
     const handle = setTimeout(async () => {
-      const results = await searchPlaces(text, sessionTokenRef.current);
-      setPredictions(results);
+      const result = await searchPlaces(text, sessionTokenRef.current);
+      setPredictions(result.predictions);
+      setSearchUnavailable(result.unavailable);
       setSearching(false);
     }, 350);
     return () => clearTimeout(handle);
   }, [pickupLabel, dropoffLabel, searchField]);
 
-  // User tapped one of the text-search results: resolve it to a coordinate,
-  // drop the pin (which the map then frames so they can confirm visually),
-  // and close the dropdown.
   const pickPrediction = useCallback(
-    async (field: 'pickup' | 'dropoff', pred: PlacePrediction) => {
+    async (field: SelectMode, pred: PlacePrediction) => {
       Haptics.selectionAsync();
       setPredictions([]);
       setSearchField(null);
+      Keyboard.dismiss();
       setGeocoding(true);
       const details = await getPlaceDetails(pred.placeId, sessionTokenRef.current);
-      // Start a fresh session for the next search.
       sessionTokenRef.current = newPlacesSessionToken();
       setGeocoding(false);
       if (!details) {
-        Alert.alert(
-          'Could not locate that place',
-          'Please tap the map to set this point instead.',
-        );
+        Alert.alert('Could not locate that place', 'Please tap the map to set this point instead.');
         return;
       }
-      const coord = { latitude: details.lat, longitude: details.lon };
-      const label = details.address || pred.primary;
-      if (field === 'pickup') {
-        setPickupCoord(coord);
-        setPickupLabel(label);
-      } else {
-        setDropoffCoord(coord);
-        setDropoffLabel(label);
-      }
-      // Leave selection off so the map frames the chosen point for confirmation.
-      setSelectMode(null);
+      await applyPoint(
+        field,
+        { latitude: details.lat, longitude: details.lon },
+        details.address || pred.primary,
+      );
     },
-    [],
+    [applyPoint],
   );
 
   const handleBook = () => {
     if (!pickupCoord || !pickupLabel.trim()) {
-      Alert.alert('Set pickup', 'Please set your pickup point on the map.');
+      Alert.alert('Set pickup', 'Tap the map (or search) to set your pickup point.');
       return;
     }
     if (!dropoffCoord || !dropoffLabel.trim()) {
-      Alert.alert('Set destination', 'Tap the map to set where you want to go.');
+      Alert.alert('Set destination', 'Tap the map (or search) to set where you want to go.');
       return;
     }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -241,16 +241,32 @@ export default function BookRideScreen() {
   };
 
   const bothSet = !!pickupCoord && !!dropoffCoord;
+  const permissionDenied = permission === 'denied';
+
+  const clearPoint = (mode: SelectMode) => {
+    Haptics.selectionAsync();
+    if (mode === 'pickup') {
+      setPickupCoord(null);
+      setPickupLabel('');
+    } else {
+      setDropoffCoord(null);
+      setDropoffLabel('');
+    }
+    setSelectMode(mode);
+    setSheetCollapsed(false);
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Full-screen map. In route mode (both points set) it frames the route;
-          otherwise it shows the user + nearby drivers and accepts taps. */}
       <RouteMap
         pickup={pickupCoord ?? undefined}
         dropoff={dropoffCoord ?? undefined}
         userLocation={{ latitude: lat, longitude: lon }}
-        nearbyDrivers={driverPins}
+        userLocationIsFallback={isFallback}
+        nearbyDrivers={bothSet ? undefined : driverPins}
+        onMapPress={handleMapPress}
+        onPickupDragEnd={(c) => void applyPoint('pickup', c)}
+        onDropoffDragEnd={(c) => void applyPoint('dropoff', c)}
         interactive
         style={StyleSheet.absoluteFill}
       />
@@ -278,17 +294,31 @@ export default function BookRideScreen() {
         </View>
       </View>
 
-      {/* Tap-to-select hint banner */}
-      {selectMode && (
-        <View style={[styles.tapHint, { top: insets.top + 64, backgroundColor: colors.primary }]}>
-          <Feather name="map-pin" size={14} color={colors.primaryForeground} />
-          <Text style={[styles.tapHintText, { color: colors.primaryForeground }]}>
-            Tap the map to set your {selectMode === 'pickup' ? 'pickup point' : 'destination'}
+      {/* Tap-target hint */}
+      <View style={[styles.tapHint, { top: insets.top + 64, backgroundColor: colors.primary }]}>
+        <Feather name="map-pin" size={14} color={colors.primaryForeground} />
+        <Text style={[styles.tapHintText, { color: colors.primaryForeground }]}>
+          Tap the map or a place name to set your {selectMode === 'pickup' ? 'pickup' : 'destination'}
+        </Text>
+      </View>
+
+      {/* Location permission banner */}
+      {permissionDenied && (
+        <View style={[styles.permBanner, { top: insets.top + 108, backgroundColor: colors.card, borderColor: colors.destructive }]}>
+          <Feather name="alert-triangle" size={15} color={colors.destructive} />
+          <Text style={[styles.permText, { color: colors.foreground }]}>
+            Location is off — tap the map to set pickup manually, or{' '}
+            <Text
+              style={{ color: colors.primary, fontFamily: 'Inter_600SemiBold' }}
+              onPress={() => Linking.openSettings().then(() => refresh())}
+            >
+              open Settings
+            </Text>
           </Text>
         </View>
       )}
 
-      {locLoading && (
+      {locLoading && !permissionDenied && (
         <View style={[styles.locating, { top: insets.top + 108, backgroundColor: colors.card }]}>
           <ActivityIndicator size="small" color={colors.primary} />
           <Text style={[styles.locatingText, { color: colors.mutedForeground }]}>
@@ -297,137 +327,198 @@ export default function BookRideScreen() {
         </View>
       )}
 
-      {/* Bottom booking sheet */}
-      <View style={[styles.sheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 90 }]}>
-        <View style={[styles.grabber, { backgroundColor: colors.border }]} />
-        <Text style={[styles.sheetTitle, { color: colors.foreground }]}>Where to?</Text>
-
-        <View style={styles.inputWrapper}>
-          <View style={styles.dotLine}>
-            <View style={[styles.dot, { backgroundColor: colors.primary }]} />
-            <View style={[styles.line, { backgroundColor: colors.border }]} />
-            <View style={[styles.square, { backgroundColor: colors.destructive }]} />
-          </View>
-          <View style={styles.inputs}>
-            {/* Pickup row */}
-            <Pressable
-              onPress={() => setSelectMode('pickup')}
-              style={[
-                styles.fieldRow,
-                {
-                  borderColor: selectMode === 'pickup' || searchField === 'pickup' ? colors.primary : colors.border,
-                  backgroundColor: colors.background,
-                },
-              ]}
-            >
-              <TextInput
-                style={[styles.fieldInput, { color: colors.foreground }]}
-                placeholder="Search or tap map for pickup"
-                placeholderTextColor={colors.mutedForeground}
-                value={pickupLabel}
-                onChangeText={(t) => runSearch('pickup', t)}
-                onFocus={() => setSearchField('pickup')}
-              />
+      {/* Bottom booking sheet — collapsible so the map stays tappable */}
+      <KeyboardAvoidingView
+        behavior="padding"
+        style={styles.sheetWrap}
+        keyboardVerticalOffset={0}
+      >
+        <View style={[styles.sheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 90 }]}>
+          <Pressable
+            onPress={() => {
+              Haptics.selectionAsync();
+              Keyboard.dismiss();
+              setSheetCollapsed((c) => !c);
+            }}
+            style={styles.grabberHit}
+            hitSlop={10}
+          >
+            <View style={[styles.grabber, { backgroundColor: colors.border }]} />
+            <View style={styles.sheetHeaderRow}>
+              <Text style={[styles.sheetTitle, { color: colors.foreground }]}>
+                {sheetCollapsed
+                  ? dropoffLabel
+                    ? `To: ${dropoffLabel}`
+                    : 'Where to?'
+                  : 'Where to?'}
+              </Text>
               <Feather
-                name="crosshair"
-                size={16}
-                color={selectMode === 'pickup' ? colors.primary : colors.mutedForeground}
+                name={sheetCollapsed ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color={colors.mutedForeground}
               />
-            </Pressable>
+            </View>
+          </Pressable>
 
-            {/* Dropoff row */}
-            <Pressable
-              onPress={() => setSelectMode('dropoff')}
-              style={[
-                styles.fieldRow,
-                {
-                  marginTop: 10,
-                  borderColor: selectMode === 'dropoff' || searchField === 'dropoff' ? colors.primary : colors.border,
-                  backgroundColor: colors.background,
-                },
-              ]}
-            >
-              <TextInput
-                style={[styles.fieldInput, { color: colors.foreground }]}
-                placeholder="Search or tap map for destination"
-                placeholderTextColor={colors.mutedForeground}
-                value={dropoffLabel}
-                onChangeText={(t) => runSearch('dropoff', t)}
-                onFocus={() => setSearchField('dropoff')}
-              />
-              {geocoding || (searching && searchField === 'dropoff') ? (
-                <ActivityIndicator size="small" color={colors.primary} />
-              ) : (
-                <Feather
-                  name="map-pin"
-                  size={16}
-                  color={selectMode === 'dropoff' ? colors.destructive : colors.mutedForeground}
-                />
-              )}
-            </Pressable>
-          </View>
-        </View>
+          {!sheetCollapsed && (
+            <>
+              <View style={styles.inputWrapper}>
+                <View style={styles.dotLine}>
+                  <View style={[styles.dot, { backgroundColor: colors.primary }]} />
+                  <View style={[styles.line, { backgroundColor: colors.border }]} />
+                  <View style={[styles.square, { backgroundColor: colors.destructive }]} />
+                </View>
+                <View style={styles.inputs}>
+                  {/* Pickup row */}
+                  <View
+                    style={[
+                      styles.fieldRow,
+                      {
+                        borderColor:
+                          selectMode === 'pickup' || searchField === 'pickup'
+                            ? colors.primary
+                            : colors.border,
+                        backgroundColor: colors.background,
+                      },
+                    ]}
+                  >
+                    <TextInput
+                      style={[styles.fieldInput, { color: colors.foreground }]}
+                      placeholder="Search or tap map for pickup"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={pickupLabel}
+                      onChangeText={(t) => runSearch('pickup', t)}
+                      onFocus={() => {
+                        setSearchField('pickup');
+                        setSelectMode('pickup');
+                      }}
+                    />
+                    {pickupCoord ? (
+                      <Pressable onPress={() => clearPoint('pickup')} hitSlop={8}>
+                        <Feather name="x-circle" size={16} color={colors.mutedForeground} />
+                      </Pressable>
+                    ) : (
+                      <Feather
+                        name="crosshair"
+                        size={16}
+                        color={selectMode === 'pickup' ? colors.primary : colors.mutedForeground}
+                      />
+                    )}
+                  </View>
 
-        {/* Text-search results dropdown */}
-        {searchField && predictions.length > 0 && (
-          <View style={[styles.predictions, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            {predictions.map((p) => (
-              <Pressable
-                key={p.placeId}
-                onPress={() => pickPrediction(searchField, p)}
-                style={styles.predictionRow}
-              >
-                <Feather name="map-pin" size={15} color={colors.mutedForeground} style={{ marginRight: 10 }} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.predPrimary, { color: colors.foreground }]} numberOfLines={1}>
-                    {p.primary}
-                  </Text>
-                  {!!p.secondary && (
-                    <Text style={[styles.predSecondary, { color: colors.mutedForeground }]} numberOfLines={1}>
-                      {p.secondary}
-                    </Text>
+                  {/* Dropoff row */}
+                  <View
+                    style={[
+                      styles.fieldRow,
+                      {
+                        marginTop: 10,
+                        borderColor:
+                          selectMode === 'dropoff' || searchField === 'dropoff'
+                            ? colors.primary
+                            : colors.border,
+                        backgroundColor: colors.background,
+                      },
+                    ]}
+                  >
+                    <TextInput
+                      style={[styles.fieldInput, { color: colors.foreground }]}
+                      placeholder="Search or tap map for destination"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={dropoffLabel}
+                      onChangeText={(t) => runSearch('dropoff', t)}
+                      onFocus={() => {
+                        setSearchField('dropoff');
+                        setSelectMode('dropoff');
+                      }}
+                    />
+                    {geocoding || (searching && searchField === 'dropoff') ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : dropoffCoord ? (
+                      <Pressable onPress={() => clearPoint('dropoff')} hitSlop={8}>
+                        <Feather name="x-circle" size={16} color={colors.mutedForeground} />
+                      </Pressable>
+                    ) : (
+                      <Feather
+                        name="map-pin"
+                        size={16}
+                        color={selectMode === 'dropoff' ? colors.destructive : colors.mutedForeground}
+                      />
+                    )}
+                  </View>
+                </View>
+              </View>
+
+              {/* Search results / availability feedback */}
+              {searchField && (predictions.length > 0 || (!searching && searchUnavailable)) && (
+                <View style={[styles.predictions, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                  {predictions.map((p) => (
+                    <Pressable
+                      key={p.placeId}
+                      onPress={() => pickPrediction(searchField, p)}
+                      style={styles.predictionRow}
+                    >
+                      <Feather name="map-pin" size={15} color={colors.mutedForeground} style={{ marginRight: 10 }} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.predPrimary, { color: colors.foreground }]} numberOfLines={1}>
+                          {p.primary}
+                        </Text>
+                        {!!p.secondary && (
+                          <Text style={[styles.predSecondary, { color: colors.mutedForeground }]} numberOfLines={1}>
+                            {p.secondary}
+                          </Text>
+                        )}
+                      </View>
+                    </Pressable>
+                  ))}
+                  {predictions.length === 0 && searchUnavailable && (
+                    <View style={styles.predictionRow}>
+                      <Feather name="wifi-off" size={15} color={colors.mutedForeground} style={{ marginRight: 10 }} />
+                      <Text style={[styles.predSecondary, { color: colors.mutedForeground, flex: 1 }]}>
+                        Search is unavailable right now — tap your destination on the map instead.
+                      </Text>
+                    </View>
                   )}
                 </View>
-              </Pressable>
-            ))}
-          </View>
-        )}
+              )}
 
-        <View style={styles.seatRow}>
-          <View style={styles.seatLabelGroup}>
-            <Feather name="users" size={16} color={colors.mutedForeground} />
-            <Text style={[styles.seatLabel, { color: colors.foreground }]}>
-              {passengerCount} {passengerCount === 1 ? 'passenger' : 'passengers'}
-            </Text>
-          </View>
-          <View style={styles.seatStepper}>
-            <Pressable
-              onPress={() => setPassengerCount((c) => Math.max(1, c - 1))}
-              disabled={passengerCount <= 1}
-              style={[styles.seatBtn, { borderColor: colors.border, opacity: passengerCount <= 1 ? 0.4 : 1 }]}
-            >
-              <Feather name="minus" size={18} color={colors.foreground} />
-            </Pressable>
-            <Text style={[styles.seatCount, { color: colors.foreground }]}>{passengerCount}</Text>
-            <Pressable
-              onPress={() => setPassengerCount((c) => Math.min(16, c + 1))}
-              disabled={passengerCount >= 16}
-              style={[styles.seatBtn, { borderColor: colors.border, opacity: passengerCount >= 16 ? 0.4 : 1 }]}
-            >
-              <Feather name="plus" size={18} color={colors.foreground} />
-            </Pressable>
-          </View>
+              <View style={styles.seatRow}>
+                <View style={styles.seatLabelGroup}>
+                  <Feather name="users" size={16} color={colors.mutedForeground} />
+                  <Text style={[styles.seatLabel, { color: colors.foreground }]}>
+                    {passengerCount} {passengerCount === 1 ? 'passenger' : 'passengers'}
+                  </Text>
+                </View>
+                <View style={styles.seatStepper}>
+                  <Pressable
+                    onPress={() => setPassengerCount((c) => Math.max(1, c - 1))}
+                    disabled={passengerCount <= 1}
+                    style={[styles.seatBtn, { borderColor: colors.border, opacity: passengerCount <= 1 ? 0.4 : 1 }]}
+                  >
+                    <Feather name="minus" size={18} color={colors.foreground} />
+                  </Pressable>
+                  <Text style={[styles.seatCount, { color: colors.foreground }]}>{passengerCount}</Text>
+                  <Pressable
+                    onPress={() => setPassengerCount((c) => Math.min(16, c + 1))}
+                    disabled={passengerCount >= 16}
+                    style={[styles.seatBtn, { borderColor: colors.border, opacity: passengerCount >= 16 ? 0.4 : 1 }]}
+                  >
+                    <Feather name="plus" size={18} color={colors.foreground} />
+                  </Pressable>
+                </View>
+              </View>
+
+              <Button
+                title="Request E-Trike"
+                onPress={handleBook}
+                loading={createTrip.isPending}
+                disabled={!bothSet}
+                icon={<Feather name="navigation" size={18} color={colors.primaryForeground} />}
+                style={{ marginTop: 14 }}
+              />
+            </>
+          )}
         </View>
-
-        <Button
-          title="Request E-Trike"
-          onPress={handleBook}
-          loading={createTrip.isPending}
-          disabled={!bothSet}
-          icon={<Feather name="navigation" size={18} color={colors.primaryForeground} />}
-          style={{ marginTop: 14 }}
-        />
-      </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -485,6 +576,19 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
   tapHintText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  permBanner: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    elevation: 3,
+  },
+  permText: { fontSize: 12.5, fontFamily: 'Inter_500Medium', flex: 1, lineHeight: 17 },
   locating: {
     position: 'absolute',
     alignSelf: 'center',
@@ -497,11 +601,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   locatingText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
+  sheetWrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   sheet: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
@@ -512,8 +613,15 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: -4 },
   },
-  grabber: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 14 },
-  sheetTitle: { fontSize: 22, fontFamily: 'Inter_700Bold', marginBottom: 12 },
+  grabberHit: { alignItems: 'stretch' },
+  grabber: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 10 },
+  sheetHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  sheetTitle: { fontSize: 22, fontFamily: 'Inter_700Bold', flex: 1 },
   inputWrapper: { flexDirection: 'row', marginTop: 4 },
   dotLine: { alignItems: 'center', marginRight: 12, marginTop: 18 },
   dot: { width: 12, height: 12, borderRadius: 6 },
