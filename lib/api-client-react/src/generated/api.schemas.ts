@@ -180,6 +180,8 @@ export interface Trip {
   dropoffAddress?: string | null;
   /** Seats requested for this booking (group booking). */
   passengerCount?: number;
+  /** Rating (1-5) the passenger gave the driver for this trip, if any. */
+  driverRating?: number | null;
   status: TripStatus;
   fareAmount?: number | null;
   distanceKm?: number | null;
@@ -191,8 +193,18 @@ export interface Trip {
   createdAt: string;
 }
 
+/**
+ * The calling user's own rating for this trip, if already given.
+ */
+export type TripResponseMyRating = {
+  rating: number;
+  comment?: string | null;
+} | null;
+
 export interface TripResponse {
   trip: Trip;
+  /** The calling user's own rating for this trip, if already given. */
+  myRating?: TripResponseMyRating;
 }
 
 export interface ListTripsResponse {

@@ -51,7 +51,16 @@ export default function DriverTripScreen() {
   const { location } = useDriverStatus();
 
   const { data, isLoading } = useGetTrip(tripId, {
-    query: { queryKey: getGetTripQueryKey(tripId), enabled: !!tripId },
+    query: {
+      queryKey: getGetTripQueryKey(tripId),
+      enabled: !!tripId,
+      // Poll while the trip is live so a passenger cancelling mid-ride shows
+      // up on the driver's screen within seconds.
+      refetchInterval: (query) => {
+        const s = query.state.data?.trip?.status;
+        return s === 'matched' || s === 'in_progress' ? 5000 : false;
+      },
+    },
   });
   const trip = data?.trip;
 

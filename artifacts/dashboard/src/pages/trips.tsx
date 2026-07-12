@@ -85,6 +85,7 @@ export default function Trips() {
                 <TableHead>Status</TableHead>
                 <TableHead className="min-w-[200px]">Route</TableHead>
                 <TableHead>Fare / Dist</TableHead>
+                <TableHead>Rating</TableHead>
                 <TableHead>Time</TableHead>
               </TableRow>
             </TableHeader>
@@ -96,12 +97,13 @@ export default function Trips() {
                     <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
                     <TableCell><Skeleton className="h-10 w-full" /></TableCell>
                     <TableCell><Skeleton className="h-10 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-12" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                   </TableRow>
                 ))
               ) : filteredTrips.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
                     No trips found matching your filters.
                   </TableCell>
                 </TableRow>
@@ -133,6 +135,15 @@ export default function Trips() {
                     <TableCell>
                       <div className="font-medium">{trip.fareAmount ? formatPHP(trip.fareAmount) : "TBD"}</div>
                       <div className="text-xs text-muted-foreground">{trip.distanceKm ? `${trip.distanceKm.toFixed(1)} km` : "-"}</div>
+                    </TableCell>
+                    <TableCell>
+                      {trip.driverRating != null ? (
+                        <span className="inline-flex items-center gap-1 text-sm font-medium text-amber-600">
+                          ★ {trip.driverRating}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm whitespace-nowrap text-muted-foreground">
                       {formatDate(trip.createdAt)}

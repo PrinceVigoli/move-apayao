@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, desc, inArray, sql } from "drizzle-orm";
+import { eq, and, desc, inArray, sql, getTableColumns } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   tripsTable,
@@ -179,15 +179,32 @@ router.get("/trips", requireAuth, async (req, res): Promise<void> => {
   const authReq = req as AuthenticatedRequest;
   const { limit, offset } = parsePagination(req.query, { defaultLimit: 20, maxLimit: 100 });
 
+  // Admins see every trip (the dashboard's Trips page); drivers see trips
+  // assigned to them; passengers see trips they booked.
   const whereClause =
-    authReq.user.role === "driver"
-      ? eq(tripsTable.driverId, authReq.user.id)
-      : eq(tripsTable.passengerId, authReq.user.id);
+    authReq.user.role === "admin"
+      ? undefined
+      : authReq.user.role === "driver"
+        ? eq(tripsTable.driverId, authReq.user.id)
+        : eq(tripsTable.passengerId, authReq.user.id);
 
-  const trips = await db
-    .select()
+  // Attach the passenger→driver rating (if given) to each row so lists can
+  // show it without N follow-up requests.
+  const baseQuery = db
+    .select({
+      ...getTableColumns(tripsTable),
+      driverRating: tripRatingsTable.rating,
+    })
     .from(tripsTable)
-    .where(whereClause)
+    .leftJoin(
+      tripRatingsTable,
+      and(
+        eq(tripRatingsTable.tripId, tripsTable.id),
+        eq(tripRatingsTable.raterId, tripsTable.passengerId),
+      ),
+    );
+
+  const trips = await (whereClause ? baseQuery.where(whereClause) : baseQuery)
     .orderBy(desc(tripsTable.createdAt))
     .limit(limit)
     .offset(offset);
@@ -218,7 +235,14 @@ router.get("/trips/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  res.json({ trip });
+  // Include the caller's own rating for this trip (if any) so the app knows
+  // whether to offer the rate button or show the rating already given.
+  const [myRating] = await db
+    .select({ rating: tripRatingsTable.rating, comment: tripRatingsTable.comment })
+    .from(tripRatingsTable)
+    .where(and(eq(tripRatingsTable.tripId, tripId), eq(tripRatingsTable.raterId, authReq.user.id)));
+
+  res.json({ trip, myRating: myRating ?? null });
 });
 
 /**
@@ -555,6 +579,17 @@ router.post("/trips/:id/rate", requireAuth, async (req, res): Promise<void> => {
   }
 
   const rateeId = isPassenger ? trip.driverId! : trip.passengerId;
+
+  // One rating per rater per trip — without this guard, re-submitting
+  // inserts duplicates and skews the driver's average.
+  const [existing] = await db
+    .select({ id: tripRatingsTable.id })
+    .from(tripRatingsTable)
+    .where(and(eq(tripRatingsTable.tripId, tripId), eq(tripRatingsTable.raterId, authReq.user.id)));
+  if (existing) {
+    res.status(409).json({ error: "You have already rated this trip" });
+    return;
+  }
 
   const [rating] = await db
     .insert(tripRatingsTable)

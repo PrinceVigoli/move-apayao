@@ -1238,6 +1238,10 @@ components:
         passengerCount:
           type: integer
           description: Seats requested for this booking (group booking).
+        driverRating:
+          type: integer
+          nullable: true
+          description: Rating (1-5) the passenger gave the driver for this trip, if any.
         status:
           type: string
           enum: [requested, matched, in_progress, completed, cancelled]
@@ -1276,6 +1280,17 @@ components:
       properties:
         trip:
           $ref: "#/components/schemas/Trip"
+        myRating:
+          type: object
+          nullable: true
+          description: The calling user's own rating for this trip, if already given.
+          properties:
+            rating:
+              type: integer
+            comment:
+              type: string
+              nullable: true
+          required: [rating]
       required: [trip]
 
     ListTripsResponse:

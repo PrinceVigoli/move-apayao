@@ -261,6 +261,7 @@ export const CreateTripResponse = zod.object({
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
+  "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -270,7 +271,11 @@ export const CreateTripResponse = zod.object({
   "completedAt": zod.coerce.date().nullish(),
   "cancelledAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
-})
+}),
+  "myRating": zod.object({
+  "rating": zod.number(),
+  "comment": zod.string().nullish()
+}).nullish().describe('The calling user\'s own rating for this trip, if already given.')
 })
 
 
@@ -297,6 +302,7 @@ export const ListTripsResponse = zod.object({
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
+  "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -331,6 +337,7 @@ export const GetTripResponse = zod.object({
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
+  "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -340,7 +347,11 @@ export const GetTripResponse = zod.object({
   "completedAt": zod.coerce.date().nullish(),
   "cancelledAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
-})
+}),
+  "myRating": zod.object({
+  "rating": zod.number(),
+  "comment": zod.string().nullish()
+}).nullish().describe('The calling user\'s own rating for this trip, if already given.')
 })
 
 
@@ -363,6 +374,7 @@ export const AcceptTripResponse = zod.object({
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
+  "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -372,7 +384,11 @@ export const AcceptTripResponse = zod.object({
   "completedAt": zod.coerce.date().nullish(),
   "cancelledAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
-})
+}),
+  "myRating": zod.object({
+  "rating": zod.number(),
+  "comment": zod.string().nullish()
+}).nullish().describe('The calling user\'s own rating for this trip, if already given.')
 })
 
 
@@ -395,6 +411,7 @@ export const DeclineTripResponse = zod.object({
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
+  "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -404,7 +421,11 @@ export const DeclineTripResponse = zod.object({
   "completedAt": zod.coerce.date().nullish(),
   "cancelledAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
-})
+}),
+  "myRating": zod.object({
+  "rating": zod.number(),
+  "comment": zod.string().nullish()
+}).nullish().describe('The calling user\'s own rating for this trip, if already given.')
 })
 
 
@@ -427,6 +448,7 @@ export const CompleteTripResponse = zod.object({
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
+  "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -436,7 +458,11 @@ export const CompleteTripResponse = zod.object({
   "completedAt": zod.coerce.date().nullish(),
   "cancelledAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
-})
+}),
+  "myRating": zod.object({
+  "rating": zod.number(),
+  "comment": zod.string().nullish()
+}).nullish().describe('The calling user\'s own rating for this trip, if already given.')
 })
 
 
@@ -463,6 +489,7 @@ export const CancelTripResponse = zod.object({
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
+  "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -472,7 +499,11 @@ export const CancelTripResponse = zod.object({
   "completedAt": zod.coerce.date().nullish(),
   "cancelledAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
-})
+}),
+  "myRating": zod.object({
+  "rating": zod.number(),
+  "comment": zod.string().nullish()
+}).nullish().describe('The calling user\'s own rating for this trip, if already given.')
 })
 
 
@@ -968,6 +999,7 @@ export const GetAllTripsResponse = zod.object({
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
+  "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),

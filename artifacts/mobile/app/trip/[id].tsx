@@ -11,6 +11,7 @@ import {
   Linking,
   Platform,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -57,7 +58,7 @@ export default function TripDetailScreen() {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
 
-  const { data, isLoading } = useGetTrip(tripId, {
+  const { data, isLoading, isRefetching, refetch } = useGetTrip(tripId, {
     query: {
       queryKey: getGetTripQueryKey(tripId),
       enabled: !!tripId,
@@ -66,7 +67,10 @@ export default function TripDetailScreen() {
       // manual refresh. Stops polling once the trip reaches a settled state.
       refetchInterval: (query) => {
         const s = query.state.data?.trip?.status;
-        return s === 'requested' || s === 'matched' ? 5000 : false;
+        // Poll through the whole active lifecycle — including in_progress —
+        // so the driver completing the trip shows up on the passenger's
+        // screen within seconds, without a manual refresh.
+        return s === 'requested' || s === 'matched' || s === 'in_progress' ? 5000 : false;
       },
     },
   });
@@ -152,7 +156,12 @@ export default function TripDetailScreen() {
         <View style={[styles.handle, { backgroundColor: colors.border }]} />
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 40 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 40 }}
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
+        }
+      >
         {isLoading || !trip ? (
           <View style={{ gap: 20, marginTop: 20 }}>
             <Skeleton style={{ height: 120, width: '100%' }} />
@@ -283,14 +292,29 @@ export default function TripDetailScreen() {
               />
             ) : null}
 
-            {trip.status === 'completed' && (
-              <Button
-                title="Rate Trip"
-                variant="default"
-                onPress={() => setRateVisible(true)}
-                style={{ marginTop: 24 }}
-              />
-            )}
+            {trip.status === 'completed' &&
+              (data?.myRating ? (
+                <View style={[styles.ratedRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <Text style={[styles.ratedText, { color: colors.foreground }]}>
+                    You rated this trip{' '}
+                    <Text style={{ color: '#f59e0b' }}>
+                      {'★'.repeat(data.myRating.rating)}
+                    </Text>
+                  </Text>
+                  {!!data.myRating.comment && (
+                    <Text style={[styles.ratedComment, { color: colors.mutedForeground }]}>
+                      “{data.myRating.comment}”
+                    </Text>
+                  )}
+                </View>
+              ) : (
+                <Button
+                  title="Rate Trip"
+                  variant="default"
+                  onPress={() => setRateVisible(true)}
+                  style={{ marginTop: 24 }}
+                />
+              ))}
           </>
         )}
       </ScrollView>
@@ -395,6 +419,15 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   stateTitle: { fontSize: 16, fontFamily: 'Inter_700Bold', marginBottom: 2 },
+  ratedRow: {
+    marginTop: 24,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 4,
+  },
+  ratedText: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+  ratedComment: { fontSize: 13, fontFamily: 'Inter_400Regular', fontStyle: 'italic' },
   stateSub: { fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 18 },
   mapHint: {
     position: 'absolute',

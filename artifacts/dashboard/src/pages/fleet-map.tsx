@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
@@ -38,7 +38,7 @@ function driverIcon(status: FleetDriverStatus) {
 type Filter = "all" | FleetDriverStatus
 
 export default function FleetMapPage() {
-  const { data, isLoading } = useLiveDrivers()
+  const { data, isLoading, dataUpdatedAt } = useLiveDrivers()
   const [filter, setFilter] = useState<Filter>("all")
   const [search, setSearch] = useState("")
 
@@ -73,8 +73,12 @@ export default function FleetMapPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Fleet Map</h1>
-          <p className="text-sm text-muted-foreground">
-            Live positions of every driver — updates every few seconds.
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+            Live — updated <LiveClock since={dataUpdatedAt} /> · refreshes every 6s
           </p>
         </div>
         <div className="flex gap-2">
@@ -204,4 +208,16 @@ function DriverRow({ driver: d }: { driver: FleetDriver }) {
       </Badge>
     </div>
   )
+}
+
+
+/** Re-renders every second showing how long ago the data arrived. */
+function LiveClock({ since }: { since: number }) {
+  const [, force] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => force((n) => n + 1), 1000)
+    return () => clearInterval(t)
+  }, [])
+  const secs = Math.max(0, Math.round((Date.now() - since) / 1000))
+  return <span>{secs}s ago</span>
 }

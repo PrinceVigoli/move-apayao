@@ -6,6 +6,7 @@ import {
   Pressable,
   ActivityIndicator,
   ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -27,7 +28,7 @@ export default function DriveScreen() {
 
   // While online, poll for trips assigned to this driver. A 'matched' trip is a
   // new request waiting to be accepted; 'in_progress' is the active ride.
-  const { data } = useListTrips(
+  const { data, isRefetching, refetch } = useListTrips(
     { limit: 10 },
     {
       query: {
@@ -92,6 +93,9 @@ export default function DriveScreen() {
       <ScrollView
         style={[styles.sheet, { backgroundColor: colors.card }]}
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 100 }}
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
+        }
       >
         <View style={[styles.grabber, { backgroundColor: colors.border }]} />
 
