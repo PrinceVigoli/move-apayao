@@ -182,6 +182,8 @@ export interface Trip {
   passengerCount?: number;
   /** Rating (1-5) the passenger gave the driver for this trip, if any. */
   driverRating?: number | null;
+  /** Free-text feedback the passenger left with their rating, if any. */
+  driverRatingComment?: string | null;
   status: TripStatus;
   fareAmount?: number | null;
   distanceKm?: number | null;
@@ -357,32 +359,6 @@ export interface ListTransactionsResponse {
   transactions: FareTransaction[];
   limit: number;
   offset: number;
-}
-
-/**
- * Admin-only direct credit.
- */
-export interface TopUpBody {
-  userId: string;
-  amount: number;
-  referenceId?: string;
-}
-
-export interface TopUpResponse {
-  transaction: FareTransaction;
-  newBalance: number;
-}
-
-/**
- * Passenger-callable. Does not credit the wallet directly.
- */
-export interface TopUpIntentBody {
-  /** @maximum 50000 */
-  amount: number;
-}
-
-export interface TopUpIntentResponse {
-  checkoutUrl: string;
 }
 
 export interface TapBody {

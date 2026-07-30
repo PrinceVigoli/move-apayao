@@ -5,8 +5,6 @@ import {
   tripsTable,
   tripRatingsTable,
   driverProfilesTable,
-  fareWalletsTable,
-  fareTransactionsTable,
   type Trip,
 } from "@workspace/db";
 import { requireAuth, requireRole, type AuthenticatedRequest } from "../middlewares/auth";
@@ -194,6 +192,7 @@ router.get("/trips", requireAuth, async (req, res): Promise<void> => {
     .select({
       ...getTableColumns(tripsTable),
       driverRating: tripRatingsTable.rating,
+      driverRatingComment: tripRatingsTable.comment,
     })
     .from(tripsTable)
     .leftJoin(
@@ -235,12 +234,20 @@ router.get("/trips/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  // Include the caller's own rating for this trip (if any) so the app knows
-  // whether to offer the rate button or show the rating already given.
+  // For a participant: their OWN rating, so the app knows whether to offer the
+  // rate button or show what they already gave.
+  // For an admin: the passenger's rating of the driver — an admin never rates
+  // a trip themselves, so scoping to raterId would always return null and the
+  // feedback comment would be invisible in the dashboard.
+  const ratingWhere =
+    authReq.user.role === "admin" && !isInvolved
+      ? and(eq(tripRatingsTable.tripId, tripId), eq(tripRatingsTable.raterId, trip.passengerId))
+      : and(eq(tripRatingsTable.tripId, tripId), eq(tripRatingsTable.raterId, authReq.user.id));
+
   const [myRating] = await db
     .select({ rating: tripRatingsTable.rating, comment: tripRatingsTable.comment })
     .from(tripRatingsTable)
-    .where(and(eq(tripRatingsTable.tripId, tripId), eq(tripRatingsTable.raterId, authReq.user.id)));
+    .where(ratingWhere);
 
   res.json({ trip, myRating: myRating ?? null });
 });
@@ -382,12 +389,14 @@ router.post(
 /**
  * POST /api/trips/:id/complete
  *
- * The trip-status transition (in_progress -> completed) is claimed with a
- * conditional UPDATE *inside* the same transaction as the wallet debit. If
- * two "complete" requests race (double-tap, client retry), only the first
- * one can ever flip the status away from 'in_progress' — the second gets
- * zero rows back and fails cleanly with no wallet side effect, instead of
- * both succeeding and double-charging the passenger.
+ * CASH FARE MODEL: the driver collects the fare in cash at drop-off. This
+ * endpoint only records the completion — it does NOT move money. The digital
+ * wallet / QR-NFC tap-to-pay flow is deferred until reader hardware is
+ * procured (see POST /wallet/tap, feature-flagged off).
+ *
+ * The in_progress -> completed transition is still claimed with a conditional
+ * UPDATE so a double-tap or client retry can't complete the same trip twice
+ * (the second caller gets zero rows back and fails cleanly).
  */
 router.post(
   "/trips/:id/complete",
@@ -420,41 +429,9 @@ router.post(
           throw Object.assign(new Error("Trip cannot be completed"), { status: 400 });
         }
 
-        const fareAmount = claimedTrip.fareAmount ?? 0;
-
-        const [passengerWallet] = await trx
-          .select()
-          .from(fareWalletsTable)
-          .where(eq(fareWalletsTable.userId, claimedTrip.passengerId))
-          .for("update");
-
-        if (!passengerWallet || passengerWallet.balance < fareAmount) {
-          throw Object.assign(new Error("Insufficient wallet balance"), {
-            status: 402,
-            balance: passengerWallet?.balance ?? 0,
-          });
-        }
-
-        const balanceBefore = passengerWallet.balance;
-        const balanceAfter = balanceBefore - fareAmount;
-
-        await trx
-          .update(fareWalletsTable)
-          .set({ balance: balanceAfter, updatedAt: new Date() })
-          .where(eq(fareWalletsTable.id, passengerWallet.id));
-
-        await trx.insert(fareTransactionsTable).values({
-          walletId: passengerWallet.id,
-          userId: claimedTrip.passengerId,
-          amount: -fareAmount,
-          type: "deduct",
-          description: `Trip #${tripId} fare`,
-          referenceId: String(tripId),
-          idempotencyKey: `trip_complete_${tripId}`,
-          balanceBefore,
-          balanceAfter,
-        });
-
+        // Fare is collected in cash by the driver — nothing to debit here.
+        // trips.fareAmount stays as the recorded amount, which is what all
+        // revenue reporting in analytics.ts reads from.
         const [completedTrip] = await trx
           .update(tripsTable)
           .set({ status: "completed", completedAt: new Date() })
@@ -476,11 +453,7 @@ router.post(
       await safePublishTripUpdate(tripId, { event: "completed", trip: updated });
       res.json({ trip: updated });
     } catch (err: unknown) {
-      const e = err as { status?: number; balance?: number; message?: string };
-      if (e.status === 402) {
-        res.status(402).json({ error: "Passenger has insufficient wallet balance", balance: e.balance });
-        return;
-      }
+      const e = err as { status?: number; message?: string };
       if (e.status === 400) {
         res.status(400).json({ error: "Trip cannot be completed" });
         return;

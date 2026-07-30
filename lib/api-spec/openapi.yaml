@@ -541,60 +541,15 @@ paths:
               schema:
                 $ref: "#/components/schemas/ListTransactionsResponse"
 
-  /wallet/topup:
-    post:
-      operationId: topUpWallet
-      tags: [wallet]
-      summary: Admin-only direct wallet credit (cash kiosk, manual adjustment/refund)
-      description: >
-        Directly credits a wallet with no payment-provider step. Restricted to
-        admins. Passengers topping up their own wallet must use
-        /wallet/topup/intent, which requires a verified payment before the
-        ledger is touched.
-      security: [{ bearerAuth: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TopUpBody"
-      responses:
-        "201":
-          description: Top-up successful
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TopUpResponse"
-
-  /wallet/topup/intent:
-    post:
-      operationId: createTopUpIntent
-      tags: [wallet]
-      summary: Create a wallet top-up checkout session (passenger-callable)
-      description: >
-        Does not credit the wallet. Creates a pending top-up and returns a
-        payment-provider checkout URL; the wallet is only credited once the
-        provider confirms payment via /wallet/topup/webhook.
-      security: [{ bearerAuth: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TopUpIntentBody"
-      responses:
-        "201":
-          description: Checkout session created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TopUpIntentResponse"
-
   /wallet/tap:
     post:
       operationId: tapWallet
       tags: [wallet]
-      summary: NFC/QR card tap — deduct fare (mock reader interface)
+      summary: "[DEFERRED] NFC/QR card tap — deduct fare"
+      description: >
+        DEFERRED pending reader hardware procurement. Returns 503 unless the
+        server sets FEATURE_QR_FARE_COLLECTION=true. Fares are currently
+        collected in cash by the driver at drop-off.
       requestBody:
         required: true
         content:
@@ -1242,6 +1197,10 @@ components:
           type: integer
           nullable: true
           description: Rating (1-5) the passenger gave the driver for this trip, if any.
+        driverRatingComment:
+          type: string
+          nullable: true
+          description: Free-text feedback the passenger left with their rating, if any.
         status:
           type: string
           enum: [requested, matched, in_progress, completed, cancelled]
@@ -1587,44 +1546,6 @@ components:
         offset:
           type: integer
       required: [transactions, limit, offset]
-
-    TopUpBody:
-      type: object
-      description: Admin-only direct credit.
-      properties:
-        userId:
-          type: string
-          format: uuid
-        amount:
-          type: number
-        referenceId:
-          type: string
-      required: [userId, amount]
-
-    TopUpResponse:
-      type: object
-      properties:
-        transaction:
-          $ref: "#/components/schemas/FareTransaction"
-        newBalance:
-          type: number
-      required: [transaction, newBalance]
-
-    TopUpIntentBody:
-      type: object
-      description: Passenger-callable. Does not credit the wallet directly.
-      properties:
-        amount:
-          type: number
-          maximum: 50000
-      required: [amount]
-
-    TopUpIntentResponse:
-      type: object
-      properties:
-        checkoutUrl:
-          type: string
-      required: [checkoutUrl]
 
     TapBody:
       type: object

@@ -43,13 +43,6 @@ app.use(
   }),
 );
 
-// The payment webhook needs the raw request body to verify the provider's
-// signature — it must be registered with express.raw() BEFORE the global
-// express.json() below, or the body will already be parsed/consumed by the
-// time the route handler sees it. This is the standard pattern for any
-// signature-verified webhook (Stripe, PayMongo, etc.).
-app.use("/api/wallet/topup/webhook", express.raw({ type: "*/*" }));
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

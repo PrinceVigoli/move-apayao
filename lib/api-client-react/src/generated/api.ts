@@ -67,10 +67,6 @@ import type {
   SubscriptionResponse,
   TapBody,
   TapResponse,
-  TopUpBody,
-  TopUpIntentBody,
-  TopUpIntentResponse,
-  TopUpResponse,
   TripRatingResponse,
   TripResponse,
   UpdateIncidentBody,
@@ -1917,148 +1913,6 @@ export function useListTransactions<TData = Awaited<ReturnType<typeof listTransa
 
 
 
-export const getTopUpWalletUrl = () => {
-
-
-
-
-  return `/api/wallet/topup`
-}
-
-/**
- * Directly credits a wallet with no payment-provider step. Restricted to admins. Passengers topping up their own wallet must use /wallet/topup/intent, which requires a verified payment before the ledger is touched.
- * @summary Admin-only direct wallet credit (cash kiosk, manual adjustment/refund)
- */
-export const topUpWallet = async (topUpBody: TopUpBody, options?: RequestInit): Promise<TopUpResponse> => {
-
-  return customFetch<TopUpResponse>(getTopUpWalletUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(topUpBody)
-  }
-);}
-
-
-
-
-export const getTopUpWalletMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof topUpWallet>>, TError,{data: BodyType<TopUpBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof topUpWallet>>, TError,{data: BodyType<TopUpBody>}, TContext> => {
-
-const mutationKey = ['topUpWallet'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof topUpWallet>>, {data: BodyType<TopUpBody>}> = (props) => {
-          const {data} = props ?? {};
-
-          return  topUpWallet(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type TopUpWalletMutationResult = NonNullable<Awaited<ReturnType<typeof topUpWallet>>>
-    export type TopUpWalletMutationBody = BodyType<TopUpBody>
-    export type TopUpWalletMutationError = ErrorType<unknown>
-
-    /**
- * @summary Admin-only direct wallet credit (cash kiosk, manual adjustment/refund)
- */
-export const useTopUpWallet = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof topUpWallet>>, TError,{data: BodyType<TopUpBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof topUpWallet>>,
-        TError,
-        {data: BodyType<TopUpBody>},
-        TContext
-      > => {
-      return useMutation(getTopUpWalletMutationOptions(options));
-    }
-
-export const getCreateTopUpIntentUrl = () => {
-
-
-
-
-  return `/api/wallet/topup/intent`
-}
-
-/**
- * Does not credit the wallet. Creates a pending top-up and returns a payment-provider checkout URL; the wallet is only credited once the provider confirms payment via /wallet/topup/webhook.
- * @summary Create a wallet top-up checkout session (passenger-callable)
- */
-export const createTopUpIntent = async (topUpIntentBody: TopUpIntentBody, options?: RequestInit): Promise<TopUpIntentResponse> => {
-
-  return customFetch<TopUpIntentResponse>(getCreateTopUpIntentUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(topUpIntentBody)
-  }
-);}
-
-
-
-
-export const getCreateTopUpIntentMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTopUpIntent>>, TError,{data: BodyType<TopUpIntentBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createTopUpIntent>>, TError,{data: BodyType<TopUpIntentBody>}, TContext> => {
-
-const mutationKey = ['createTopUpIntent'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTopUpIntent>>, {data: BodyType<TopUpIntentBody>}> = (props) => {
-          const {data} = props ?? {};
-
-          return  createTopUpIntent(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type CreateTopUpIntentMutationResult = NonNullable<Awaited<ReturnType<typeof createTopUpIntent>>>
-    export type CreateTopUpIntentMutationBody = BodyType<TopUpIntentBody>
-    export type CreateTopUpIntentMutationError = ErrorType<unknown>
-
-    /**
- * @summary Create a wallet top-up checkout session (passenger-callable)
- */
-export const useCreateTopUpIntent = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTopUpIntent>>, TError,{data: BodyType<TopUpIntentBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof createTopUpIntent>>,
-        TError,
-        {data: BodyType<TopUpIntentBody>},
-        TContext
-      > => {
-      return useMutation(getCreateTopUpIntentMutationOptions(options));
-    }
-
 export const getTapWalletUrl = () => {
 
 
@@ -2068,7 +1922,8 @@ export const getTapWalletUrl = () => {
 }
 
 /**
- * @summary NFC/QR card tap — deduct fare (mock reader interface)
+ * DEFERRED pending reader hardware procurement. Returns 503 unless the server sets FEATURE_QR_FARE_COLLECTION=true. Fares are currently collected in cash by the driver at drop-off.
+ * @summary [DEFERRED] NFC/QR card tap — deduct fare
  */
 export const tapWallet = async (tapBody: TapBody, options?: RequestInit): Promise<TapResponse> => {
 
@@ -2116,7 +1971,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type TapWalletMutationError = ErrorType<void>
 
     /**
- * @summary NFC/QR card tap — deduct fare (mock reader interface)
+ * @summary [DEFERRED] NFC/QR card tap — deduct fare
  */
 export const useTapWallet = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof tapWallet>>, TError,{data: BodyType<TapBody>}, TContext>, request?: SecondParameter<typeof customFetch>}

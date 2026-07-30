@@ -136,11 +136,22 @@ export default function Trips() {
                       <div className="font-medium">{trip.fareAmount ? formatPHP(trip.fareAmount) : "TBD"}</div>
                       <div className="text-xs text-muted-foreground">{trip.distanceKm ? `${trip.distanceKm.toFixed(1)} km` : "-"}</div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="max-w-[220px]">
                       {trip.driverRating != null ? (
-                        <span className="inline-flex items-center gap-1 text-sm font-medium text-amber-600">
-                          ★ {trip.driverRating}
-                        </span>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="inline-flex items-center gap-1 text-sm font-medium text-amber-600">
+                            {"★".repeat(trip.driverRating)}
+                            <span className="text-muted-foreground">{trip.driverRating}/5</span>
+                          </span>
+                          {trip.driverRatingComment ? (
+                            <span
+                              className="truncate text-xs italic text-muted-foreground"
+                              title={trip.driverRatingComment}
+                            >
+                              “{trip.driverRatingComment}”
+                            </span>
+                          ) : null}
+                        </div>
                       ) : (
                         <span className="text-sm text-muted-foreground">—</span>
                       )}

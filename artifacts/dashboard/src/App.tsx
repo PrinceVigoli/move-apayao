@@ -11,7 +11,6 @@ import Drivers from '@/pages/drivers';
 import FleetMap from '@/pages/fleet-map';
 import Incidents from '@/pages/incidents';
 import Analytics from '@/pages/analytics';
-import Wallets from '@/pages/wallets';
 import Subscriptions from '@/pages/subscriptions';
 import Loops from '@/pages/loops';
 import Users from '@/pages/users';
@@ -53,7 +52,6 @@ function ProtectedApp() {
         <Route path="/fleet" component={FleetMap} />
         <Route path="/incidents" component={Incidents} />
         <Route path="/analytics" component={Analytics} />
-        <Route path="/wallets" component={Wallets} />
         <Route path="/subscriptions" component={Subscriptions} />
         <Route path="/loops" component={Loops} />
         <Route path="/users" component={Users} />

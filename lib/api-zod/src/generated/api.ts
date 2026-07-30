@@ -262,6 +262,7 @@ export const CreateTripResponse = zod.object({
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
   "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
+  "driverRatingComment": zod.string().nullish().describe('Free-text feedback the passenger left with their rating, if any.'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -303,6 +304,7 @@ export const ListTripsResponse = zod.object({
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
   "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
+  "driverRatingComment": zod.string().nullish().describe('Free-text feedback the passenger left with their rating, if any.'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -338,6 +340,7 @@ export const GetTripResponse = zod.object({
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
   "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
+  "driverRatingComment": zod.string().nullish().describe('Free-text feedback the passenger left with their rating, if any.'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -375,6 +378,7 @@ export const AcceptTripResponse = zod.object({
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
   "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
+  "driverRatingComment": zod.string().nullish().describe('Free-text feedback the passenger left with their rating, if any.'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -412,6 +416,7 @@ export const DeclineTripResponse = zod.object({
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
   "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
+  "driverRatingComment": zod.string().nullish().describe('Free-text feedback the passenger left with their rating, if any.'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -449,6 +454,7 @@ export const CompleteTripResponse = zod.object({
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
   "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
+  "driverRatingComment": zod.string().nullish().describe('Free-text feedback the passenger left with their rating, if any.'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -490,6 +496,7 @@ export const CancelTripResponse = zod.object({
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
   "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
+  "driverRatingComment": zod.string().nullish().describe('Free-text feedback the passenger left with their rating, if any.'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
@@ -725,51 +732,8 @@ export const ListTransactionsResponse = zod.object({
 
 
 /**
- * Directly credits a wallet with no payment-provider step. Restricted to admins. Passengers topping up their own wallet must use /wallet/topup/intent, which requires a verified payment before the ledger is touched.
- * @summary Admin-only direct wallet credit (cash kiosk, manual adjustment/refund)
- */
-export const TopUpWalletBody = zod.object({
-  "userId": zod.string().uuid(),
-  "amount": zod.number(),
-  "referenceId": zod.string().optional()
-}).describe('Admin-only direct credit.')
-
-export const TopUpWalletResponse = zod.object({
-  "transaction": zod.object({
-  "id": zod.number(),
-  "walletId": zod.number(),
-  "userId": zod.string().uuid(),
-  "amount": zod.number(),
-  "type": zod.enum(['top_up', 'deduct', 'refund', 'adjustment']),
-  "description": zod.string().nullish(),
-  "referenceId": zod.string().nullish(),
-  "balanceBefore": zod.number(),
-  "balanceAfter": zod.number(),
-  "createdAt": zod.coerce.date()
-}),
-  "newBalance": zod.number()
-})
-
-
-/**
- * Does not credit the wallet. Creates a pending top-up and returns a payment-provider checkout URL; the wallet is only credited once the provider confirms payment via /wallet/topup/webhook.
- * @summary Create a wallet top-up checkout session (passenger-callable)
- */
-export const createTopUpIntentBodyAmountMax = 50000;
-
-
-
-export const CreateTopUpIntentBody = zod.object({
-  "amount": zod.number().max(createTopUpIntentBodyAmountMax)
-}).describe('Passenger-callable. Does not credit the wallet directly.')
-
-export const CreateTopUpIntentResponse = zod.object({
-  "checkoutUrl": zod.string()
-})
-
-
-/**
- * @summary NFC/QR card tap — deduct fare (mock reader interface)
+ * DEFERRED pending reader hardware procurement. Returns 503 unless the server sets FEATURE_QR_FARE_COLLECTION=true. Fares are currently collected in cash by the driver at drop-off.
+ * @summary [DEFERRED] NFC/QR card tap — deduct fare
  */
 export const TapWalletBody = zod.object({
   "cardId": zod.string(),
@@ -1000,6 +964,7 @@ export const GetAllTripsResponse = zod.object({
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
   "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
+  "driverRatingComment": zod.string().nullish().describe('Free-text feedback the passenger left with their rating, if any.'),
   "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),

@@ -1,13 +1,12 @@
-import { Router, type IRouter, type Request, type Response } from "express";
+import { Router, type IRouter } from "express";
 import { timingSafeEqual } from "crypto";
 import { eq, and, desc } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { fareWalletsTable, fareTransactionsTable, pendingTopUpsTable, auditLogsTable } from "@workspace/db";
+import { fareWalletsTable, fareTransactionsTable } from "@workspace/db";
 import { requireAuth, requireRole, type AuthenticatedRequest } from "../middlewares/auth";
 import { logger } from "../lib/logger";
 import { parsePagination } from "../lib/http";
 import { sensitiveActionLimiter } from "../lib/rate-limit";
-import { getPaymentProvider } from "../lib/payment-provider";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -50,214 +49,20 @@ router.get("/wallet/transactions", requireAuth, async (req, res): Promise<void> 
 });
 
 /**
- * POST /api/wallet/topup  (admin only)
- *
- * Directly credits a wallet with no external payment step. This is kept for
- * trusted-operator scenarios only (cash handed over at a staffed kiosk,
- * manual goodwill credit/refund) — it is intentionally NOT reachable by a
- * passenger for their own account. Self-service top-ups go through
- * /wallet/topup/intent + /wallet/topup/webhook below, which require an
- * actual payment-provider confirmation before the ledger is touched.
- */
-const AdminTopUpBody = z.object({
-  userId: z.string().uuid(),
-  amount: z.number().positive(),
-  referenceId: z.string().optional(),
-});
-
-router.post(
-  "/wallet/topup",
-  requireAuth,
-  requireRole("admin"),
-  async (req, res): Promise<void> => {
-    const authReq = req as AuthenticatedRequest;
-    const parsed = AdminTopUpBody.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.message });
-      return;
-    }
-
-    const tx = await db.transaction(async (trx) => {
-      const [wallet] = await trx
-        .select()
-        .from(fareWalletsTable)
-        .where(eq(fareWalletsTable.userId, parsed.data.userId))
-        .for("update");
-
-      if (!wallet) throw Object.assign(new Error("Wallet not found"), { status: 404 });
-
-      const balanceBefore = wallet.balance;
-      const balanceAfter = balanceBefore + parsed.data.amount;
-
-      await trx
-        .update(fareWalletsTable)
-        .set({ balance: balanceAfter, updatedAt: new Date() })
-        .where(eq(fareWalletsTable.id, wallet.id));
-
-      const [txRecord] = await trx
-        .insert(fareTransactionsTable)
-        .values({
-          walletId: wallet.id,
-          userId: parsed.data.userId,
-          amount: parsed.data.amount,
-          type: "top_up",
-          description: "Manual admin top-up",
-          referenceId: parsed.data.referenceId,
-          balanceBefore,
-          balanceAfter,
-        })
-        .returning();
-
-      await trx.insert(auditLogsTable).values({
-        actorUserId: authReq.user.id,
-        action: "wallet.topup",
-        targetUserId: parsed.data.userId,
-        amount: parsed.data.amount,
-        metadata: { referenceId: parsed.data.referenceId ?? null, transactionId: txRecord.id },
-      });
-
-      return { transaction: txRecord, newBalance: balanceAfter };
-    });
-
-    res.status(201).json(tx);
-  },
-);
-
-/**
- * POST /api/wallet/topup/intent
- *
- * Passenger-callable. Creates a pending top-up and a checkout session with
- * the payment provider. The wallet is NOT credited here — only once the
- * provider confirms payment via the webhook below.
- */
-const TopUpIntentBody = z.object({ amount: z.number().positive().max(50_000) });
-
-router.post("/wallet/topup/intent", requireAuth, sensitiveActionLimiter, async (req, res): Promise<void> => {
-  const authReq = req as AuthenticatedRequest;
-  const parsed = TopUpIntentBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-
-  const referenceId = `topup_${authReq.user.id}_${Date.now()}`;
-
-  try {
-    const checkout = await getPaymentProvider().createCheckout({
-      amount: parsed.data.amount,
-      referenceId,
-    });
-
-    await db.insert(pendingTopUpsTable).values({
-      userId: authReq.user.id,
-      amount: parsed.data.amount,
-      providerRef: checkout.id,
-      status: "pending",
-    });
-
-    res.status(201).json({ checkoutUrl: checkout.url });
-  } catch (err) {
-    logger.error({ err }, "Failed to create top-up checkout session");
-    res.status(502).json({ error: "Payment provider unavailable" });
-  }
-});
-
-/**
- * POST /api/wallet/topup/webhook
- *
- * Called by the payment provider, never by a client directly. Verifies the
- * provider's signature, then credits the wallet inside a transaction that
- * also flips the pending top-up to "completed" — re-deliveries of the same
- * event are a no-op because the pending row is only ever claimed once
- * (`status = 'pending'` in the WHERE clause, same atomic-claim pattern used
- * for trip state transitions).
- */
-router.post(
-  "/wallet/topup/webhook",
-  async (req: Request, res: Response): Promise<void> => {
-    const signature = req.headers["x-provider-signature"] as string | undefined;
-    const provider = getPaymentProvider();
-    const rawBody = req.body as Buffer; // requires express.raw() on this route in app wiring
-
-    if (!provider.verifySignature(rawBody, signature)) {
-      res.status(401).end();
-      return;
-    }
-
-    let event;
-    try {
-      event = provider.parseEvent(rawBody);
-    } catch (err) {
-      logger.error({ err }, "Failed to parse payment webhook event");
-      res.status(400).end();
-      return;
-    }
-
-    if (event.type !== "payment.succeeded") {
-      res.status(200).end();
-      return;
-    }
-
-    try {
-      await db.transaction(async (trx) => {
-        const [pending] = await trx
-          .update(pendingTopUpsTable)
-          .set({ status: "completed", updatedAt: new Date() })
-          .where(
-            and(
-              eq(pendingTopUpsTable.providerRef, event.referenceId),
-              eq(pendingTopUpsTable.status, "pending"),
-            ),
-          )
-          .returning();
-
-        if (!pending) return; // already processed or unknown ref — idempotent no-op
-
-        const [wallet] = await trx
-          .select()
-          .from(fareWalletsTable)
-          .where(eq(fareWalletsTable.userId, pending.userId))
-          .for("update");
-
-        if (!wallet) {
-          logger.error({ pendingId: pending.id }, "Top-up completed for a user with no wallet");
-          return;
-        }
-
-        const balanceBefore = wallet.balance;
-        const balanceAfter = balanceBefore + pending.amount;
-
-        await trx
-          .update(fareWalletsTable)
-          .set({ balance: balanceAfter, updatedAt: new Date() })
-          .where(eq(fareWalletsTable.id, wallet.id));
-
-        await trx.insert(fareTransactionsTable).values({
-          walletId: wallet.id,
-          userId: pending.userId,
-          amount: pending.amount,
-          type: "top_up",
-          description: "Wallet top-up",
-          referenceId: event.referenceId,
-          idempotencyKey: `topup_${event.referenceId}`,
-          balanceBefore,
-          balanceAfter,
-        });
-      });
-
-      res.status(200).end();
-    } catch (err) {
-      logger.error({ err }, "Failed to process top-up webhook");
-      res.status(500).end();
-    }
-  },
-);
-
-/**
  * POST /api/wallet/tap
  * NFC/QR card tap — swappable interface for the physical DOST hardware device.
+ *
+ * POST-PROCUREMENT: enable once NFC/QR readers are purchased.
+ *
+ * Fares are collected in CASH today, so this route is gated off by default.
+ * The implementation below is complete and correct — reader auth, idempotent
+ * deduction, ledger writes — it simply short-circuits with 503 until
+ * FEATURE_QR_FARE_COLLECTION=true is set. That keeps the code exercised by
+ * typecheck and ready to switch on without a rewrite, rather than rotting in
+ * a branch.
  */
 const READER_API_KEY = process.env.READER_API_KEY;
+const QR_FARE_COLLECTION_ENABLED = process.env.FEATURE_QR_FARE_COLLECTION === "true";
 
 function safeEqual(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
@@ -279,6 +84,15 @@ const TapBody = z.object({
 });
 
 router.post("/wallet/tap", sensitiveActionLimiter, async (req, res): Promise<void> => {
+  if (!QR_FARE_COLLECTION_ENABLED) {
+    res.status(503).json({
+      error: "Not yet available",
+      detail:
+        "QR/NFC fare collection is pending reader hardware procurement. Fares are collected in cash at drop-off.",
+    });
+    return;
+  }
+
   const readerKeyHeader = req.headers["x-reader-api-key"];
   const readerKey = Array.isArray(readerKeyHeader) ? readerKeyHeader[0] : readerKeyHeader;
   const bearerToken = req.headers.authorization?.startsWith("Bearer ")

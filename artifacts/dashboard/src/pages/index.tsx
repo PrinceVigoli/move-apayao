@@ -200,7 +200,6 @@ export default function Overview() {
                 { type: "incident", msg: "New flood report in Pudtol area", time: "15 min ago", icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-500/10" },
                 { type: "driver", msg: "Driver Maria S. went online", time: "28 min ago", icon: CarFront, color: "text-blue-500", bg: "bg-blue-500/10" },
                 { type: "trip", msg: "High demand in Conner loop", time: "1 hr ago", icon: Activity, color: "text-primary", bg: "bg-primary/10" },
-                { type: "wallet", msg: "Wallet top-up anomaly flagged", time: "2 hrs ago", icon: AlertTriangle, color: "text-destructive", bg: "bg-destructive/10" },
               ].map((activity, i) => (
                 <div key={i} className="flex items-start gap-3">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activity.bg} ${activity.color}`}>

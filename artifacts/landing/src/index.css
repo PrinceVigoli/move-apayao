@@ -1,0 +1,145 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Spline+Sans+Mono:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+/*
+  Brand tokens are copied verbatim from artifacts/dashboard/src/index.css so the
+  whole product family (landing -> mobile -> driver -> dashboard) reads as one
+  product. If the dashboard palette changes, change it here too.
+
+  The distinctive part of this palette is that "black" is actually a deep
+  Cordillera forest green (153 46% 11%) rather than neutral grey — the landing
+  page leans into that as its ground colour instead of defaulting to white.
+*/
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-ink: hsl(var(--ink));
+  --color-ink-soft: hsl(var(--ink-soft));
+
+  --font-sans: var(--app-font-sans);
+  --font-mono: var(--app-font-mono);
+
+  --radius-lg: var(--radius);
+}
+
+:root {
+  /* — from dashboard — */
+  --background: 40 20% 98%;
+  --foreground: 153 46% 11%;
+  --border: 40 15% 90%;
+  --primary: 11 86% 52%;
+  --primary-foreground: 0 0% 100%;
+  --muted-foreground: 153 10% 45%;
+  /* dashboard's --sidebar-primary, used here as the accent */
+  --accent: 44 95% 55%;
+  --accent-foreground: 153 46% 11%;
+  --muted: 40 15% 94%;
+
+  /* — landing-only: the dark ground and its softer text — */
+  --ink: 153 46% 9%;
+  --ink-soft: 153 20% 72%;
+
+  --app-font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --app-font-mono: 'Spline Sans Mono', ui-monospace, monospace;
+  --radius: 0.5rem;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--app-font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Type treatment: the display face is set tight and heavy; the mono face
+   carries every label, route code and figure — transit systems have a real
+   monospace vernacular (route numbers, plate numbers, timetables) and the
+   page borrows it rather than inventing decoration. */
+.display {
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.98;
+}
+
+.eyebrow {
+  font-family: var(--app-font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* Focus visibility floor — keyboard users must always see where they are. */
+:focus-visible {
+  outline: 2px solid hsl(var(--accent));
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* — Signature: the route strip —
+   A transit-map leg. The bead travels the line the way a vehicle travels a
+   loop, which is literally what the product is. */
+@keyframes bead-travel {
+  0% {
+    left: 0%;
+  }
+  100% {
+    left: calc(100% - 14px);
+  }
+}
+
+@keyframes pulse-stop {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.82);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rise {
+  animation: rise-in 0.7s cubic-bezier(0.22, 0.8, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

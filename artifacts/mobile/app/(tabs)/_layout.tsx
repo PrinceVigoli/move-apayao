@@ -23,10 +23,6 @@ function NativeTabLayout() {
         <Icon sf={{ default: 'map', selected: 'map.fill' }} />
         <Label>Routes</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="wallet">
-        <Icon sf={{ default: 'creditcard', selected: 'creditcard.fill' }} />
-        <Label>Wallet</Label>
-      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <Icon sf={{ default: 'person', selected: 'person.fill' }} />
         <Label>Profile</Label>
@@ -106,18 +102,6 @@ function ClassicTabLayout() {
               <SymbolView name="map" tintColor={color} size={24} />
             ) : (
               <Feather name="map" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="wallet"
-        options={{
-          title: 'Wallet',
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="creditcard" tintColor={color} size={24} />
-            ) : (
-              <Feather name="credit-card" size={22} color={color} />
             ),
         }}
       />

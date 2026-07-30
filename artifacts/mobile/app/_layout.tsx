@@ -20,9 +20,10 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { useColors } from '@/hooks/useColors';
 
 // Initialize API Base URL.
-// - Local dev outside Replit: set EXPO_PUBLIC_API_URL (see LOCAL_SETUP.md §8),
-//   e.g. EXPO_PUBLIC_API_URL=http://192.168.1.23:5000
-// - Running on Replit: falls back to the Replit tunnel domain automatically.
+// Set EXPO_PUBLIC_API_URL to the API server's address. On a physical device
+// this must be your machine's LAN IP, not localhost —
+// e.g. EXPO_PUBLIC_API_URL=http://192.168.1.23:5000
+// Hosted builds fall back to EXPO_PUBLIC_DOMAIN. See SETUP_GUIDE.md.
 setBaseUrl(API_BASE_URL);
 
 SplashScreen.preventAutoHideAsync();
@@ -73,7 +74,6 @@ function RootLayoutNav() {
       <Stack.Screen name="trip/[id]" options={{ presentation: 'modal' }} />
       <Stack.Screen name="trip/[id]/track" options={{ headerShown: false }} />
       <Stack.Screen name="route/[id]" options={{ presentation: 'card' }} />
-      <Stack.Screen name="transaction/[id]" options={{ presentation: 'modal' }} />
     </Stack>
   );
 }

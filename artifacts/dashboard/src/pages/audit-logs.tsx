@@ -42,8 +42,6 @@ async function fetchAuditLogs(): Promise<{ logs: AuditLog[] }> {
 
 function actionLabel(action: string) {
   switch (action) {
-    case "wallet.topup":
-      return "Wallet Top-up"
     default:
       return action
   }
@@ -70,7 +68,7 @@ export default function AuditLogs() {
       <Card>
         <CardHeader>
           <CardTitle>Recent Activity</CardTitle>
-          <CardDescription>Wallet top-ups and refunds performed by admins.</CardDescription>
+          <CardDescription>Administrative actions recorded across the system.</CardDescription>
         </CardHeader>
         <CardContent>
           {error && (

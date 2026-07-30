@@ -5,7 +5,7 @@ This guide covers two phases:
 1. **Run the project locally** using Docker (for Postgres/Redis) and VS Code (for the actual apps).
 2. **Deploy it** to DigitalOcean, using the GitHub and Supabase accounts you already have.
 
-It's written for the code in `System-Continue-fixed.zip`. That zip already contains a `LOCAL_SETUP.md` — this guide wraps around it, adds the Docker/VS Code specifics, and adds the DigitalOcean deployment part.
+For a quick overview of the repository and its packages, see [`README.md`](./README.md).
 
 ---
 
@@ -58,7 +58,7 @@ npm install -g pnpm
 
 ### 3.1 Open the project
 
-Unzip `System-Continue-fixed.zip`, then open the `System-Continue` folder in VS Code (`File > Open Folder`). Open a terminal inside VS Code (`` Ctrl+` ``) — you'll do everything below from there.
+Clone the repository and open the project folder in VS Code (`File > Open Folder`). Open a terminal inside VS Code (`` Ctrl+` ``) — you'll run everything below from there.
 
 Recommended: install the extensions listed in `extensions.json` (included alongside this guide) — VS Code will prompt you to install them automatically if you drop that file into `.vscode/extensions.json` in the project.
 
@@ -75,7 +75,7 @@ pnpm approve-builds esbuild
 
 ### 3.3 Start Postgres + Redis with Docker
 
-Instead of the raw `docker run` commands in `LOCAL_SETUP.md`, use the `docker-compose.yml` included with this guide — drop it in the project root and run:
+Use the `docker-compose.yml` in the project root:
 
 ```bash
 docker compose up -d
@@ -128,14 +128,13 @@ Check it: `curl http://localhost:5000/api/healthz` → `{"status":"ok"}`. If you
 
 **Dashboard:**
 ```bash
-PORT=5173 BASE_PATH=/ pnpm --filter @workspace/dashboard run dev
+pnpm --filter @workspace/dashboard run dev
 ```
 Open [http://localhost:5173](http://localhost:5173).
 
 **Mobile app:**
 ```bash
-cd artifacts/mobile
-pnpm exec expo start
+pnpm --filter @workspace/mobile run dev
 ```
 Scan the QR code with Expo Go, or press `w` for a web preview. Point it at your local API by setting `EXPO_PUBLIC_API_URL` to `http://<your-machine's-LAN-IP>:5000` (not `localhost` — a phone can't resolve that).
 
@@ -239,9 +238,9 @@ If you later move the API server to a Droplet instead of App Platform:
 
 ---
 
-## 6. Gotchas carried over from `LOCAL_SETUP.md`
+## 6. Gotchas
 
 - `pnpm-workspace.yaml` enforces a **1-day minimum package release age** for supply-chain safety. Don't remove it — a brand-new npm package version simply won't install until it's a day old.
-- `.replit`, `@replit/vite-plugin-*`, and the mobile app's `dev` script are Replit-specific and harmless outside Replit — the dashboard plugins no-op automatically. The mobile `dev` script does need the `pnpm exec expo start` workaround shown in §3.6.
+- The dashboard and landing site read `PORT` and `BASE_PATH` if set, but both are optional. Set `BASE_PATH` only when serving from a sub-path rather than a domain root.
 - Without `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` set, auth-gated API routes return 500 — this is the first thing to check if login-related calls fail.
 - The Postgres pool now has a 5-second connection timeout, so a wrong/missing `DATABASE_URL` fails fast with a clear error instead of hanging.

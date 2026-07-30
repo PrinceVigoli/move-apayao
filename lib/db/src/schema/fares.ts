@@ -13,6 +13,18 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
 
+/**
+ * DEFERRED FEATURE — digital wallet / QR-NFC fare collection.
+ *
+ * These tables (fare_wallets, fare_transactions, pending_top_ups) are
+ * provisioned but NOT used by the live trip flow. Fares are currently
+ * collected in CASH by the driver at drop-off, and all revenue reporting
+ * reads trips.fareAmount directly (see routes/analytics.ts).
+ *
+ * They are intentionally left in place so the QR/NFC tap-to-pay rollout
+ * (POST /wallet/tap, gated behind FEATURE_QR_FARE_COLLECTION) needs no
+ * migration once reader hardware is procured.
+ */
 export const fareWalletsTable = pgTable("fare_wallets", {
   id: serial("id").primaryKey(),
   userId: uuid("user_id")
@@ -63,10 +75,10 @@ export const fareTransactionsTable = pgTable(
   }),
 );
 
-// Pending top-up intents created by a passenger, resolved by a verified
-// payment-provider webhook. The wallet ledger (fareTransactionsTable) is
-// only ever credited from the webhook handler — never directly from a
-// passenger-initiated request. See routes/wallet.ts.
+// Pending top-up intents. UNUSED — the top-up endpoints and payment-provider
+// integration were removed when the project moved to cash fare collection.
+// Retained (empty) so the deferred digital-wallet rollout needs no migration;
+// see the DEFERRED FEATURE note above fareWalletsTable.
 export const pendingTopUpsTable = pgTable(
   "pending_top_ups",
   {

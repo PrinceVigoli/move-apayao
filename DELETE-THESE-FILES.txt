@@ -1,0 +1,27 @@
+A zip cannot delete files, so remove these manually after extracting.
+
+--- Replit cleanup (replaced by README.md) ---
+  replit.md
+  CHANGES.md
+  LOCAL_SETUP.md
+
+--- Cash fare model (top-up removed) ---
+  artifacts/api-server/src/lib/payment-provider.ts
+  artifacts/mobile/app/(tabs)/wallet.tsx
+  artifacts/mobile/app/transaction/          <- whole folder
+  artifacts/dashboard/src/pages/wallets.tsx
+
+PowerShell, from the repo root:
+
+  Remove-Item replit.md, CHANGES.md, LOCAL_SETUP.md -ErrorAction SilentlyContinue
+  Remove-Item artifacts\api-server\src\lib\payment-provider.ts -ErrorAction SilentlyContinue
+  Remove-Item "artifacts\mobile\app\(tabs)\wallet.tsx" -ErrorAction SilentlyContinue
+  Remove-Item -Recurse artifacts\mobile\app\transaction -ErrorAction SilentlyContinue
+  Remove-Item artifacts\dashboard\src\pages\wallets.tsx -ErrorAction SilentlyContinue
+
+Then:
+
+  pnpm install --no-frozen-lockfile
+  pnpm run typecheck
+
+Your .env.local files are NOT in this zip, so your existing ones stay untouched.
