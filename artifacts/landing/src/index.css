@@ -59,6 +59,12 @@ html {
   scroll-behavior: smooth;
 }
 
+/* The nav is fixed now (see Top.tsx), so anchor jumps need to stop short of
+   the top of the viewport or the target lands hidden behind the bar. */
+[id] {
+  scroll-margin-top: 88px;
+}
+
 body {
   margin: 0;
   background: hsl(var(--background));

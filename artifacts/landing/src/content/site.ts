@@ -1,21 +1,6 @@
-/**
- * Every piece of copy, link and figure on the landing page lives here so it can
- * be updated without touching component code.
- *
- * HONESTY RULE — read before editing:
- * This page must only claim things the system actually does today. Fares are
- * collected in CASH by the driver. QR/NFC tap-to-pay and wallet top-up are
- * built but switched off pending reader-hardware procurement, so they must NOT
- * appear here as available features.
- */
-
-/* ------------------------------------------------------------------ */
-/* Links — replace placeholders as each becomes available              */
-/* ------------------------------------------------------------------ */
 
 export const links = {
-  // TODO: swap for the real store listings once published. Until then these
-  // point at the Expo build pages so testers have somewhere real to land.
+
   passengerAndroid: 'https://expo.dev/accounts/moveapayao/projects/mobile',
   passengerIos: 'https://expo.dev/accounts/moveapayao/projects/mobile',
   driverAndroid: 'https://expo.dev/accounts/moveapayao/projects/driver',
@@ -28,10 +13,6 @@ export const links = {
 
 export const storesAreLive = false; // flip to true once App Store / Play listings exist
 
-/* ------------------------------------------------------------------ */
-/* Hero                                                                */
-/* ------------------------------------------------------------------ */
-
 export const hero = {
   eyebrow: 'Pudtol · Apayao',
   title: 'E-trike rides you can actually track.',
@@ -41,10 +22,7 @@ export const hero = {
   note: 'Free to download. No account fees.',
 };
 
-/* ------------------------------------------------------------------ */
-/* How it works — a real sequence, so numbering is meaningful          */
-/* ------------------------------------------------------------------ */
-
+/* sequence of steps for the "How it works" section on the landing page */
 export const steps = [
   {
     n: '01',
@@ -72,14 +50,6 @@ export const steps = [
 /* Coverage                                                            */
 /* ------------------------------------------------------------------ */
 
-/**
- * PLACEHOLDER ROUTE — not yet confirmed operational data.
- *
- * These stops are stand-ins so the page renders. Before this site goes public,
- * replace them with the real active loop from the `loops` / `loop_stops` tables
- * (see lib/db/src/schema/loops.ts) and confirm the stop list with whoever
- * operates the fleet. Do not publish invented routes.
- */
 export const routeStrip = {
   code: 'LOOP 01',
   name: 'Poblacion Loop',
@@ -100,10 +70,6 @@ export const coverage = {
   caveat:
     'Coverage is expanding. If your barangay is not on the loop yet, tell us — requests help the LGU decide which route comes next.',
 };
-
-/* ------------------------------------------------------------------ */
-/* Features — each maps to something actually shipped                  */
-/* ------------------------------------------------------------------ */
 
 export const features = [
   {
@@ -156,10 +122,6 @@ export const drivers = {
   note: 'The driver app is a separate download from the passenger app.',
 };
 
-/* ------------------------------------------------------------------ */
-/* Stakeholders                                                        */
-/* ------------------------------------------------------------------ */
-
 export const stakeholders = {
   eyebrow: 'For the LGU and partners',
   title: 'Every trip is a record you can report on.',
@@ -185,9 +147,6 @@ export const stakeholders = {
   cta: 'Open the admin dashboard',
 };
 
-/* ------------------------------------------------------------------ */
-/* FAQ                                                                 */
-/* ------------------------------------------------------------------ */
 
 export const faqs = [
   {
@@ -220,16 +179,11 @@ export const faqs = [
   },
 ];
 
-/* ------------------------------------------------------------------ */
-/* Footer                                                              */
-/* ------------------------------------------------------------------ */
-
 export const footer = {
-  org: 'Local Government Unit of Pudtol',
+  org: 'MOVE Apayao',
   province: 'Province of Apayao · Cordillera Administrative Region',
   support:
-    'Developed with support from the Department of Science and Technology.',
-  // TODO: confirm the public contact details the LGU wants listed.
-  contactLabel: 'lgu.pudtol@example.gov.ph',
-  phoneLabel: '0908 924 9750',
+    'A Project of the Department of Science and Technology.',
+  contactLabel: 'dost@email.com',
+  phoneLabel: '09123456789',
 };

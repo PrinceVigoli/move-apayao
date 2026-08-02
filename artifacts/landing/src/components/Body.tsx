@@ -75,11 +75,16 @@ export function Features() {
         {features.map((f) => {
           const Icon = ICONS[f.icon] ?? MapPin;
           return (
-            <div key={f.title}>
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <div
+              key={f.title}
+              className="group -m-3 rounded-xl p-3 transition-colors duration-200 hover:bg-muted/50"
+            >
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-transform duration-200 group-hover:scale-110">
                 <Icon size={19} />
               </span>
-              <h3 className="mt-4 font-bold">{f.title}</h3>
+              <h3 className="mt-4 font-bold transition-colors duration-200 group-hover:text-primary">
+                {f.title}
+              </h3>
               <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
                 {f.body}
               </p>
@@ -103,7 +108,7 @@ export function Drivers() {
           <div className="mt-9 flex flex-wrap items-center gap-3">
             <a
               href={links.driverAndroid}
-              className="group inline-flex items-center gap-2 rounded-lg bg-accent px-6 py-3.5 font-semibold text-accent-foreground transition-transform hover:-translate-y-0.5"
+              className="group inline-flex items-center gap-2 rounded-lg bg-accent px-6 py-3.5 font-semibold text-accent-foreground transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]"
             >
               {drivers.cta}
               <ArrowRight
@@ -141,8 +146,13 @@ export function Stakeholders() {
 
       <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2">
         {stakeholders.items.map((item) => (
-          <div key={item.title} className="bg-background p-7">
-            <h3 className="font-bold">{item.title}</h3>
+          <div
+            key={item.title}
+            className="group bg-background p-7 transition-colors duration-200 hover:bg-muted/30"
+          >
+            <h3 className="font-bold transition-colors duration-200 group-hover:text-primary">
+              {item.title}
+            </h3>
             <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
               {item.body}
             </p>
@@ -152,7 +162,7 @@ export function Stakeholders() {
 
       <a
         href={links.dashboard}
-        className="group mt-9 inline-flex items-center gap-2 font-semibold text-primary"
+        className="group mt-9 inline-flex items-center gap-2 font-semibold text-primary transition-opacity duration-150 hover:opacity-80 active:opacity-60"
       >
         {stakeholders.cta}
         <ArrowRight
@@ -175,6 +185,7 @@ export function Faq() {
         <div className="mt-10 divide-y divide-border border-y border-border">
           {faqs.map((faq, i) => {
             const isOpen = open === i;
+            const panelId = `faq-panel-${i}`;
             return (
               <div key={faq.q}>
                 <h3>
@@ -182,12 +193,13 @@ export function Faq() {
                     type="button"
                     onClick={() => setOpen(isOpen ? null : i)}
                     aria-expanded={isOpen}
-                    className="flex w-full items-center justify-between gap-6 py-5 text-left"
+                    aria-controls={panelId}
+                    className="flex w-full items-center justify-between gap-6 py-5 text-left transition-colors duration-150 hover:bg-foreground/[0.03]"
                   >
                     <span className="font-semibold">{faq.q}</span>
                     <span
                       aria-hidden="true"
-                      className={`shrink-0 font-mono text-lg text-primary transition-transform ${
+                      className={`shrink-0 font-mono text-lg text-primary transition-transform duration-200 ${
                         isOpen ? 'rotate-45' : ''
                       }`}
                     >
@@ -195,11 +207,19 @@ export function Faq() {
                     </span>
                   </button>
                 </h3>
-                {isOpen && (
-                  <p className="-mt-1 pb-6 pr-10 text-[15px] leading-relaxed text-muted-foreground">
-                    {faq.a}
-                  </p>
-                )}
+                {/* Grid-rows trick animates height without measuring it in JS —
+                    a plain conditional render here would just snap open/closed. */}
+                <div
+                  id={panelId}
+                  className="grid overflow-hidden transition-[grid-template-rows] duration-300 ease-out"
+                  style={{ gridTemplateRows: isOpen ? '1fr' : '0fr' }}
+                >
+                  <div className="min-h-0 overflow-hidden">
+                    <p className="-mt-1 pb-6 pr-10 text-[15px] leading-relaxed text-muted-foreground">
+                      {faq.a}
+                    </p>
+                  </div>
+                </div>
               </div>
             );
           })}
