@@ -57,6 +57,28 @@ export const routeStrip = {
   stops: ['Poblacion', 'Cabatacan', 'Emilia', 'Swan', 'Doña Loreta'],
 };
 
+/**
+ * Coordinates for the same stops, used by the coverage map.
+ *
+ * Keep this list in the SAME ORDER as routeStrip.stops above — the map draws
+ * the connecting line in array order, and the first and last entries are
+ * rendered as route termini.
+ *
+ * Like the stop names, these are approximate placeholders. Replace with real
+ * coordinates from the `loop_stops` table before publishing.
+ */
+export const loopGeometry = {
+  center: [18.2705, 121.3646] as [number, number],
+  zoom: 12,
+  stops: [
+    { name: 'Poblacion', lat: 18.2705, lon: 121.3646 },
+    { name: 'Cabatacan', lat: 18.2832, lon: 121.3521 },
+    { name: 'Emilia', lat: 18.2951, lon: 121.3702 },
+    { name: 'Swan', lat: 18.2788, lon: 121.3889 },
+    { name: 'Doña Loreta', lat: 18.2604, lon: 121.3795 },
+  ],
+};
+
 export const coverage = {
   eyebrow: 'Where we run',
   title: 'One loop today. More as the fleet grows.',

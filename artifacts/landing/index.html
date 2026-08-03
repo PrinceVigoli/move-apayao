@@ -3,20 +3,68 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <title>MOVE Apayao — E-trike rides you can track, in Pudtol</title>
     <meta
       name="description"
       content="Book an e-trike from your barangay in Pudtol, Apayao. Track your driver in real time, ride the loop, pay the fare in cash. A DOST-supported LGU transport service."
     />
+
+    <!-- Update SITE_URL below to the real domain once deployed, then update
+         public/robots.txt and public/sitemap.xml to match. -->
+    <link rel="canonical" href="https://moveapayao.gov.ph/" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/og-image.png" />
     <meta name="theme-color" content="#0f2a1e" />
-    <meta property="og:title" content="MOVE Apayao" />
+
+    <!-- Open Graph: this is what Facebook and Messenger render, which is how a
+         link like this actually spreads locally. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="MOVE Apayao" />
+    <meta property="og:title" content="MOVE Apayao — E-trike rides you can track" />
     <meta
       property="og:description"
-      content="E-trike rides you can track, in Pudtol, Apayao. Book, watch your driver approach, pay in cash."
+      content="Book from your barangay in Pudtol, Apayao. Watch your driver arrive on the map. Pay the fare in cash."
     />
-    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://moveapayao.gov.ph/" />
+    <meta property="og:image" content="https://moveapayao.gov.ph/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="MOVE Apayao — e-trike rides you can actually track, Pudtol, Apayao." />
+    <meta property="og:locale" content="en_PH" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="MOVE Apayao — E-trike rides you can track" />
+    <meta
+      name="twitter:description"
+      content="Book from your barangay in Pudtol, Apayao. Watch your driver arrive on the map. Pay the fare in cash."
+    />
+    <meta name="twitter:image" content="https://moveapayao.gov.ph/og-image.png" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "GovernmentService",
+        "name": "MOVE Apayao",
+        "description": "E-trike and e-jeepney ride booking for the Municipality of Pudtol, Apayao.",
+        "provider": {
+          "@type": "GovernmentOrganization",
+          "name": "Local Government Unit of Pudtol"
+        },
+        "areaServed": {
+          "@type": "AdministrativeArea",
+          "name": "Pudtol, Apayao, Philippines"
+        },
+        "availableChannel": {
+          "@type": "ServiceChannel",
+          "serviceType": "Mobile application"
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

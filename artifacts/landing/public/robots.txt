@@ -1,0 +1,5 @@
+# MOVE Apayao — public information site. Indexing is welcome.
+User-agent: *
+Allow: /
+
+Sitemap: https://moveapayao.gov.ph/sitemap.xml

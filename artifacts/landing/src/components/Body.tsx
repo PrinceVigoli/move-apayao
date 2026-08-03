@@ -20,6 +20,7 @@ import {
   stakeholders,
 } from '@/content/site';
 import { RouteStrip } from '@/components/RouteStrip';
+import { CoverageMap } from '@/components/CoverageMap';
 
 const ICONS: Record<string, LucideIcon> = {
   MapPin,
@@ -35,7 +36,7 @@ export function Coverage() {
     <section id="coverage" className="border-y border-border bg-muted/40">
       <div className="mx-auto grid max-w-6xl gap-12 px-6 py-20 md:grid-cols-2 md:py-28">
         <div>
-          <p className="eyebrow text-primary">{coverage.eyebrow}</p>
+          <p className="eyebrow text-primary-strong">{coverage.eyebrow}</p>
           <h2 className="display mt-4 text-3xl sm:text-4xl">{coverage.title}</h2>
           <p className="mt-5 text-[15px] leading-relaxed text-muted-foreground">
             {coverage.body}
@@ -55,8 +56,11 @@ export function Coverage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-border bg-background p-6 md:p-8">
-          <RouteStrip tone="light" />
+        <div className="space-y-5">
+          <CoverageMap />
+          <div className="rounded-2xl border border-border bg-background p-6 md:p-8">
+            <RouteStrip tone="light" />
+          </div>
         </div>
       </div>
     </section>
@@ -66,7 +70,7 @@ export function Coverage() {
 export function Features() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-20 md:py-28">
-      <p className="eyebrow text-primary">What the app does</p>
+      <p className="eyebrow text-primary-strong">What the app does</p>
       <h2 className="display mt-4 max-w-2xl text-3xl sm:text-4xl">
         Built for the way people actually travel here.
       </h2>
@@ -82,7 +86,7 @@ export function Features() {
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-transform duration-200 group-hover:scale-110">
                 <Icon size={19} />
               </span>
-              <h3 className="mt-4 font-bold transition-colors duration-200 group-hover:text-primary">
+              <h3 className="mt-4 font-bold transition-colors duration-200 group-hover:text-primary-strong">
                 {f.title}
               </h3>
               <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
@@ -137,7 +141,7 @@ export function Stakeholders() {
   return (
     <section id="partners" className="mx-auto max-w-6xl px-6 py-20 md:py-28">
       <div className="max-w-2xl">
-        <p className="eyebrow text-primary">{stakeholders.eyebrow}</p>
+        <p className="eyebrow text-primary-strong">{stakeholders.eyebrow}</p>
         <h2 className="display mt-4 text-3xl sm:text-4xl">{stakeholders.title}</h2>
         <p className="mt-5 text-[15px] leading-relaxed text-muted-foreground">
           {stakeholders.body}
@@ -150,7 +154,7 @@ export function Stakeholders() {
             key={item.title}
             className="group bg-background p-7 transition-colors duration-200 hover:bg-muted/30"
           >
-            <h3 className="font-bold transition-colors duration-200 group-hover:text-primary">
+            <h3 className="font-bold transition-colors duration-200 group-hover:text-primary-strong">
               {item.title}
             </h3>
             <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
@@ -179,7 +183,7 @@ export function Faq() {
   return (
     <section id="faq" className="border-t border-border bg-muted/40">
       <div className="mx-auto max-w-3xl px-6 py-20 md:py-28">
-        <p className="eyebrow text-primary">Questions</p>
+        <p className="eyebrow text-primary-strong">Questions</p>
         <h2 className="display mt-4 text-3xl sm:text-4xl">Before you ride.</h2>
 
         <div className="mt-10 divide-y divide-border border-y border-border">
@@ -199,7 +203,7 @@ export function Faq() {
                     <span className="font-semibold">{faq.q}</span>
                     <span
                       aria-hidden="true"
-                      className={`shrink-0 font-mono text-lg text-primary transition-transform duration-200 ${
+                      className={`shrink-0 font-mono text-lg text-primary-strong transition-transform duration-200 ${
                         isOpen ? 'rotate-45' : ''
                       }`}
                     >
@@ -244,19 +248,19 @@ export function Footer() {
 
           <div>
             <p className="eyebrow text-white">Get the apps</p>
-            <ul className="mt-4 space-y-2 text-sm">
+            <ul className="mt-3 text-sm">
               <li>
-                <a href={links.passengerAndroid} className="hover:text-white">
+                <a href={links.passengerAndroid} className="inline-block py-1.5 hover:text-white">
                   Passenger app
                 </a>
               </li>
               <li>
-                <a href={links.driverAndroid} className="hover:text-white">
+                <a href={links.driverAndroid} className="inline-block py-1.5 hover:text-white">
                   Driver app
                 </a>
               </li>
               <li>
-                <a href={links.dashboard} className="hover:text-white">
+                <a href={links.dashboard} className="inline-block py-1.5 hover:text-white">
                   Admin dashboard
                 </a>
               </li>
@@ -265,15 +269,15 @@ export function Footer() {
 
           <div>
             <p className="eyebrow text-white">Contact</p>
-            <ul className="mt-4 space-y-2 text-sm">
+            <ul className="mt-3 text-sm">
               <li>{footer.org}</li>
               <li>
-                <a href={links.email} className="hover:text-white">
+                <a href={links.email} className="inline-block py-1.5 hover:text-white">
                   {footer.contactLabel}
                 </a>
               </li>
               <li>
-                <a href={links.phone} className="hover:text-white">
+                <a href={links.phone} className="inline-block py-1.5 hover:text-white">
                   {footer.phoneLabel}
                 </a>
               </li>

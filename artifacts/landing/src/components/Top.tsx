@@ -1,6 +1,7 @@
 import { ArrowRight, Menu, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { hero, links, steps, storesAreLive } from '@/content/site';
+import { ILOCANO_READY, LANGUAGES } from '@/content/i18n';
 import { RouteStrip } from '@/components/RouteStrip';
 
 const NAV = [
@@ -36,7 +37,7 @@ export function Nav() {
       }`}
     >
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <a href="#top" className="flex items-baseline gap-2 text-white">
+        <a href="#top" className="flex items-baseline gap-2 py-2 text-white">
           <span className="display text-xl">MOVE</span>
           <span className="eyebrow text-accent">Apayao</span>
         </a>
@@ -52,6 +53,11 @@ export function Nav() {
               </a>
             </li>
           ))}
+          {ILOCANO_READY && (
+            <li>
+              <LangToggle />
+            </li>
+          )}
           <li>
             <a
               href={links.passengerAndroid}
@@ -65,7 +71,7 @@ export function Nav() {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="text-white md:hidden"
+          className="-mr-2 flex h-11 w-11 items-center justify-center text-white md:hidden"
           aria-expanded={open}
           aria-label={open ? 'Close menu' : 'Open menu'}
         >
@@ -177,7 +183,7 @@ export function Hero() {
 export function HowItWorks() {
   return (
     <section id="how" className="mx-auto max-w-6xl px-6 py-20 md:py-28">
-      <p className="eyebrow text-primary">How it works</p>
+      <p className="eyebrow text-primary-strong">How it works</p>
       <h2 className="display mt-4 max-w-2xl text-3xl sm:text-4xl">
         Four steps, start to finish.
       </h2>
@@ -187,7 +193,7 @@ export function HowItWorks() {
       <ol className="mt-12 grid gap-x-10 gap-y-10 sm:grid-cols-2">
         {steps.map((step) => (
           <li key={step.n} className="border-t border-border pt-5">
-            <span className="font-mono text-sm font-semibold text-primary">{step.n}</span>
+            <span className="font-mono text-sm font-semibold text-primary-strong">{step.n}</span>
             <h3 className="mt-2 text-lg font-bold">{step.title}</h3>
             <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
               {step.body}
@@ -196,5 +202,40 @@ export function HowItWorks() {
         ))}
       </ol>
     </section>
+  );
+}
+
+
+/**
+ * Language switcher. Hidden until ILOCANO_READY is set — see content/i18n.ts
+ * for why (unreviewed translation on a government site is worse than English).
+ */
+function LangToggle() {
+  const [lang, setLang] = useState<string>(
+    () => localStorage.getItem('moveapayao.lang') ?? 'en',
+  );
+
+  const choose = (code: string) => {
+    setLang(code);
+    localStorage.setItem('moveapayao.lang', code);
+    document.documentElement.lang = code;
+  };
+
+  return (
+    <div className="flex items-center gap-1 rounded-lg border border-white/20 p-0.5">
+      {LANGUAGES.map((l) => (
+        <button
+          key={l.code}
+          type="button"
+          onClick={() => choose(l.code)}
+          aria-pressed={lang === l.code}
+          className={`rounded px-2 py-1 font-mono text-[11px] tracking-wide transition-colors ${
+            lang === l.code ? 'bg-white/15 text-white' : 'text-ink-soft hover:text-white'
+          }`}
+        >
+          {l.short}
+        </button>
+      ))}
+    </div>
   );
 }
