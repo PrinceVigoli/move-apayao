@@ -61,7 +61,7 @@ export default function ProfileScreen() {
               </Text>
             )}
             <View style={styles.statusLine}>
-              <View style={[styles.statusDot, { backgroundColor: isOnline ? '#10b981' : colors.mutedForeground }]} />
+              <View style={[styles.statusDot, { backgroundColor: isOnline ? colors.success : colors.mutedForeground }]} />
               <Text style={[styles.statusText, { color: colors.mutedForeground }]}>
                 {isOnline ? 'Online' : 'Offline'}
               </Text>

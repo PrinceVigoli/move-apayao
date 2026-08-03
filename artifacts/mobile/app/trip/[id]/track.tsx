@@ -83,7 +83,7 @@ export default function TrackDriverScreen() {
         <View
           style={[
             styles.connDot,
-            { backgroundColor: connected ? '#10b981' : colors.mutedForeground },
+            { backgroundColor: connected ? colors.success : colors.mutedForeground },
           ]}
         />
         <Text style={[styles.connText, { color: colors.foreground }]}>

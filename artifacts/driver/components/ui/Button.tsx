@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Animated } from 'react-native';
 import { useColors } from '@/hooks/useColors';
 import * as Haptics from 'expo-haptics';
 
@@ -12,8 +12,22 @@ interface ButtonProps {
   disabled?: boolean;
   icon?: React.ReactNode;
   style?: any;
+  accessibilityHint?: string;
 }
 
+/**
+ * Primary action control.
+ *
+ * Filled variants carry a soft shadow so the main action stands out from the
+ * surface it sits on — on a busy map screen a flat button competes with
+ * everything else. Pressing scales the button down slightly: on a phone your
+ * thumb covers the control, so the confirmation has to be visible around your
+ * finger, not under it.
+ *
+ * Coloured text (ghost/outline) uses `primaryStrong` rather than `primary`:
+ * the button-surface colour isn't dark enough to read as small text on a
+ * light background.
+ */
 export function Button({
   onPress,
   title,
@@ -23,80 +37,87 @@ export function Button({
   disabled = false,
   icon,
   style,
+  accessibilityHint,
 }: ButtonProps) {
   const colors = useColors();
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const isFilled = variant === 'default' || variant === 'destructive';
+  const inactive = disabled || loading;
 
   const handlePress = () => {
-    if (disabled || loading) return;
+    if (inactive) return;
     Haptics.selectionAsync();
     onPress();
   };
 
-  const getBackgroundColor = () => {
-    if (variant === 'default') return colors.primary;
-    if (variant === 'secondary') return colors.secondary;
-    if (variant === 'destructive') return colors.destructive;
-    return 'transparent';
-  };
+  const animate = (to: number) =>
+    Animated.spring(scale, {
+      toValue: to,
+      useNativeDriver: true,
+      speed: 40,
+      bounciness: 0,
+    }).start();
 
-  const getTextColor = () => {
-    if (variant === 'default') return colors.primaryForeground;
-    if (variant === 'secondary') return colors.secondaryForeground;
-    if (variant === 'destructive') return colors.destructiveForeground;
-    if (variant === 'ghost') return colors.primary;
-    return colors.foreground;
-  };
+  const backgroundColor =
+    variant === 'default'
+      ? colors.primary
+      : variant === 'secondary'
+        ? colors.secondary
+        : variant === 'destructive'
+          ? colors.destructive
+          : 'transparent';
 
-  const getBorderColor = () => {
-    if (variant === 'outline') return colors.border;
-    return 'transparent';
-  };
+  const textColor =
+    variant === 'default'
+      ? colors.primaryForeground
+      : variant === 'secondary'
+        ? colors.secondaryForeground
+        : variant === 'destructive'
+          ? colors.destructiveForeground
+          : variant === 'ghost'
+            ? colors.primaryStrong
+            : colors.foreground;
 
-  const getHeight = () => {
-    if (size === 'sm') return 36;
-    if (size === 'lg') return 56;
-    return 48; // md
-  };
-
-  const getFontSize = () => {
-    if (size === 'sm') return 14;
-    if (size === 'lg') return 18;
-    return 16; // md
-  };
+  const height = size === 'sm' ? 40 : size === 'lg' ? 56 : 48;
+  const fontSize = size === 'sm' ? 14 : size === 'lg' ? 17 : 16;
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.8}
-      onPress={handlePress}
-      style={[
-        styles.button,
-        {
-          backgroundColor: getBackgroundColor(),
-          borderColor: getBorderColor(),
-          borderWidth: variant === 'outline' ? 1 : 0,
-          height: getHeight(),
-          borderRadius: colors.radius,
-          opacity: disabled || loading ? 0.6 : 1,
-        },
-        style,
-      ]}
-    >
-      {loading ? (
-        <ActivityIndicator color={getTextColor()} />
-      ) : (
-        <View style={styles.content}>
-          {icon && <View style={styles.iconContainer}>{icon}</View>}
-          <Text
-            style={[
-              styles.text,
-              { color: getTextColor(), fontSize: getFontSize() },
-            ]}
-          >
-            {title}
-          </Text>
-        </View>
-      )}
-    </TouchableOpacity>
+    <Animated.View style={[{ transform: [{ scale }] }, style]}>
+      <Pressable
+        onPress={handlePress}
+        onPressIn={() => !inactive && animate(0.97)}
+        onPressOut={() => animate(1)}
+        disabled={inactive}
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        accessibilityHint={accessibilityHint}
+        accessibilityState={{ disabled: inactive, busy: loading }}
+        style={[
+          styles.button,
+          {
+            backgroundColor,
+            borderColor: variant === 'outline' ? colors.input : 'transparent',
+            borderWidth: variant === 'outline' ? 1.5 : 0,
+            height,
+            borderRadius: colors.radius,
+            opacity: disabled ? 0.45 : 1,
+          },
+          isFilled && !disabled && styles.raised,
+        ]}
+      >
+        {loading ? (
+          <ActivityIndicator color={textColor} />
+        ) : (
+          <View style={styles.content}>
+            {icon && <View style={styles.iconContainer}>{icon}</View>}
+            <Text style={[styles.text, { color: textColor, fontSize }]} numberOfLines={1}>
+              {title}
+            </Text>
+          </View>
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -105,17 +126,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
+  },
+  raised: {
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconContainer: {
-    marginRight: 8,
-  },
+  iconContainer: { marginRight: 8 },
   text: {
     fontFamily: 'Inter_600SemiBold',
+    letterSpacing: 0.1,
   },
 });

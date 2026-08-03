@@ -285,7 +285,7 @@ export default function BookRideScreen() {
             <ActivityIndicator size="small" color={colors.primary} />
           ) : (
             <>
-              <View style={[styles.countDot, { backgroundColor: availableCount > 0 ? '#10b981' : colors.mutedForeground }]} />
+              <View style={[styles.countDot, { backgroundColor: availableCount > 0 ? colors.success : colors.mutedForeground }]} />
               <Text style={[styles.countText, { color: colors.foreground }]}>
                 {availableCount} e-trike{availableCount === 1 ? '' : 's'} nearby
               </Text>
@@ -364,9 +364,9 @@ export default function BookRideScreen() {
             <>
               <View style={styles.inputWrapper}>
                 <View style={styles.dotLine}>
-                  <View style={[styles.dot, { backgroundColor: colors.primary }]} />
+                  <View style={[styles.dot, { backgroundColor: colors.success }]} />
                   <View style={[styles.line, { backgroundColor: colors.border }]} />
-                  <View style={[styles.square, { backgroundColor: colors.destructive }]} />
+                  <View style={[styles.square, { backgroundColor: colors.primary }]} />
                 </View>
                 <View style={styles.inputs}>
                   {/* Pickup row */}
@@ -401,7 +401,7 @@ export default function BookRideScreen() {
                       <Feather
                         name="crosshair"
                         size={16}
-                        color={selectMode === 'pickup' ? colors.primary : colors.mutedForeground}
+                        color={selectMode === 'pickup' ? colors.success : colors.mutedForeground}
                       />
                     )}
                   </View>
@@ -441,7 +441,7 @@ export default function BookRideScreen() {
                       <Feather
                         name="map-pin"
                         size={16}
-                        color={selectMode === 'dropoff' ? colors.destructive : colors.mutedForeground}
+                        color={selectMode === 'dropoff' ? colors.primary : colors.mutedForeground}
                       />
                     )}
                   </View>

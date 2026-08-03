@@ -184,7 +184,7 @@ export function RouteMap({
     showRecenterButton ?? (!!userLocation && !userLocationIsFallback && !isRouteMode);
 
   return (
-    <View style={[styles.wrap, style]}>
+    <View style={[styles.wrap, { backgroundColor: colors.muted }, style]}>
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
@@ -234,8 +234,8 @@ export function RouteMap({
                 : undefined
             }
           >
-            <View style={[styles.pin, { backgroundColor: colors.primary }]}>
-              <Feather name="navigation" size={14} color={colors.primaryForeground} />
+            <View style={[styles.pin, { backgroundColor: colors.success }]}>
+              <Feather name="navigation" size={14} color={colors.successForeground} />
             </View>
           </Marker>
         )}
@@ -252,7 +252,7 @@ export function RouteMap({
                 : undefined
             }
           >
-            <View style={[styles.pin, { backgroundColor: colors.destructive }]}>
+            <View style={[styles.pin, { backgroundColor: colors.primary }]}>
               <Feather name="map-pin" size={14} color="#fff" />
             </View>
           </Marker>
@@ -302,7 +302,6 @@ export function RouteMap({
 const styles = StyleSheet.create({
   wrap: {
     overflow: 'hidden',
-    backgroundColor: '#e2e8f0',
   },
   pin: {
     width: 30,

@@ -297,7 +297,7 @@ export default function TripDetailScreen() {
                 <View style={[styles.ratedRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <Text style={[styles.ratedText, { color: colors.foreground }]}>
                     You rated this trip{' '}
-                    <Text style={{ color: '#f59e0b' }}>
+                    <Text style={{ color: colors.accent }}>
                       {'★'.repeat(data.myRating.rating)}
                     </Text>
                   </Text>

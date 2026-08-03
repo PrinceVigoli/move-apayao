@@ -83,7 +83,7 @@ export default function DriveScreen() {
 
       {/* Online status pill */}
       <View style={[styles.statusPill, { top: insets.top + 12, backgroundColor: colors.card }]}>
-        <View style={[styles.statusDot, { backgroundColor: isOnline ? '#10b981' : colors.mutedForeground }]} />
+        <View style={[styles.statusDot, { backgroundColor: isOnline ? colors.success : colors.mutedForeground }]} />
         <Text style={[styles.statusText, { color: colors.foreground }]}>
           {isOnline ? 'Online' : 'Offline'}
         </Text>
