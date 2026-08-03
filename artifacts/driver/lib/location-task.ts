@@ -1,6 +1,6 @@
 import * as TaskManager from 'expo-task-manager';
 import * as Location from 'expo-location';
-import { supabase } from '@/lib/supabase';
+import { getAccessToken } from '@/lib/session';
 import { API_BASE_URL } from '@/lib/api-config';
 
 /**
@@ -9,7 +9,7 @@ import { API_BASE_URL } from '@/lib/api-config';
  * This runs OUTSIDE the React tree — even when the app is backgrounded or the
  * phone is locked — so it can't use the generated api-client hooks or the
  * app's fetch wrapper. It talks to the backend with a raw fetch, reading the
- * Supabase access token straight from the persisted session (AsyncStorage),
+ * access token straight from the shared session store (AsyncStorage),
  * exactly the token the in-app client would attach.
  *
  * expo-task-manager requires the task to be DEFINED at module top-level and
@@ -35,8 +35,10 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
   if (!latest || !API_BASE_URL) return;
 
   try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData.session?.access_token;
+    // Runs outside React, so it uses the shared session store directly.
+    // getAccessToken() refreshes if needed, which matters here: a driver can
+    // be on shift for hours, far longer than one access token lives.
+    const token = await getAccessToken();
     if (!token) return; // Not signed in — nothing to broadcast.
 
     await fetch(`${API_BASE_URL.replace(/\/+$/, '')}/api/drivers/location`, {

@@ -32,7 +32,7 @@ const queryClient = new QueryClient();
 
 /**
  * Redirects between the (auth) group and the rest of the app based on
- * whether there's a live Supabase session. Runs on every navigation.
+ * whether there's a live session. Runs on every navigation.
  */
 function useAuthGuard() {
   const { isAuthenticated, isLoading } = useAuth();

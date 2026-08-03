@@ -17,9 +17,15 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * @summary Register user profile after Supabase sign-up
+ * @summary Create an account and sign in
  */
+export const registerUserBodyPasswordMin = 8;
+
+
+
 export const RegisterUserBody = zod.object({
+  "email": zod.string().email(),
+  "password": zod.string().min(registerUserBodyPasswordMin),
   "fullName": zod.string(),
   "phone": zod.string().optional(),
   "role": zod.enum(['passenger', 'driver']),
@@ -40,7 +46,114 @@ export const RegisterUserResponse = zod.object({
   "isActive": zod.boolean(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
+}),
+  "accessToken": zod.string(),
+  "refreshToken": zod.string(),
+  "expiresIn": zod.number()
 })
+
+
+/**
+ * @summary Sign in with email or phone
+ */
+export const LoginBody = zod.object({
+  "identifier": zod.string().describe('Email address or phone number.'),
+  "password": zod.string()
+})
+
+export const LoginResponse = zod.object({
+  "user": zod.object({
+  "id": zod.string().uuid(),
+  "email": zod.string(),
+  "fullName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "role": zod.enum(['passenger', 'driver', 'admin']),
+  "avatarUrl": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}),
+  "accessToken": zod.string(),
+  "refreshToken": zod.string(),
+  "expiresIn": zod.number()
+})
+
+
+/**
+ * Refresh tokens are single-use. Each call rotates the token, so the caller must store the newly returned refreshToken.
+ * @summary Exchange a refresh token for a new session
+ */
+export const RefreshSessionBody = zod.object({
+  "refreshToken": zod.string()
+})
+
+export const RefreshSessionResponse = zod.object({
+  "accessToken": zod.string(),
+  "refreshToken": zod.string(),
+  "expiresIn": zod.number().describe('Access token lifetime in seconds.')
+})
+
+
+/**
+ * @summary Revoke a refresh token
+ */
+export const LogoutBody = zod.object({
+  "refreshToken": zod.string()
+})
+
+export const LogoutResponse = zod.void()
+
+
+/**
+ * @summary Sign out of every device
+ */
+export const LogoutAllResponse = zod.void()
+
+
+/**
+ * Always returns 200 whether or not the address is registered, so the endpoint cannot be used to discover which emails have accounts.
+ * @summary Request a password reset email
+ */
+export const ForgotPasswordBody = zod.object({
+  "email": zod.string().email()
+})
+
+export const ForgotPasswordResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Set a new password using a reset token
+ */
+export const resetPasswordBodyPasswordMin = 8;
+
+
+
+export const ResetPasswordBody = zod.object({
+  "token": zod.string(),
+  "password": zod.string().min(resetPasswordBodyPasswordMin)
+})
+
+export const ResetPasswordResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Change your password while signed in
+ */
+export const changePasswordBodyNewPasswordMin = 8;
+
+
+
+export const ChangePasswordBody = zod.object({
+  "currentPassword": zod.string(),
+  "newPassword": zod.string().min(changePasswordBodyNewPasswordMin)
+})
+
+export const ChangePasswordResponse = zod.object({
+  "message": zod.string()
 })
 
 

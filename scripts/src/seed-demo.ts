@@ -26,12 +26,11 @@
  * is NOT used; instead we just check trip count for the seeded passengers).
  *
  * Required env vars (reads from artifacts/api-server/.env.local automatically):
- *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL
+ *   DATABASE_URL
  */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
-import { createClient } from "@supabase/supabase-js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -130,13 +129,9 @@ function randCoord() {
 }
 
 async function main() {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseServiceKey) {
+  if (!process.env.DATABASE_URL) {
     console.error(
-      "Missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY.\n" +
-        "Make sure artifacts/api-server/.env.local has both set.",
+      "Missing DATABASE_URL.\nMake sure artifacts/api-server/.env.local has it set.",
     );
     process.exit(1);
   }
@@ -155,28 +150,47 @@ async function main() {
     loopStopsTable,
     loopVehiclesTable,
     auditLogsTable,
+    hashPassword,
   } = await import("@workspace/db");
   const { eq } = await import("drizzle-orm");
 
-  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-
   // ---- helpers -------------------------------------------------------
 
-  async function ensureAuthUser(email: string): Promise<string> {
-    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password: DEMO_PASSWORD,
-      email_confirm: true,
-    });
-    if (!error) return created.user.id;
-    if (!error.message.toLowerCase().includes("already been registered")) throw error;
-    const { data: list, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-    if (listError) throw listError;
-    const existing = list.users.find((u) => u.email === email);
-    if (!existing) throw new Error(`Could not find existing auth user for ${email}`);
-    return existing.id;
+  // Hash once and reuse: scrypt is deliberately slow, and every demo account
+  // shares the same password, so hashing per user would add seconds for no
+  // benefit. (Reusing a hash means reusing its salt — fine for throwaway demo
+  // data, never do this for real accounts.)
+  const demoPasswordHash = await hashPassword(DEMO_PASSWORD);
+
+  /** Creates or updates a demo account and returns its id. */
+  async function ensureAuthUser(profile: {
+    email: string;
+    fullName?: string;
+    phone?: string;
+    role: string;
+  }): Promise<string> {
+    const [existing] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, profile.email));
+    if (existing) {
+      await db
+        .update(usersTable)
+        .set({
+          fullName: profile.fullName ?? existing.fullName,
+          phone: profile.phone ?? existing.phone,
+          role: profile.role,
+          passwordHash: demoPasswordHash,
+          updatedAt: new Date(),
+        })
+        .where(eq(usersTable.id, existing.id));
+      return existing.id;
+    }
+    const [created] = await db
+      .insert(usersTable)
+      .values({ ...profile, passwordHash: demoPasswordHash })
+      .returning();
+    return created!.id;
   }
 
   async function ensureWallet(userId: string, balance: number) {
@@ -197,11 +211,12 @@ async function main() {
   console.log("\n=== Seeding passengers ===");
   const passengerIds: string[] = [];
   for (const p of PASSENGERS) {
-    const id = await ensureAuthUser(p.email);
-    const [existing] = await db.select().from(usersTable).where(eq(usersTable.id, id));
-    if (!existing) {
-      await db.insert(usersTable).values({ id, email: p.email, fullName: p.name, phone: p.phone, role: "passenger" });
-    }
+    const id = await ensureAuthUser({
+      email: p.email,
+      fullName: p.name,
+      phone: p.phone,
+      role: "passenger",
+    });
     const wallet = await ensureWallet(id, 250 + Math.random() * 500);
 
     // A couple of top-up transactions so the wallet page + history isn't empty.
@@ -263,13 +278,12 @@ async function main() {
   console.log("\n=== Seeding drivers ===");
   const driverIds: string[] = [];
   for (const d of DRIVERS) {
-    const id = await ensureAuthUser(d.email);
-    const [existing] = await db.select().from(usersTable).where(eq(usersTable.id, id));
-    if (!existing) {
-      await db.insert(usersTable).values({ id, email: d.email, fullName: d.name, phone: d.phone, role: "driver" });
-    } else {
-      await db.update(usersTable).set({ role: "driver" }).where(eq(usersTable.id, id));
-    }
+    const id = await ensureAuthUser({
+      email: d.email,
+      fullName: d.name,
+      phone: d.phone,
+      role: "driver",
+    });
     await ensureWallet(id, 0);
 
     const [existingSub] = await db
@@ -678,16 +692,11 @@ async function main() {
     if (existingAdmin) {
       adminId = existingAdmin.id;
     } else {
-      adminId = await ensureAuthUser("admin.demo@moveapayao.test");
-      const [existing] = await db.select().from(usersTable).where(eq(usersTable.id, adminId));
-      if (!existing) {
-        await db.insert(usersTable).values({
-          id: adminId,
-          email: "admin.demo@moveapayao.test",
-          fullName: "Demo Admin",
-          role: "admin",
-        });
-      }
+      adminId = await ensureAuthUser({
+        email: "admin.demo@moveapayao.test",
+        fullName: "Demo Admin",
+        role: "admin",
+      });
       console.log("  No admin account found — created admin.demo@moveapayao.test as log actor.");
     }
 

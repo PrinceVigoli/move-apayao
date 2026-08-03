@@ -22,14 +22,14 @@ import { AuthProvider, useAuth } from '@/lib/auth-context';
 const queryClient = new QueryClient();
 
 function ProtectedApp() {
-  const { session, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const [, navigate] = useLocation();
 
   useEffect(() => {
-    if (!isLoading && !session) {
+    if (!isLoading && !isAuthenticated) {
       navigate('/login');
     }
-  }, [isLoading, session, navigate]);
+  }, [isLoading, isAuthenticated, navigate]);
 
   if (isLoading) {
     return (
@@ -39,7 +39,7 @@ function ProtectedApp() {
     );
   }
 
-  if (!session) {
+  if (!isAuthenticated) {
     return null;
   }
 

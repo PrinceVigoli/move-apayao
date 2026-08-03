@@ -59,7 +59,9 @@ export default function DriverSignupScreen() {
     }
     setLoading(true);
     try {
-      await signUpWithPassword(email.trim(), password, {
+      await signUpWithPassword({
+        email: email.trim(),
+        password,
         fullName: fullName.trim(),
         phone: phone.trim() || undefined,
         vehicleType,
@@ -67,7 +69,7 @@ export default function DriverSignupScreen() {
         vehicleColor: vehicleColor.trim() || undefined,
         licenseNumber: licenseNumber.trim(),
       });
-      setInfo('Check your email to confirm your account, then log in.');
+      // Registration signs the driver straight in; the auth guard redirects.
     } catch (err: any) {
       setError(err?.message ?? 'Could not create your account. Please try again.');
     } finally {

@@ -86,13 +86,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
     if (typeof window === "undefined") return false
     return window.localStorage.getItem(COLLAPSE_KEY) === "1"
   })
-  const { session, signOut } = useAuth()
+  const { user, signOut } = useAuth()
 
   React.useEffect(() => {
     window.localStorage.setItem(COLLAPSE_KEY, collapsed ? "1" : "0")
   }, [collapsed])
 
-  const initials = (session?.user.email ?? "?").slice(0, 2).toUpperCase()
+  const initials = (user?.email ?? "?").slice(0, 2).toUpperCase()
 
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
@@ -187,7 +187,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={8}>
-                  {session?.user.email ?? "Admin"}
+                  {user?.email ?? "Admin"}
                 </TooltipContent>
               </Tooltip>
               <Tooltip delayDuration={200}>
@@ -213,7 +213,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               </div>
               <div className="flex-1 overflow-hidden">
                 <div className="truncate font-semibold text-sidebar-foreground">Admin</div>
-                <div className="truncate text-xs text-sidebar-foreground/50">{session?.user.email}</div>
+                <div className="truncate text-xs text-sidebar-foreground/50">{user?.email}</div>
               </div>
               <Button
                 variant="ghost"

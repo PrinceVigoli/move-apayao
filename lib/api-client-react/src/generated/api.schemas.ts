@@ -47,6 +47,9 @@ export const RegisterUserBodyRole = {
 } as const;
 
 export interface RegisterUserBody {
+  email: string;
+  /** @minLength 8 */
+  password: string;
   fullName: string;
   phone?: string;
   role: RegisterUserBodyRole;
@@ -56,8 +59,48 @@ export interface RegisterUserBody {
   vehicleColor?: string;
 }
 
-export interface RegisterUserResponse {
+export interface LoginBody {
+  /** Email address or phone number. */
+  identifier: string;
+  password: string;
+}
+
+export interface RefreshBody {
+  refreshToken: string;
+}
+
+export interface ForgotPasswordBody {
+  email: string;
+}
+
+export interface ResetPasswordBody {
+  token: string;
+  /** @minLength 8 */
+  password: string;
+}
+
+export interface ChangePasswordBody {
+  currentPassword: string;
+  /** @minLength 8 */
+  newPassword: string;
+}
+
+export interface SessionTokens {
+  accessToken: string;
+  refreshToken: string;
+  /** Access token lifetime in seconds. */
+  expiresIn: number;
+}
+
+export interface SessionResponse {
   user: User;
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+export interface MessageResponse {
+  message: string;
 }
 
 export interface Wallet {
@@ -595,6 +638,11 @@ export interface UpdateSubscriptionBody {
  * Bad request
  */
 export type BadRequestResponse = ErrorResponse;
+
+/**
+ * Unauthorized
+ */
+export type UnauthorizedResponse = ErrorResponse;
 
 /**
  * Not found

@@ -29,3 +29,7 @@ pool.on("error", (err) => {
 export const db = drizzle(pool, { schema });
 
 export * from "./schema";
+// Password hashing lives here so the API server and the seed scripts share
+// ONE implementation — two copies of security code drift, and a mismatch
+// would mean seeded accounts silently cannot log in.
+export * from "./password";

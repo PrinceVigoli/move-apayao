@@ -112,10 +112,10 @@ router.post("/wallet/tap", sensitiveActionLimiter, async (req, res): Promise<voi
       res.status(401).json({ error: "Unauthorized: provide X-Reader-Api-Key or Bearer token" });
       return;
     }
-    const { verifyJwt } = await import("../lib/supabase.js");
+    const { verifyAccessToken } = await import("../lib/tokens.js");
     try {
-      const user = await verifyJwt(bearerToken);
-      if (user.id !== parsed.data.cardId) {
+      const claims = await verifyAccessToken(bearerToken);
+      if (claims.sub !== parsed.data.cardId) {
         res.status(403).json({ error: "Forbidden: card does not belong to authenticated user" });
         return;
       }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { getAccessToken } from '@/lib/session';
 import { API_BASE_URL } from '@/lib/api-config';
 
 export type DriverLocation = {
@@ -25,7 +25,7 @@ export type TrackingState = {
  * XMLHttpRequest and parse the `onprogress` buffer ourselves. This works in
  * Expo Go and EAS builds without any extra native dependency.
  *
- * The Supabase access token is passed as a `token` query param because SSE
+ * The access token is passed as a `token` query param because SSE
  * requests can't carry an Authorization header.
  */
 export function useTripTracking(tripId: number | null, enabled: boolean): TrackingState {
@@ -100,8 +100,7 @@ export function useTripTracking(tripId: number | null, enabled: boolean): Tracki
   const connect = useCallback(async () => {
     if (!tripId || !enabled || !API_BASE_URL) return;
 
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
+    const token = await getAccessToken();
     if (!token) {
       setError('Not authenticated');
       return;

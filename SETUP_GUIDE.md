@@ -3,7 +3,7 @@
 This guide covers two phases:
 
 1. **Run the project locally** using Docker (for Postgres/Redis) and VS Code (for the actual apps).
-2. **Deploy it** to DigitalOcean, using the GitHub and Supabase accounts you already have.
+2. **Deploy it** to DigitalOcean, using the GitHub account you already have.
 
 For a quick overview of the repository and its packages, see [`README.md`](./README.md).
 
@@ -17,7 +17,7 @@ it wasn't part of the product and nothing else depended on it):
 
 | Piece | What it is | Where it runs |
 |---|---|---|
-| `artifacts/api-server` | Express 5 API, talks to Postgres (Drizzle ORM) and Supabase (auth) | Node process, port 5000 |
+| `artifacts/api-server` | Express 5 API, talks to Postgres (Drizzle ORM); handles authentication itself | Node process, port 5000 |
 | `artifacts/dashboard` | Admin web dashboard (Vite + React) | Static site once built |
 | `artifacts/mobile` | Rider/driver app (Expo / React Native) | Built via Expo/EAS, not hosted on a server |
 | `lib/` | Shared DB schema, OpenAPI spec, generated API client/types | Used by the pieces above, not deployed on its own |
@@ -26,19 +26,18 @@ So when you get to hosting, you're really only hosting **two** things: the API s
 
 Data layer:
 - **Postgres** — the actual database (trips, users, wallets, etc.)
-- **Supabase** — used for auth only (you don't need to self-host Supabase; you just point the API at your Supabase project's URL + service role key)
+- **Authentication** — handled by the API server against your own Postgres. There is no third-party auth service to sign up for.
 - **Redis** — optional, only used for live driver-location features
 
 ---
 
 ## 2. Accounts & tools checklist
 
-You said you already have **GitHub** and **Supabase** — good, that covers source control and auth. Here's what else you need:
+You already have **GitHub** for source control. Here's what else you need:
 
 | Need | Why | You have it? |
 |---|---|---|
 | GitHub account | Hosts the repo, connects to DigitalOcean for auto-deploy | ✅ |
-| Supabase account/project | Auth (and optionally your production Postgres — see §4.3) | ✅ |
 | **DigitalOcean account** | Hosting | Need to create |
 | Docker Desktop | Runs Postgres/Redis locally without installing them on your machine | Need to install |
 | VS Code | Editor, terminal, debugging | Need to install (if not already) |
@@ -96,7 +95,9 @@ cp artifacts/api-server/.env.example artifacts/api-server/.env.local
 
 Edit `artifacts/api-server/.env.local`:
 - `DATABASE_URL=postgres://postgres:postgres@localhost:5432/move_apayao` (matches the Docker Postgres above)
-- `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` — from your Supabase project's **Settings > API** page
+- `JWT_SECRET` — any random string of 32+ characters. Generate one with:
+  `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`
+  The server refuses to start without it, so that a defaulted key can never be used to forge admin tokens.
 - `CORS_ALLOWED_ORIGINS=http://localhost:5173` — **required** to use the dashboard or the mobile app's web preview locally. The API denies cross-origin requests by default (this is a deliberate security fix); without this set, the dashboard's requests will be silently blocked by the browser even though the API itself is running fine. Comma-separate multiple origins if needed.
 - Leave `REDIS_URL` as-is (it'll just work since Redis is running in Docker), or unset it if you don't care about live-location features locally — verified this still boots cleanly with no Redis at all.
 
@@ -173,12 +174,12 @@ You have two reasonable paths. Given you're already comfortable with Docker, her
 
 ### 4.3 Decide on the database
 
-You already have Supabase. Two options:
+Two options:
 
-- **Simplest: use Supabase's own Postgres as `DATABASE_URL` too.** Every Supabase project includes a Postgres database (find the connection string under **Settings > Database**). This means you don't need to pay for or manage a separate DigitalOcean database at all — one less moving part.
-- **Alternative: DigitalOcean Managed Postgres** (~$15/mo) if you want the database physically closer to your DO app, or want it fully separate from Supabase.
+- **DigitalOcean Managed Postgres** (~$15/mo) — same provider as the app, so the database sits close to it and backups are handled for you.
+- **Any other managed Postgres** (Neon, Railway, Supabase's database product) — the app only needs a connection string; it does not depend on any provider-specific feature.
 
-For a first deployment, **use the Supabase Postgres connection string** — it's free (on Supabase's free tier) and you already have the account.
+Since authentication now runs against your own database, whichever Postgres you point `DATABASE_URL` at holds the user accounts too.
 
 ### 4.4 Deploy the API server (App Platform)
 
@@ -190,7 +191,7 @@ For a first deployment, **use the Supabase Postgres connection string** — it's
    - Point it at the included `Dockerfile.api-server` for the build (App Platform supports Dockerfile-based components), **or** set:
      - Build command: `pnpm install && pnpm --filter @workspace/api-server run build`
      - Run command: `node --enable-source-maps artifacts/api-server/dist/index.mjs`
-5. Set environment variables/secrets (same names as `.env.local`): `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CORS_ALLOWED_ORIGINS` (set this to your deployed dashboard's URL, e.g. `https://move-apayao-dashboard.ondigitalocean.app` — the API will reject the dashboard's requests without it), `REDIS_URL` (skip if not using Redis), `PORT` (App Platform sets this for you — the server already reads `process.env.PORT`).
+5. Set environment variables/secrets (same names as `.env.local`): `DATABASE_URL`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS` (set this to your deployed dashboard's URL, e.g. `https://move-apayao-dashboard.ondigitalocean.app` — the API will reject the dashboard's requests without it), `REDIS_URL` (skip if not using Redis), `PORT` (App Platform sets this for you — the server already reads `process.env.PORT`).
 6. Deploy. DO gives you an HTTPS URL immediately (e.g. `move-apayao-api.ondigitalocean.app`); add a custom domain later if you want one.
 
 ### 4.5 Deploy the dashboard (App Platform, static site)
@@ -227,9 +228,9 @@ If you later move the API server to a Droplet instead of App Platform:
 | Variable | Required? | Where it comes from |
 |---|---|---|
 | `PORT` | Yes | You choose locally (5000); App Platform sets it automatically |
-| `DATABASE_URL` | Yes | Local Docker Postgres, or Supabase project → Settings → Database |
-| `SUPABASE_URL` | Yes | Supabase project → Settings → API |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase project → Settings → API |
+| `DATABASE_URL` | Yes | Local Docker Postgres, or your managed Postgres provider |
+| `JWT_SECRET` | Yes | Generate: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"` |
+| `SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` | No | Password reset email; links are logged if unset |
 | `CORS_ALLOWED_ORIGINS` | Yes (once any browser client — dashboard, mobile web preview — calls the API) | Comma-separated list of allowed origins, e.g. your deployed dashboard's URL |
 | `REDIS_URL` | No | Local Docker Redis, or DO Managed Redis in production. Safe to leave unset — rate limiting falls back to an in-memory store and geo/live-location routes no-op. |
 | `OPENWEATHERMAP_API_KEY` | No | Only if you use the weather feature |
@@ -242,5 +243,5 @@ If you later move the API server to a Droplet instead of App Platform:
 
 - `pnpm-workspace.yaml` enforces a **1-day minimum package release age** for supply-chain safety. Don't remove it — a brand-new npm package version simply won't install until it's a day old.
 - The dashboard and landing site read `PORT` and `BASE_PATH` if set, but both are optional. Set `BASE_PATH` only when serving from a sub-path rather than a domain root.
-- Without `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` set, auth-gated API routes return 500 — this is the first thing to check if login-related calls fail.
+- Without `JWT_SECRET` set the API server exits on startup with a clear message — this is intentional, not a bug.
 - The Postgres pool now has a 5-second connection timeout, so a wrong/missing `DATABASE_URL` fails fast with a clear error instead of hanging.

@@ -1,54 +1,65 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import type { Session } from "@supabase/supabase-js"
-import { supabase } from "./supabase"
 import { setAuthTokenGetter } from "@workspace/api-client-react"
+import {
+  getAccessToken,
+  hasSession,
+  signIn as apiSignIn,
+  signOut as apiSignOut,
+  type AdminUser,
+} from "./session"
 
 interface AuthContextValue {
-  session: Session | null
+  user: AdminUser | null
+  isAuthenticated: boolean
   isLoading: boolean
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>
+  signIn: (identifier: string, password: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null)
+  const [user, setUser] = useState<AdminUser | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Whenever a request needs a token, hand it Supabase's current session token.
-    setAuthTokenGetter(async () => {
-      const { data } = await supabase.auth.getSession()
-      return data.session?.access_token ?? null
-    })
+    // Every generated API hook pulls its token from here; the getter
+    // refreshes on demand so callers never handle expiry.
+    setAuthTokenGetter(() => getAccessToken())
 
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      setIsLoading(false)
-    })
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession)
-    })
+    let cancelled = false
+    ;(async () => {
+      if (hasSession()) {
+        const token = await getAccessToken()
+        if (!cancelled) setIsAuthenticated(!!token)
+      }
+      if (!cancelled) setIsLoading(false)
+    })()
 
     return () => {
-      listener.subscription.unsubscribe()
+      cancelled = true
       setAuthTokenGetter(null)
     }
   }, [])
 
-  async function signIn(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    return { error: error?.message ?? null }
+  async function signIn(identifier: string, password: string) {
+    const { user, error } = await apiSignIn(identifier, password)
+    if (user) {
+      setUser(user)
+      setIsAuthenticated(true)
+    }
+    return { error }
   }
 
   async function signOut() {
-    await supabase.auth.signOut()
+    await apiSignOut()
+    setUser(null)
+    setIsAuthenticated(false)
   }
 
   return (
-    <AuthContext.Provider value={{ session, isLoading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   )

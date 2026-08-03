@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { getAccessToken } from '@/lib/session';
 import { API_BASE_URL } from '@/lib/api-config';
 
 export type PlacePrediction = {
@@ -22,8 +22,7 @@ export function newPlacesSessionToken(): string {
 }
 
 async function authHeaders(): Promise<Record<string, string>> {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
+  const token = await getAccessToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 

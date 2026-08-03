@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import { verifyJwt } from "../lib/supabase";
 import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { verifyAccessToken } from "../lib/tokens";
 
 export interface AuthenticatedRequest extends Request {
   user: {
@@ -14,8 +14,12 @@ export interface AuthenticatedRequest extends Request {
 }
 
 /**
- * Middleware: require a valid Supabase JWT in Authorization header.
- * Attaches req.user with id, email, and role from our users table.
+ * Requires a valid access token issued by this API (see lib/tokens.ts).
+ *
+ * The role is re-read from the database rather than trusted from the token.
+ * An access token lives 15 minutes, so a role change or a deactivated account
+ * would otherwise stay in force until it expired — not acceptable for
+ * "admin" or for banning a driver mid-shift.
  */
 export async function requireAuth(
   req: Request,
@@ -30,13 +34,9 @@ export async function requireAuth(
   const token = authHeader.slice(7);
 
   try {
-    const supabaseUser = await verifyJwt(token);
+    const claims = await verifyAccessToken(token);
 
-    // Load the user profile from our DB to get role etc.
-    const [user] = await db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.id, supabaseUser.id));
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, claims.sub));
 
     if (!user || !user.isActive) {
       res.status(401).json({ error: "User not found or inactive" });
@@ -56,39 +56,7 @@ export async function requireAuth(
 }
 
 /**
- * Middleware: require a valid Supabase JWT but do NOT require the user to
- * already exist in our DB. Used for the register endpoint where the user
- * profile hasn't been created yet.
- */
-export async function requireJwt(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) {
-    res.status(401).json({ error: "Missing or invalid Authorization header" });
-    return;
-  }
-  const token = authHeader.slice(7);
-  try {
-    const supabaseUser = await verifyJwt(token);
-    // Attach minimal user info from the JWT payload only (no DB lookup)
-    (req as AuthenticatedRequest).user = {
-      id: supabaseUser.id,
-      email: supabaseUser.email,
-      role: "passenger", // default; register will set the real role
-      fullName: null,
-    };
-    next();
-  } catch {
-    res.status(401).json({ error: "Unauthorized" });
-  }
-}
-
-/**
- * Middleware: require a specific role (or one of several roles).
- * Must be used after requireAuth.
+ * Requires a specific role (or one of several). Use after requireAuth.
  */
 export function requireRole(...roles: string[]) {
   return (req: Request, res: Response, next: NextFunction): void => {

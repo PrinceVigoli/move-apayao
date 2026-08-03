@@ -78,6 +78,17 @@ enough seats. Without `REDIS_URL` set, no driver is ever matched and trips stay 
 `requested`. A background sweeper retries unmatched trips and expires them after five
 minutes so passengers get a definite answer.
 
+**Authentication is self-hosted.** Accounts live in this project's own Postgres —
+there is no third-party auth provider. Passwords are hashed with scrypt (Node's
+standard library, so there is no native module to compile). Sign-in accepts an
+email address *or* a phone number.
+
+Sessions use two tokens: a 15-minute access JWT sent with every request, and a
+30-day refresh token that is stored only as a hash and **rotated on every use**.
+Because a refresh token is single-use, presenting a spent one means it was
+stolen, so every session for that user is revoked. Clients share one in-flight
+refresh so parallel requests can't trip that defence during normal startup.
+
 **Fares are collected in cash.** The digital wallet and QR/NFC tap-to-pay code exists but
 is switched off pending reader hardware procurement (`FEATURE_QR_FARE_COLLECTION`, default
 off). Revenue reporting reads `trips.fareAmount` directly, not the wallet ledger.
@@ -92,6 +103,67 @@ eas build --profile development --platform android
 Google Maps API keys go in each app's `app.json`; the Places API key stays server-side in
 the API server's environment so it is never shipped inside an app bundle.
 
+## Troubleshooting
+
+### `error TS6305: Output file '.../lib/db/dist/index.d.ts' has not been built from source file`
+
+Usually arrives with a cascade of `TS7006: implicitly has an 'any' type` errors
+in `api-server`. Those are a symptom: when the generated `lib/*` declarations
+can't be resolved, everything flowing out of them becomes `any`.
+
+`lib/db`, `lib/api-zod` and `lib/api-client-react` are TypeScript *composite*
+projects — they compile to `dist/`, which is gitignored, so a fresh copy must
+build them first. `tsc --build` is incremental and its cache can fall out of
+step after the repo is copied around. Force a clean rebuild:
+
+```bash
+npx tsc --build --force
+pnpm run typecheck
+```
+
+If it persists, clear the caches first:
+
+```powershell
+Remove-Item -Recurse -Force lib\*\dist -ErrorAction SilentlyContinue
+Get-ChildItem -Recurse -Force -Filter '*.tsbuildinfo' |
+  Where-Object { $_.FullName -notmatch 'node_modules' } | Remove-Item -Force
+npx tsc --build --force
+```
+
+### `load-env.ps1 cannot be loaded ... is not digitally signed` (Windows)
+
+PowerShell blocks unsigned scripts by default. You no longer need
+`load-env.ps1` for database commands — `drizzle.config.ts` reads
+`artifacts/api-server/.env.local` itself. Just run:
+
+```bash
+pnpm --filter @workspace/db run push
+```
+
+If you want the script anyway (for `psql` or other one-off tools), either allow
+local scripts once for your user:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+or run it without changing any policy:
+
+```powershell
+Get-Content .\load-env.ps1 | Invoke-Expression
+```
+
+### `DATABASE_URL, ensure the database is provisioned` on `db push`
+
+`DATABASE_URL` wasn't found. Check it is set in
+`artifacts/api-server/.env.local`, and that Postgres is actually running
+(`docker compose up -d`).
+
+### `ERR_PNPM_OUTDATED_LOCKFILE` on install
+
+Run `pnpm install --no-frozen-lockfile` once. Happens when a package was added
+or removed since the lockfile you have.
+
 ## Environment variables
 
 See §5 of [`SETUP_GUIDE.md`](./SETUP_GUIDE.md) for the full reference. The essentials:
@@ -99,7 +171,8 @@ See §5 of [`SETUP_GUIDE.md`](./SETUP_GUIDE.md) for the full reference. The esse
 | Variable | Where | Purpose |
 | --- | --- | --- |
 | `DATABASE_URL` | api-server | Postgres connection string |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | api-server | Auth verification (server-side only) |
+| `JWT_SECRET` | api-server | Signs access tokens — **server will not boot without it** |
+| `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` | api-server | Password reset email (optional) |
 | `REDIS_URL` | api-server | Driver geo-index and live tracking |
 | `GOOGLE_PLACES_API_KEY` | api-server | Server-side proxy for place search |
 | `EXPO_PUBLIC_API_URL` | mobile, driver | LAN IP of the API server during development |

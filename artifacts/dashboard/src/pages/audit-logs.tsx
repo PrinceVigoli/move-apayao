@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { supabase } from "@/lib/supabase"
+import { getAccessToken } from "@/lib/session"
 import { formatPHP, formatDate } from "@/lib/utils"
 import {
   Table,
@@ -26,8 +26,7 @@ interface AuditLog {
 }
 
 async function fetchAuditLogs(): Promise<{ logs: AuditLog[] }> {
-  const { data } = await supabase.auth.getSession()
-  const token = data.session?.access_token
+  const token = await getAccessToken()
 
   const res = await fetch("/api/audit-logs?limit=50", {
     headers: token ? { Authorization: `Bearer ${token}` } : {},

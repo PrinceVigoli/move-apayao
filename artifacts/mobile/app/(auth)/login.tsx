@@ -19,40 +19,27 @@ export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const router = useRouter();
-  const { signInWithPassword, signInWithGoogle } = useAuth();
+  const { signInWithPassword } = useAuth();
 
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleLogin = async () => {
     setError(null);
-    if (!email.trim() || !password) {
-      setError('Enter your email and password.');
+    if (!identifier.trim() || !password) {
+      setError('Enter your email or phone number, and your password.');
       return;
     }
     setLoading(true);
     try {
-      await signInWithPassword(email.trim(), password);
+      await signInWithPassword(identifier.trim(), password);
       // Root layout's auth guard will redirect to (tabs) automatically.
     } catch (err: any) {
       setError(err?.message ?? 'Could not sign in. Please try again.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleGoogle = async () => {
-    setError(null);
-    setGoogleLoading(true);
-    try {
-      await signInWithGoogle();
-    } catch (err: any) {
-      setError(err?.message ?? 'Google sign-in failed. Please try again.');
-    } finally {
-      setGoogleLoading(false);
     }
   };
 
@@ -75,31 +62,14 @@ export default function LoginScreen() {
           Sign in to book rides across Apayao
         </Text>
 
-        <Button
-          title="Continue with Google"
-          variant="outline"
-          size="lg"
-          loading={googleLoading}
-          onPress={handleGoogle}
-          icon={<Feather name="chrome" size={18} color={colors.foreground} />}
-          style={{ marginTop: 32 }}
-        />
-
-        <View style={styles.dividerRow}>
-          <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-          <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>or</Text>
-          <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-        </View>
-
-        <Text style={[styles.label, { color: colors.mutedForeground }]}>Email</Text>
+        <Text style={[styles.label, { color: colors.mutedForeground }]}>Email or phone</Text>
         <TextInput
-          value={email}
-          onChangeText={setEmail}
-          placeholder="you@example.com"
+          value={identifier}
+          onChangeText={setIdentifier}
+          placeholder="you@example.com or 09xx xxx xxxx"
           placeholderTextColor={colors.mutedForeground}
           autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
+          autoComplete="username"
           style={[
             styles.input,
             { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card },

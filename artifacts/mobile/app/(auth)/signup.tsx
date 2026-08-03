@@ -19,15 +19,15 @@ export default function SignupScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const router = useRouter();
-  const { signUpWithPassword, signInWithGoogle } = useAuth();
+  const { signUpWithPassword } = useAuth();
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleSignup = async () => {
     setError(null);
@@ -42,24 +42,18 @@ export default function SignupScreen() {
     }
     setLoading(true);
     try {
-      await signUpWithPassword(email.trim(), password, { fullName: fullName.trim() });
-      setInfo('Check your email to confirm your account, then log in.');
+      // Registering signs the passenger straight in — the auth guard in
+      // app/_layout.tsx then redirects them into the app.
+      await signUpWithPassword({
+        email: email.trim(),
+        password,
+        fullName: fullName.trim(),
+        phone: phone.trim() || undefined,
+      });
     } catch (err: any) {
       setError(err?.message ?? 'Could not create your account. Please try again.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleGoogle = async () => {
-    setError(null);
-    setGoogleLoading(true);
-    try {
-      await signInWithGoogle();
-    } catch (err: any) {
-      setError(err?.message ?? 'Google sign-in failed. Please try again.');
-    } finally {
-      setGoogleLoading(false);
     }
   };
 
@@ -81,22 +75,6 @@ export default function SignupScreen() {
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
           Join MOVE Apayao in seconds
         </Text>
-
-        <Button
-          title="Continue with Google"
-          variant="outline"
-          size="lg"
-          loading={googleLoading}
-          onPress={handleGoogle}
-          icon={<Feather name="chrome" size={18} color={colors.foreground} />}
-          style={{ marginTop: 32 }}
-        />
-
-        <View style={styles.dividerRow}>
-          <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-          <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>or</Text>
-          <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-        </View>
 
         <Text style={[styles.label, { color: colors.mutedForeground }]}>Full name</Text>
         <TextInput
@@ -125,6 +103,25 @@ export default function SignupScreen() {
             { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card },
           ]}
         />
+
+        <Text style={[styles.label, { color: colors.mutedForeground }]}>
+          Phone number (optional)
+        </Text>
+        <TextInput
+          value={phone}
+          onChangeText={setPhone}
+          placeholder="09xx xxx xxxx"
+          placeholderTextColor={colors.mutedForeground}
+          keyboardType="phone-pad"
+          autoComplete="tel"
+          style={[
+            styles.input,
+            { borderColor: colors.input, color: colors.foreground, backgroundColor: colors.card },
+          ]}
+        />
+        <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+          You can sign in with either your email or your phone number.
+        </Text>
 
         <Text style={[styles.label, { color: colors.mutedForeground }]}>Password</Text>
         <TextInput
@@ -187,6 +184,12 @@ const styles = StyleSheet.create({
   dividerText: {
     marginHorizontal: 12,
     fontFamily: 'Inter_400Regular',
+  },
+  hint: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    marginTop: -4,
+    marginBottom: 4,
   },
   label: {
     fontSize: 13,

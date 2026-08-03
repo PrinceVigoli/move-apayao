@@ -4,8 +4,8 @@
  *
  * What it does, mirroring exactly what POST /api/auth/register does for a
  * driver sign-up:
- *   1. Creates a Supabase Auth user with the email pre-confirmed
- *      (admin.createUser({ email_confirm: true })).
+ *   1. Creates (or updates) the account directly in Postgres, with the
+ *      password hashed the same way the API server hashes it.
  *   2. Inserts the matching row in `users` (role: driver).
  *   3. Inserts a `fare_wallets` row (every user gets one, even drivers).
  *   4. Inserts a 1-year `subscriptions` row (same as real registration).
@@ -17,7 +17,7 @@
  *     --plate="ABC 1234" --vehicle=jeepney --capacity=12 --license=N01-23-456789 --color=Red
  *
  * Required env vars (reads from artifacts/api-server/.env.local automatically):
- *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL
+ *   DATABASE_URL
  *
  * The account is created with email/password — log into the DRIVER app with
  * the same credentials. No confirmation email needed since email_confirm is
@@ -26,7 +26,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
-import { createClient } from "@supabase/supabase-js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -68,73 +67,38 @@ async function main() {
     ? parseInt(args.capacity, 10)
     : (defaultCapacityByType[vehicleType.toLowerCase()] ?? 4);
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseServiceKey) {
-    console.error(
-      "Missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY.\n" +
-        "Make sure artifacts/api-server/.env.local has both set.",
-    );
-    process.exit(1);
-  }
-
-  // Import the db package only after env vars are loaded (it reads
-  // DATABASE_URL at module init time).
-  const { db, usersTable, driverProfilesTable, fareWalletsTable, subscriptionsTable } =
+  // Import after env is loaded (the db module reads DATABASE_URL at init).
+  const { db, usersTable, driverProfilesTable, fareWalletsTable, subscriptionsTable, hashPassword } =
     await import("@workspace/db");
   const { eq } = await import("drizzle-orm");
 
-  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-
   console.log(`\nSeeding driver account: ${email} (${vehicleType}, capacity ${capacity})`);
 
-  // 1. Create (or reuse) the Supabase Auth user, pre-confirmed.
+  const passwordHash = await hashPassword(password);
+
+  // Find an existing account by email, otherwise create one. Auth lives in
+  // this project's own Postgres, so there is no external auth service to
+  // keep in step.
+  const [found] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+
   let authUserId: string;
-  const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-  });
-
-  if (createError) {
-    if (createError.message.toLowerCase().includes("already been registered")) {
-      console.log("  Auth user already exists — looking it up...");
-      const { data: list, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-      if (listError) throw listError;
-      const existing = list.users.find((u) => u.email === email);
-      if (!existing) throw new Error(`Could not find existing auth user for ${email}`);
-      authUserId = existing.id;
-    } else {
-      throw createError;
-    }
-  } else {
-    authUserId = created.user.id;
-    console.log(`  Created Supabase auth user: ${authUserId}`);
-  }
-
-  // 2-5. Upsert the app-side rows in one go.
-  const [existingUser] = await db.select().from(usersTable).where(eq(usersTable.id, authUserId));
-
-  if (existingUser) {
-    console.log(`  users row already exists (role: ${existingUser.role}) — updating role/name.`);
+  if (found) {
+    authUserId = found.id;
+    console.log(`  users row exists (role: ${found.role}) — updating role, name and password.`);
     await db
       .update(usersTable)
-      .set({ role: "driver", fullName, phone, updatedAt: new Date() })
+      .set({ role: "driver", fullName, phone, passwordHash, updatedAt: new Date() })
       .where(eq(usersTable.id, authUserId));
   } else {
-    await db.insert(usersTable).values({
-      id: authUserId,
-      email,
-      fullName,
-      phone,
-      role: "driver",
-    });
-    console.log("  Inserted users row (role: driver).");
+    const [created] = await db
+      .insert(usersTable)
+      .values({ email, phone, passwordHash, fullName, role: "driver" })
+      .returning();
+    authUserId = created!.id;
+    console.log(`  Inserted users row (role: driver): ${authUserId}`);
   }
 
+  // Wallet, subscription and driver profile
   const [existingWallet] = await db
     .select()
     .from(fareWalletsTable)
@@ -187,7 +151,7 @@ async function main() {
   console.log("\nDone. Log into the DRIVER app with:");
   console.log(`  Email:    ${email}`);
   console.log(`  Password: ${password}`);
-  console.log("\n(Email is pre-confirmed — no confirmation link needed.)\n");
+  console.log("\n(Accounts are stored in this project's own Postgres — no email confirmation step.)\n");
 
   process.exit(0);
 }

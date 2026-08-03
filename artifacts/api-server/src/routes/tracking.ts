@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { tripsTable, driverProfilesTable } from "@workspace/db";
-import { verifyJwt } from "../lib/supabase";
+import { verifyAccessToken } from "../lib/tokens";
 import { usersTable } from "@workspace/db";
 import { getRedisSub } from "../lib/redis";
 import { parseIdParam } from "../lib/http";
@@ -20,7 +20,7 @@ const HEARTBEAT_INTERVAL_MS = 25000;
  * Server-Sent Events stream of the assigned driver's live position for a trip.
  *
  * Auth: the browser/native EventSource API can't attach an Authorization
- * header, so the caller passes the Supabase JWT as a `token` query param. We
+ * header, so the caller passes the access token as a `token` query param. We
  * verify it here exactly like requireAuth would, then confirm the caller is
  * the trip's passenger, driver, or an admin.
  *
@@ -53,11 +53,11 @@ router.get("/trips/:id/track/stream", async (req, res): Promise<void> => {
   let userId: string;
   let role: string;
   try {
-    const supabaseUser = await verifyJwt(token);
+    const claims = await verifyAccessToken(token);
     const [user] = await db
       .select()
       .from(usersTable)
-      .where(eq(usersTable.id, supabaseUser.id));
+      .where(eq(usersTable.id, claims.sub));
     if (!user || !user.isActive) {
       res.status(401).json({ error: "User not found or inactive" });
       return;
