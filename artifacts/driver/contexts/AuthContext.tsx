@@ -1,5 +1,11 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { setAuthTokenGetter } from '@workspace/api-client-react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
 import {
   getAccessToken,
   loadStoredSession,
@@ -11,7 +17,7 @@ import {
   requestPasswordReset,
   type AuthUser,
   type SignUpDetails,
-} from '@/lib/session';
+} from "@/lib/session";
 
 /**
  * Authentication for the DRIVER app.
@@ -22,7 +28,7 @@ import {
  * driver enters at signup.
  */
 
-type DriverSignUp = Omit<SignUpDetails, 'role'>;
+type DriverSignUp = Omit<SignUpDetails, "role">;
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -75,13 +81,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: authed,
       async signInWithPassword(identifier, password) {
         const u = await apiSignIn(identifier, password);
+        if (u.role !== "driver") {
+          await apiSignOut();
+          const reason = u.driverApplicationReason
+            ? ` Reason: ${u.driverApplicationReason}`
+            : "";
+          throw new Error(
+            u.driverApplicationStatus === "rejected"
+              ? `Your driver application was not approved.${reason}`
+              : u.driverApplicationStatus === "revoked"
+                ? `Your driver access has been revoked.${reason}`
+                : u.role === "driver_applicant"
+                  ? "Your driver application is still awaiting approval."
+                  : "This account is not approved for the driver app.",
+          );
+        }
         setUser(u);
         setAuthed(true);
       },
       async signUpWithPassword(details) {
-        const u = await apiSignUp({ ...details, role: 'driver' });
-        setUser(u);
-        setAuthed(true);
+        await apiSignUp({ ...details, role: "driver_applicant" });
+        // Applicants cannot enter the driver UI until an administrator grants
+        // the driver role. Clear the registration session immediately.
+        await apiSignOut();
+        setUser(null);
+        setAuthed(false);
       },
       sendPasswordReset: requestPasswordReset,
       async signOut() {
@@ -98,6 +122,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }

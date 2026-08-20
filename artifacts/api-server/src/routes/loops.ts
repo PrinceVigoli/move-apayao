@@ -1,12 +1,14 @@
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { loopRoutesTable, loopStopsTable, loopVehiclesTable } from "@workspace/db";
+import { auditLogsTable, loopRoutesTable, loopStopsTable, loopVehiclesTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { getRedis, LOOP_GEO_KEY } from "../lib/redis";
 import { parseIdParam } from "../lib/http";
 import { z } from "zod";
 import type { AuthenticatedRequest } from "../middlewares/auth";
+import { computeDrivingRoute } from "../lib/google-routes";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -31,7 +33,11 @@ function etaMinutes(distanceKm: number): number {
  * GET /api/loops
  */
 router.get("/loops", async (_req, res): Promise<void> => {
-  const routes = await db.select().from(loopRoutesTable).where(eq(loopRoutesTable.isActive, true));
+  const routes = await db
+    .select()
+    .from(loopRoutesTable)
+    .where(eq(loopRoutesTable.isActive, true))
+    .orderBy(desc(loopRoutesTable.createdAt));
   res.json({ routes });
 });
 
@@ -57,7 +63,39 @@ router.get("/loops/:id", async (req, res): Promise<void> => {
     .where(eq(loopStopsTable.routeId, routeId))
     .orderBy(loopStopsTable.sequence);
 
-  res.json({ route, stops });
+  const includeRoadRoute = req.query.includeRoute === "true";
+  let responseRoute = route;
+  // Newly-created routes already persist their Google geometry. Reuse it so
+  // opening the viewer does not generate another billable Routes API call.
+  // Older rows are hydrated once when first viewed successfully.
+  if (includeRoadRoute && stops.length >= 2 && !route.routePolyline) {
+    const roadRoute = await computeDrivingRoute(
+      stops.map((stop) => ({ lat: stop.lat, lon: stop.lon })),
+    );
+    responseRoute = {
+      ...route,
+      distanceKm: roadRoute.distanceKm,
+      routeDurationSeconds: roadRoute.durationSeconds,
+      routePolyline: roadRoute.encodedPolyline,
+      distanceSource: roadRoute.source,
+    };
+    if (roadRoute.source === "google_routes" && roadRoute.encodedPolyline) {
+      await db
+        .update(loopRoutesTable)
+        .set({
+          distanceKm: roadRoute.distanceKm,
+          routeDurationSeconds: roadRoute.durationSeconds,
+          routePolyline: roadRoute.encodedPolyline,
+          distanceSource: roadRoute.source,
+        })
+        .where(eq(loopRoutesTable.id, routeId));
+    }
+  }
+
+  res.json({
+    route: responseRoute,
+    stops,
+  });
 });
 
 /**
@@ -117,10 +155,10 @@ router.get("/loops/:id/vehicles", async (req, res): Promise<void> => {
  * live location.
  */
 const UpdateLoopLocationBody = z.object({
-  vehicleId: z.number().int(),
-  lat: z.number(),
-  lon: z.number(),
-  currentStopId: z.number().int().optional(),
+  vehicleId: z.number().int().positive(),
+  lat: z.number().min(-90).max(90),
+  lon: z.number().min(-180).max(180),
+  currentStopId: z.number().int().positive().optional(),
 });
 
 router.put(
@@ -129,10 +167,31 @@ router.put(
   requireRole("driver"),
   async (req, res): Promise<void> => {
     const authReq = req as AuthenticatedRequest;
+    const routeId = parseIdParam(req.params.id);
     const parsed = UpdateLoopLocationBody.safeParse(req.body);
+    if (routeId === null) {
+      res.status(400).json({ error: "Invalid loop route ID" });
+      return;
+    }
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.message });
       return;
+    }
+
+    if (parsed.data.currentStopId) {
+      const [stop] = await db
+        .select({ id: loopStopsTable.id })
+        .from(loopStopsTable)
+        .where(
+          and(
+            eq(loopStopsTable.id, parsed.data.currentStopId),
+            eq(loopStopsTable.routeId, routeId),
+          ),
+        );
+      if (!stop) {
+        res.status(400).json({ error: "Current stop does not belong to this loop route" });
+        return;
+      }
     }
 
     const [vehicle] = await db
@@ -147,6 +206,7 @@ router.put(
       .where(
         and(
           eq(loopVehiclesTable.id, parsed.data.vehicleId),
+          eq(loopVehiclesTable.routeId, routeId),
           eq(loopVehiclesTable.driverId, authReq.user.id),
         ),
       )
@@ -157,8 +217,11 @@ router.put(
       return;
     }
 
-    const redis = getRedis();
-    await redis.geoadd(LOOP_GEO_KEY, parsed.data.lon, parsed.data.lat, String(vehicle.id));
+    try {
+      await getRedis().geoadd(LOOP_GEO_KEY, parsed.data.lon, parsed.data.lat, String(vehicle.id));
+    } catch (err) {
+      logger.warn({ err, vehicleId: vehicle.id }, "Loop vehicle Redis update failed");
+    }
 
     res.json({ vehicle });
   },
@@ -172,29 +235,72 @@ router.put(
  * an orphaned route with no stops.
  */
 const CreateLoopBody = z.object({
-  name: z.string().min(1),
-  description: z.string().optional(),
+  name: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(1000).optional(),
   baseFare: z.number().min(0).default(0),
   stops: z
     .array(
       z.object({
-        name: z.string().min(1),
-        sequence: z.number().int(),
-        lat: z.number(),
-        lon: z.number(),
+        name: z.string().trim().min(1).max(120),
+        sequence: z.number().int().positive(),
+        lat: z.number().min(-90).max(90),
+        lon: z.number().min(-180).max(180),
       }),
     )
     .min(2),
 });
+
+const PreviewLoopRouteBody = z.object({
+  stops: z
+    .array(
+      z.object({
+        lat: z.number().min(-90).max(90),
+        lon: z.number().min(-180).max(180),
+      }),
+    )
+    .min(2)
+    .max(25),
+});
+
+/** Road-following preview used by the admin route designer. */
+router.post(
+  "/admin/loops/route-preview",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res): Promise<void> => {
+    const parsed = PreviewLoopRouteBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const route = await computeDrivingRoute(parsed.data.stops);
+    if (route.source !== "google_routes") {
+      res.status(503).json({ error: "Google road-route preview is temporarily unavailable" });
+      return;
+    }
+    res.json({ route });
+  },
+);
 
 router.post(
   "/loops",
   requireAuth,
   requireRole("admin"),
   async (req, res): Promise<void> => {
+    const authReq = req as AuthenticatedRequest;
     const parsed = CreateLoopBody.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+
+    const routeGeometry = await computeDrivingRoute(
+      parsed.data.stops.map((stop) => ({ lat: stop.lat, lon: stop.lon })),
+    );
+    if (routeGeometry.source !== "google_routes") {
+      res.status(503).json({
+        error: "A road-following route could not be verified, so the loop was not published.",
+      });
       return;
     }
 
@@ -205,6 +311,10 @@ router.post(
           name: parsed.data.name,
           description: parsed.data.description,
           baseFare: parsed.data.baseFare,
+          distanceKm: routeGeometry.distanceKm,
+          routeDurationSeconds: routeGeometry.durationSeconds,
+          routePolyline: routeGeometry.encodedPolyline,
+          distanceSource: routeGeometry.source,
         })
         .returning();
 
@@ -220,6 +330,19 @@ router.post(
           })),
         )
         .returning();
+
+      await trx.insert(auditLogsTable).values({
+        actorUserId: authReq.user.id,
+        action: "loop.created",
+        metadata: {
+          targetType: "loop_route",
+          targetId: String(route.id),
+          name: route.name,
+          stopCount: stops.length,
+          distanceKm: route.distanceKm,
+          distanceSource: route.distanceSource,
+        },
+      });
 
       return { route, stops };
     });

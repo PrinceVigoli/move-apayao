@@ -72,8 +72,13 @@ if (!process.env.DATABASE_URL) {
 
 export default defineConfig({
   schema: "./src/schema/index.ts",
+  out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
     url: process.env.DATABASE_URL,
   },
+  // PostGIS owns spatial_ref_sys and related extension objects. Excluding
+  // those from schema diffing prevents drizzle-kit from mistaking them for
+  // application tables that should be renamed or managed by this project.
+  extensionsFilters: ["postgis"],
 });

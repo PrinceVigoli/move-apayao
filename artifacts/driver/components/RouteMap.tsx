@@ -1,8 +1,14 @@
-import React, { useEffect, useRef } from 'react';
-import { StyleSheet, View, Platform } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
-import { useColors } from '@/hooks/useColors';
-import { Feather } from '@expo/vector-icons';
+import React, { useEffect, useRef } from "react";
+import { StyleSheet, View, Platform } from "react-native";
+import MapView, {
+  Marker,
+  Polyline,
+  PROVIDER_GOOGLE,
+  type Region,
+} from "react-native-maps";
+import { useColors } from "@/hooks/useColors";
+import { Feather } from "@expo/vector-icons";
+import { decodeRoutePolyline } from "@workspace/api-client-react";
 
 type LatLng = { latitude: number; longitude: number };
 
@@ -17,6 +23,8 @@ interface RouteMapProps {
   /** Trip mode: draws a pickup->dropoff route line. */
   pickup?: LatLng;
   dropoff?: LatLng;
+  /** Road geometry returned by the server-side Google Routes calculation. */
+  routePolyline?: string | null;
   /** Assigned driver being tracked (single moving pin). */
   driver?: LatLng | null;
   /** Nearby-available-drivers mode: multiple pins, no route line. */
@@ -64,6 +72,7 @@ function regionFor(points: LatLng[], fallback?: LatLng): Region {
 export function RouteMap({
   pickup,
   dropoff,
+  routePolyline,
   driver,
   nearbyDrivers,
   userLocation,
@@ -80,7 +89,10 @@ export function RouteMap({
     ...(dropoff ? [dropoff] : []),
     ...(driver ? [driver] : []),
     ...(userLocation ? [userLocation] : []),
-    ...((nearbyDrivers ?? []).map((d) => ({ latitude: d.latitude, longitude: d.longitude }))),
+    ...(nearbyDrivers ?? []).map((d) => ({
+      latitude: d.latitude,
+      longitude: d.longitude,
+    })),
   ];
 
   const initialRegion = regionFor(
@@ -90,16 +102,28 @@ export function RouteMap({
 
   useEffect(() => {
     if (!followDriver || !driver || !mapRef.current) return;
-    const pts = [driver, ...(pickup ? [pickup] : []), ...(dropoff ? [dropoff] : [])];
+    const pts = [
+      driver,
+      ...(pickup ? [pickup] : []),
+      ...(dropoff ? [dropoff] : []),
+    ];
     mapRef.current.animateToRegion(regionFor(pts), 600);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [driver?.latitude, driver?.longitude, followDriver]);
+
+  const routeCoordinates =
+    routePolyline && pickup && dropoff
+      ? decodeRoutePolyline(routePolyline)
+      : pickup && dropoff
+        ? [pickup, dropoff]
+        : [];
 
   return (
     <View style={[styles.wrap, { backgroundColor: colors.muted }, style]}>
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
+        mapType="hybrid"
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
         scrollEnabled={interactive}
@@ -112,23 +136,34 @@ export function RouteMap({
       >
         {pickup && dropoff && (
           <Polyline
-            coordinates={[pickup, dropoff]}
+            coordinates={routeCoordinates}
             strokeColor={colors.primary}
             strokeWidth={4}
-            lineDashPattern={[1]}
           />
         )}
 
         {pickup && (
-          <Marker coordinate={pickup} title="Pickup" anchor={{ x: 0.5, y: 0.5 }}>
+          <Marker
+            coordinate={pickup}
+            title="Pickup"
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
             <View style={[styles.pin, { backgroundColor: colors.success }]}>
-              <Feather name="navigation" size={14} color={colors.successForeground} />
+              <Feather
+                name="navigation"
+                size={14}
+                color={colors.successForeground}
+              />
             </View>
           </Marker>
         )}
 
         {dropoff && (
-          <Marker coordinate={dropoff} title="Dropoff" anchor={{ x: 0.5, y: 0.5 }}>
+          <Marker
+            coordinate={dropoff}
+            title="Dropoff"
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
             <View style={[styles.pin, { backgroundColor: colors.primary }]}>
               <Feather name="map-pin" size={14} color="#fff" />
             </View>
@@ -136,9 +171,16 @@ export function RouteMap({
         )}
 
         {driver && (
-          <Marker coordinate={driver} title="Driver" anchor={{ x: 0.5, y: 0.5 }} flat>
+          <Marker
+            coordinate={driver}
+            title="Driver"
+            anchor={{ x: 0.5, y: 0.5 }}
+            flat
+          >
             <View style={styles.driverPin}>
-              <View style={[styles.driverInner, { backgroundColor: colors.accent }]}>
+              <View
+                style={[styles.driverInner, { backgroundColor: colors.accent }]}
+              >
                 <Feather name="truck" size={14} color="#fff" />
               </View>
             </View>
@@ -149,14 +191,23 @@ export function RouteMap({
           <Marker
             key={d.id}
             coordinate={{ latitude: d.latitude, longitude: d.longitude }}
-            title={d.label ?? 'Available e-trike'}
+            title={d.label ?? "Available e-trike"}
             anchor={{ x: 0.5, y: 0.5 }}
             flat
             onPress={() => onDriverPress?.(d.id)}
           >
             <View style={styles.etrikePin}>
-              <View style={[styles.etrikeInner, { backgroundColor: colors.primary }]}>
-                <Feather name="truck" size={13} color={colors.primaryForeground} />
+              <View
+                style={[
+                  styles.etrikeInner,
+                  { backgroundColor: colors.primary },
+                ]}
+              >
+                <Feather
+                  name="truck"
+                  size={13}
+                  color={colors.primaryForeground}
+                />
               </View>
             </View>
           </Marker>
@@ -168,58 +219,58 @@ export function RouteMap({
 
 const styles = StyleSheet.create({
   wrap: {
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   pin: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: "#fff",
     ...Platform.select({
       android: { elevation: 4 },
       default: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOpacity: 0.25,
         shadowRadius: 3,
         shadowOffset: { width: 0, height: 2 },
       },
     }),
   },
-  driverPin: { alignItems: 'center', justifyContent: 'center' },
+  driverPin: { alignItems: "center", justifyContent: "center" },
   driverInner: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 3,
-    borderColor: '#fff',
+    borderColor: "#fff",
     ...Platform.select({
       android: { elevation: 6 },
       default: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOpacity: 0.3,
         shadowRadius: 4,
         shadowOffset: { width: 0, height: 2 },
       },
     }),
   },
-  etrikePin: { alignItems: 'center', justifyContent: 'center' },
+  etrikePin: { alignItems: "center", justifyContent: "center" },
   etrikeInner: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: "#fff",
     ...Platform.select({
       android: { elevation: 4 },
       default: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOpacity: 0.25,
         shadowRadius: 3,
         shadowOffset: { width: 0, height: 2 },

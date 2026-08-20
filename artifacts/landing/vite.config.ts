@@ -23,5 +23,21 @@ export default defineConfig({
   server: {
     port: Number(process.env.PORT ?? 5175),
     host: '0.0.0.0',
+    // Permit only ngrok's controlled development hostnames when sharing this
+    // Vite server. Avoid `allowedHosts: true`, which enables DNS rebinding.
+    allowedHosts: ['postcard-shawl-upstroke.ngrok-free.dev'],
+    proxy: {
+      // A single ngrok URL can expose the public site, dashboard, and API.
+      // Keep the API, database, Redis, Adminer, and GIS ports private.
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+      '/dashboard': {
+        target: 'http://localhost:5173',
+        changeOrigin: true,
+        ws: true,
+      },
+    },
   },
 });

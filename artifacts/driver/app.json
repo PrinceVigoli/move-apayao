@@ -6,12 +6,12 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "moveapayaodriver",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0E1B2E"
     },
     "ios": {
       "supportsTablet": false,
@@ -20,9 +20,6 @@
         "UIBackgroundModes": [
           "location"
         ]
-      },
-      "config": {
-        "googleMapsApiKey": "REPLACE_WITH_YOUR_IOS_GOOGLE_MAPS_API_KEY"
       }
     },
     "android": {
@@ -33,12 +30,7 @@
         "android.permission.ACCESS_BACKGROUND_LOCATION",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_LOCATION"
-      ],
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyAUCqrFbE1Y1jqbKqq2aUp4kfCCpTWNcok"
-        }
-      }
+      ]
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -48,6 +40,7 @@
       "expo-font",
       "expo-web-browser",
       "expo-dev-client",
+      "expo-notifications",
       [
         "expo-location",
         {

@@ -1,7 +1,7 @@
-import * as TaskManager from 'expo-task-manager';
-import * as Location from 'expo-location';
-import { getAccessToken } from '@/lib/session';
-import { API_BASE_URL } from '@/lib/api-config';
+import * as TaskManager from "expo-task-manager";
+import * as Location from "expo-location";
+import { getAccessToken } from "@/lib/session";
+import { API_BASE_URL } from "@/lib/api-config";
 
 /**
  * Background location task for the driver app.
@@ -17,7 +17,7 @@ import { API_BASE_URL } from '@/lib/api-config';
  * is registered before Location.startLocationUpdatesAsync references it.
  */
 
-export const BACKGROUND_LOCATION_TASK = 'move-apayao-driver-location';
+export const BACKGROUND_LOCATION_TASK = "move-apayao-driver-location";
 
 type LocationTaskData = {
   locations: Location.LocationObject[];
@@ -25,7 +25,7 @@ type LocationTaskData = {
 
 TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
   if (error) {
-    console.warn('[bg-location] task error:', error.message);
+    console.warn("[bg-location] task error:", error.message);
     return;
   }
   if (!data) return;
@@ -41,21 +41,30 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
     const token = await getAccessToken();
     if (!token) return; // Not signed in — nothing to broadcast.
 
-    await fetch(`${API_BASE_URL.replace(/\/+$/, '')}/api/drivers/location`, {
-      method: 'PUT',
+    await fetch(`${API_BASE_URL.replace(/\/+$/, "")}/api/drivers/location`, {
+      method: "PUT",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
         lat: latest.coords.latitude,
         lon: latest.coords.longitude,
+        capturedAt: new Date(latest.timestamp).toISOString(),
+        accuracyM: latest.coords.accuracy,
+        speedMps: latest.coords.speed,
+        headingDegrees: latest.coords.heading,
+        devicePointId: `${Math.round(latest.timestamp)}:${latest.coords.latitude.toFixed(6)}:${latest.coords.longitude.toFixed(6)}`,
+        isMocked: latest.mocked ?? false,
       }),
     });
   } catch (e) {
     // Background failures must never throw — just log and let the next
     // location update try again.
-    console.warn('[bg-location] push failed:', e instanceof Error ? e.message : e);
+    console.warn(
+      "[bg-location] push failed:",
+      e instanceof Error ? e.message : e,
+    );
   }
 });
 
@@ -75,9 +84,9 @@ export async function startBackgroundLocation(): Promise<void> {
     pausesUpdatesAutomatically: false,
     // Android: a persistent notification is REQUIRED for background location.
     foregroundService: {
-      notificationTitle: 'MOVE Apayao Driver — Online',
-      notificationBody: 'Sharing your location so passengers can find you.',
-      notificationColor: '#2563eb',
+      notificationTitle: "MOVE Apayao Driver — Online",
+      notificationBody: "Sharing your location so passengers can find you.",
+      notificationColor: "#2563eb",
     },
     // iOS: show the blue bar so the driver knows location is active.
     showsBackgroundLocationIndicator: true,

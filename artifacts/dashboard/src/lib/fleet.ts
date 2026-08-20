@@ -22,10 +22,14 @@ export interface FleetDriver {
   plateNumber: string | null
   rating: number
   totalTrips: number
+  vehicleId: string | null
   lat: number | null
   lon: number | null
   lastLocationAt: string | null
   lastSeenSecondsAgo: number | null
+  locationSource: "iot_gps" | "smartphone_gps" | null
+  smartphoneLastLocationAt: string | null
+  smartphoneLastSeenSecondsAgo: number | null
   status: FleetDriverStatus
   activeTrip: { id: number; status: string; dropoffAddress: string | null } | null
 }
@@ -41,6 +45,8 @@ export function useLiveDrivers(options?: { pollMs?: number | false }) {
     queryKey: ["admin-drivers-live"],
     queryFn: () => customFetch<LiveDriversResponse>("/api/admin/drivers/live"),
     refetchInterval: pollMs,
+    refetchIntervalInBackground: false,
+    staleTime: typeof pollMs === "number" ? Math.floor(pollMs / 2) : 30_000,
   })
 }
 

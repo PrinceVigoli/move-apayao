@@ -1,5 +1,11 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { setAuthTokenGetter } from '@workspace/api-client-react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
 import {
   getAccessToken,
   loadStoredSession,
@@ -11,7 +17,7 @@ import {
   requestPasswordReset,
   type AuthUser,
   type SignUpDetails,
-} from '@/lib/session';
+} from "@/lib/session";
 
 /**
  * Authentication for the PASSENGER app.
@@ -22,7 +28,7 @@ import {
  * app.
  */
 
-type PassengerSignUp = Omit<SignUpDetails, 'role'>;
+type PassengerSignUp = Omit<SignUpDetails, "role">;
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -75,11 +81,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: authed,
       async signInWithPassword(identifier, password) {
         const u = await apiSignIn(identifier, password);
+        if (u.role !== "passenger") {
+          await apiSignOut();
+          throw new Error("Please use the app assigned to this account.");
+        }
         setUser(u);
         setAuthed(true);
       },
       async signUpWithPassword(details) {
-        const u = await apiSignUp({ ...details, role: 'passenger' });
+        const u = await apiSignUp({ ...details, role: "passenger" });
         setUser(u);
         setAuthed(true);
       },
@@ -98,6 +108,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }

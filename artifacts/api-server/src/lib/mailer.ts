@@ -93,3 +93,36 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
     `,
   });
 }
+
+export async function sendDriverApplicationDecisionEmail(
+  to: string,
+  status: "approved" | "rejected" | "revoked",
+  reason?: string,
+): Promise<void> {
+  const transport = getTransport();
+  if (!transport) {
+    logger.warn({ to, status }, "SMTP not configured — driver decision email not sent");
+    return;
+  }
+  const approved = status === "approved";
+  const subject = approved
+    ? "Your MOVE Apayao driver application was approved"
+    : status === "rejected"
+      ? "Update on your MOVE Apayao driver application"
+      : "Your MOVE Apayao driver access was revoked";
+  const detail = reason ? `Reason: ${reason}` : "";
+  await transport.sendMail({
+    from: process.env.SMTP_FROM ?? process.env.SMTP_USER!,
+    to,
+    subject,
+    text: [
+      approved
+        ? "Your application was approved. You can now sign in to the MOVE Driver app."
+        : "An administrator updated your driver application or access.",
+      detail,
+      "If you need help, contact the MOVE Apayao operations team.",
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
+  });
+}

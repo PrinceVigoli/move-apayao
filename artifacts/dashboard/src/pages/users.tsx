@@ -21,20 +21,12 @@ export default function Users() {
   const [roleFilter, setRoleFilter] = useState<string>("all")
   const [search, setSearch] = useState("")
 
-  const { data, isLoading } = useListUsers(
+  const { data, isLoading, isError } = useListUsers(
     { limit: 100, offset: 0 },
     { query: { queryKey: ["list-users", 100, 0] } }
   )
 
-  // Mock data
-  const mockUsers = [
-    { id: "u1", email: "admin@moveapayao.ph", fullName: "System Admin", phone: "0900-000-0000", role: "admin", isActive: true, createdAt: new Date(Date.now() - 31536000000).toISOString() },
-    { id: "u2", email: "passenger1@test.com", fullName: "Maria Clara", phone: "0917-888-9999", role: "passenger", isActive: true, createdAt: new Date(Date.now() - 864000000).toISOString() },
-    { id: "u3", email: "driver1@test.com", fullName: "Jose Rizal", phone: "0918-777-6666", role: "driver", isActive: true, createdAt: new Date(Date.now() - 1728000000).toISOString() },
-    { id: "u4", email: "banned@test.com", fullName: "Banned User", phone: "0999-999-9999", role: "passenger", isActive: false, createdAt: new Date(Date.now() - 2592000000).toISOString() },
-  ]
-
-  const users = data?.users || mockUsers
+  const users = data?.users ?? []
   const filtered = users.filter(u => {
     const matchRole = roleFilter === "all" || u.role === roleFilter
     const matchSearch = (u.fullName?.toLowerCase() || "").includes(search.toLowerCase()) || 
@@ -91,6 +83,11 @@ export default function Users() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
+          {isError && (
+            <div className="border-b bg-destructive/5 px-6 py-3 text-sm text-destructive">
+              The user directory could not be loaded. Check the API connection and try again.
+            </div>
+          )}
           <Table>
             <TableHeader className="bg-muted/30">
               <TableRow>

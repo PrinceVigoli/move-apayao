@@ -1,30 +1,31 @@
-import React from 'react';
-import { Platform, StyleSheet, useColorScheme, View } from 'react-native';
-import { useColors } from '@/hooks/useColors';
-import { Feather } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
-import { isLiquidGlassAvailable } from 'expo-glass-effect';
-import { Tabs } from 'expo-router';
-import { Icon, Label, NativeTabs } from 'expo-router/unstable-native-tabs';
-import { SymbolView } from 'expo-symbols';
+import React from "react";
+import { Platform, StyleSheet, useColorScheme, View } from "react-native";
+import { useColors } from "@/hooks/useColors";
+import { Feather } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
+import { isLiquidGlassAvailable } from "expo-glass-effect";
+import { Tabs } from "expo-router";
+import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SymbolView } from "expo-symbols";
 
 function NativeTabLayout() {
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: 'house', selected: 'house.fill' }} />
+        <Icon sf={{ default: "house", selected: "house.fill" }} />
         <Label>Home</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="trips">
-        <Icon sf={{ default: 'car', selected: 'car.fill' }} />
+        <Icon sf={{ default: "car", selected: "car.fill" }} />
         <Label>Book</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="routes">
-        <Icon sf={{ default: 'map', selected: 'map.fill' }} />
+        <Icon sf={{ default: "map", selected: "map.fill" }} />
         <Label>Routes</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
-        <Icon sf={{ default: 'person', selected: 'person.fill' }} />
+        <Icon sf={{ default: "person", selected: "person.fill" }} />
         <Label>Profile</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
@@ -33,37 +34,45 @@ function NativeTabLayout() {
 
 function ClassicTabLayout() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const isIOS = Platform.OS === 'ios';
-  const isWeb = Platform.OS === 'web';
+  const isDark = colorScheme === "dark";
+  const isIOS = Platform.OS === "ios";
+  const isWeb = Platform.OS === "web";
+  const tabBarBottomInset = isWeb ? 0 : insets.bottom;
+  const tabBarHeight = isWeb
+    ? 84
+    : (isIOS ? 50 : 64) + tabBarBottomInset;
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: colors.primaryStrong,
         tabBarInactiveTintColor: colors.mutedForeground,
         headerShown: false,
+        tabBarHideOnKeyboard: true,
         tabBarStyle: {
-          position: 'absolute',
-          backgroundColor: isIOS ? 'transparent' : colors.background,
-          borderTopWidth: isWeb ? 1 : 0,
+          position: "absolute",
+          backgroundColor: isIOS ? "transparent" : colors.card,
+          borderTopWidth: 1,
           borderTopColor: colors.border,
-          elevation: 0,
-          ...(isWeb ? { height: 84 } : {}),
+          elevation: 10,
+          height: tabBarHeight,
+          paddingTop: 7,
+          paddingBottom: isWeb ? 8 : Math.max(tabBarBottomInset, 8),
         },
         tabBarBackground: () =>
           isIOS ? (
             <BlurView
               intensity={100}
-              tint={isDark ? 'dark' : 'light'}
+              tint={isDark ? "dark" : "light"}
               style={StyleSheet.absoluteFill}
             />
           ) : isWeb ? (
             <View
               style={[
                 StyleSheet.absoluteFill,
-                { backgroundColor: colors.background },
+                { backgroundColor: colors.card },
               ]}
             />
           ) : null,
@@ -72,7 +81,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: "Home",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="house" tintColor={color} size={24} />
@@ -84,7 +93,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="trips"
         options={{
-          title: 'Book',
+          title: "Trips",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="car" tintColor={color} size={24} />
@@ -96,7 +105,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="routes"
         options={{
-          title: 'Routes',
+          title: "Routes",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="map" tintColor={color} size={24} />
@@ -108,7 +117,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: "Profile",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="person" tintColor={color} size={24} />

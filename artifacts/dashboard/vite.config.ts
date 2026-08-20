@@ -30,6 +30,7 @@ export default defineConfig({
     port,
     strictPort: false,
     host: '0.0.0.0',
+    allowedHosts: ['postcard-shawl-upstroke.ngrok-free.dev'],
     fs: {
       strict: true,
     },

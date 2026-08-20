@@ -1,5 +1,5 @@
-import { getAccessToken } from '@/lib/session';
-import { API_BASE_URL } from '@/lib/api-config';
+import { getAccessToken } from "@/lib/session";
+import { API_BASE_URL } from "@/lib/api-config";
 
 export type PlacePrediction = {
   placeId: string;
@@ -27,7 +27,7 @@ async function authHeaders(): Promise<Record<string, string>> {
 }
 
 function base(): string {
-  return API_BASE_URL.replace(/\/+$/, '');
+  return API_BASE_URL.replace(/\/+$/, "");
 }
 
 export type PlaceSearchResult = {
@@ -47,18 +47,22 @@ export async function searchPlaces(
   sessionToken: string,
 ): Promise<PlaceSearchResult> {
   const q = query.trim();
-  if (q.length < 2 || !API_BASE_URL) return { predictions: [], unavailable: !API_BASE_URL };
+  if (q.length < 2 || !API_BASE_URL)
+    return { predictions: [], unavailable: !API_BASE_URL };
   try {
     const url = new URL(`${base()}/api/places/search`);
-    url.searchParams.set('q', q);
-    url.searchParams.set('sessiontoken', sessionToken);
+    url.searchParams.set("q", q);
+    url.searchParams.set("sessiontoken", sessionToken);
     const resp = await fetch(url.toString(), { headers: await authHeaders() });
     if (!resp.ok) return { predictions: [], unavailable: true };
     const data = (await resp.json()) as {
       predictions?: PlacePrediction[];
       unavailable?: boolean;
     };
-    return { predictions: data.predictions ?? [], unavailable: !!data.unavailable };
+    return {
+      predictions: data.predictions ?? [],
+      unavailable: !!data.unavailable,
+    };
   } catch {
     return { predictions: [], unavailable: true };
   }
@@ -75,8 +79,8 @@ export async function getPlaceDetails(
   if (!API_BASE_URL) return null;
   try {
     const url = new URL(`${base()}/api/places/details`);
-    url.searchParams.set('placeId', placeId);
-    url.searchParams.set('sessiontoken', sessionToken);
+    url.searchParams.set("placeId", placeId);
+    url.searchParams.set("sessiontoken", sessionToken);
     const resp = await fetch(url.toString(), { headers: await authHeaders() });
     if (!resp.ok) return null;
     return (await resp.json()) as PlaceDetails;

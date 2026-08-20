@@ -1,15 +1,7 @@
 import React, { useState } from "react"
-import { useListLoopRoutes, useCreateLoopRoute } from "@workspace/api-client-react"
+import { getGetLoopRouteQueryKey, useListLoopRoutes, useCreateLoopRoute, useGetLoopRoute } from "@workspace/api-client-react"
 import { formatPHP } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table"
 import { 
   Dialog,
   DialogContent,
@@ -22,12 +14,12 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Route, PlusCircle, Navigation, MapPin } from "lucide-react"
+import { Route, PlusCircle, Navigation, MapPin, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { RouteMapPicker, type RouteStop } from "@/components/route-map-picker"
+import { RouteMapPicker, RouteStopsMap, type RouteStop } from "@/components/route-map-picker"
 
 export default function Loops() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -35,6 +27,7 @@ export default function Loops() {
   const [baseFare, setBaseFare] = useState("40")
   const [description, setDescription] = useState("")
   const [stops, setStops] = useState<RouteStop[]>([])
+  const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null)
   const { toast } = useToast()
 
   const { data, isLoading, refetch } = useListLoopRoutes({
@@ -42,15 +35,24 @@ export default function Loops() {
   })
 
   const createMutation = useCreateLoopRoute()
+  const routeDetail = useGetLoopRoute(
+    selectedRouteId ?? 0,
+    { includeRoute: true },
+    {
+      query: {
+        queryKey: getGetLoopRouteQueryKey(selectedRouteId ?? 0, { includeRoute: true }),
+        enabled: selectedRouteId !== null,
+      },
+    },
+  )
 
-  // Mock data
-  const mockRoutes = [
-    { id: 1, name: "Luna Central Loop", description: "Connects municipal hall, market, and hospital", baseFare: 40, isActive: true, createdAt: new Date().toISOString() },
-    { id: 2, name: "Pudtol Express", description: "Direct route from boundary to center", baseFare: 50, isActive: true, createdAt: new Date().toISOString() },
-    { id: 3, name: "Conner Highland Route", description: "Mountain route connecting upper barangays", baseFare: 60, isActive: false, createdAt: new Date().toISOString() },
-  ]
-
-  const routes = data?.routes || mockRoutes
+  const routes = data?.routes ?? []
+  const selectedStops: RouteStop[] = (routeDetail.data?.stops ?? []).map((stop) => ({
+    name: stop.name,
+    sequence: stop.sequence,
+    lat: stop.lat,
+    lon: stop.lon,
+  }))
 
   const resetForm = () => {
     setRouteName("")
@@ -205,15 +207,93 @@ export default function Loops() {
                     <span className="text-xs text-muted-foreground font-medium">Base Fare</span>
                     <span className="font-bold text-foreground">{formatPHP(route.baseFare)}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-xs font-medium text-accent hover:underline cursor-pointer">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedRouteId(route.id)}
+                    className="h-auto gap-2 px-2 py-1 text-xs font-medium text-accent hover:text-accent"
+                  >
                     <MapPin className="h-3 w-3" /> View Stops
-                  </div>
+                  </Button>
                 </div>
               </CardContent>
             </Card>
           ))
         )}
       </div>
+
+      <Dialog
+        open={selectedRouteId !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedRouteId(null)
+        }}
+      >
+        <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Navigation className="h-5 w-5 text-accent" />
+              {routeDetail.data?.route.name ?? "Route stops"}
+            </DialogTitle>
+            <DialogDescription>
+              Ordered stops and the published road-following route.
+            </DialogDescription>
+          </DialogHeader>
+
+          {routeDetail.isLoading ? (
+            <div className="flex h-80 items-center justify-center gap-2 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" /> Loading route stops…
+            </div>
+          ) : routeDetail.isError ? (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center">
+              <p className="font-semibold text-destructive">Could not load this route.</p>
+              <Button variant="outline" className="mt-4" onClick={() => routeDetail.refetch()}>Try again</Button>
+            </div>
+          ) : (
+            <div className="grid gap-5 lg:grid-cols-[1.55fr_0.75fr]">
+              <div className="space-y-3">
+                <RouteStopsMap
+                  stops={selectedStops}
+                  routePolyline={routeDetail.data?.route.routePolyline}
+                />
+                <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
+                  <span>{selectedStops.length} stop{selectedStops.length === 1 ? "" : "s"}</span>
+                  {routeDetail.data?.route.distanceKm != null && (
+                    <span>{routeDetail.data.route.distanceKm.toFixed(1)} km by road</span>
+                  )}
+                  {routeDetail.data?.route.routeDurationSeconds != null && (
+                    <span>About {Math.max(1, Math.round(routeDetail.data.route.routeDurationSeconds / 60))} minutes</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="max-h-[440px] space-y-2 overflow-y-auto pr-1">
+                {selectedStops.length === 0 ? (
+                  <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+                    This route has no saved stops.
+                  </div>
+                ) : (
+                  [...selectedStops]
+                    .sort((a, b) => a.sequence - b.sequence)
+                    .map((stop) => (
+                      <div key={`${stop.sequence}-${stop.lat}`} className="flex gap-3 rounded-xl border bg-muted/30 p-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500 text-sm font-bold text-white">
+                          {stop.sequence}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold">{stop.name}</p>
+                          <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+                            {stop.lat.toFixed(5)}, {stop.lon.toFixed(5)}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

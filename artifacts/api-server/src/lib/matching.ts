@@ -1,7 +1,7 @@
-import { inArray } from "drizzle-orm";
-import { db, driverProfilesTable } from "@workspace/db";
 import { findNearestDrivers, claimDriver } from "./redis";
+import { removeDriverGeo } from "./redis";
 import { logger } from "./logger";
+import { getEligibleDriverProfiles } from "./driver-eligibility";
 
 /**
  * Capacity-aware nearest-driver matching for group bookings.
@@ -50,17 +50,19 @@ export async function matchDriverForTrip(
   const relevant = candidates.filter((c) => c.driverId !== excludeDriverId);
   if (relevant.length === 0) return null;
 
-  // One batched read of every candidate's capacity, instead of N queries.
-  const profiles = await db
-    .select({ userId: driverProfilesTable.userId, capacity: driverProfilesTable.capacity })
-    .from(driverProfilesTable)
-    .where(
-      inArray(
-        driverProfilesTable.userId,
-        relevant.map((c) => c.driverId),
-      ),
-    );
+  // Redis is a disposable spatial accelerator, not an authorization source.
+  // Revalidate every candidate against PostgreSQL before attempting a claim.
+  const profiles = await getEligibleDriverProfiles(relevant.map((c) => c.driverId));
   const capacityByDriver = new Map(profiles.map((p) => [p.userId, p.capacity]));
+
+  // Proactively scrub stale/ineligible Redis members. A failed cleanup is
+  // harmless because the database check above will continue to reject them.
+  const eligibleIds = new Set(profiles.map((profile) => profile.userId));
+  await Promise.all(
+    relevant
+      .filter((candidate) => !eligibleIds.has(candidate.driverId))
+      .map((candidate) => removeDriverGeo(candidate.driverId).catch(() => undefined)),
+  );
 
   for (const candidate of relevant) {
     const capacity = capacityByDriver.get(candidate.driverId);

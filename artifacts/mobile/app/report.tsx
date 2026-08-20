@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -7,45 +7,61 @@ import {
   TextInput,
   Pressable,
   Alert,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { useColors } from '@/hooks/useColors';
-import { Button } from '@/components/ui/Button';
-import { Feather } from '@expo/vector-icons';
-import { useCreateIncident } from '@workspace/api-client-react';
-import { useLocation } from '@/hooks/useLocation';
-import * as Haptics from 'expo-haptics';
+  Linking,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useColors } from "@/hooks/useColors";
+import { Button } from "@/components/ui/Button";
+import { Feather } from "@expo/vector-icons";
+import { useCreateIncident } from "@workspace/api-client-react";
+import { useLocation } from "@/hooks/useLocation";
+import * as Haptics from "expo-haptics";
 
 // SOW: "Driver/passenger reporting/feedback system … road accident, fleet
 // troubleshooting, flood reporting." Driver-behavior feedback is handled by
 // the per-trip star rating; this screen covers location-tagged incidents.
 const INCIDENT_TYPES = [
-  { value: 'accident', label: 'Road Accident', icon: 'alert-octagon' },
-  { value: 'flood', label: 'Flooded Road', icon: 'cloud-rain' },
-  { value: 'fleet_issue', label: 'Vehicle / Fleet Issue', icon: 'tool' },
+  { value: "accident", label: "Road Accident", icon: "alert-octagon" },
+  { value: "flood", label: "Flooded Road", icon: "cloud-rain" },
+  { value: "fleet_issue", label: "Vehicle / Fleet Issue", icon: "tool" },
 ] as const;
 
 const SEVERITIES = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-  { value: 'critical', label: 'Critical' },
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+  { value: "critical", label: "Critical" },
 ] as const;
 
 export default function ReportScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const router = useRouter();
+  const { tripId: tripIdParam } = useLocalSearchParams<{ tripId?: string }>();
+  const tripId = tripIdParam ? Number(tripIdParam) : undefined;
   const { lat, lon, isFallback } = useLocation();
 
-  const [type, setType] = useState<(typeof INCIDENT_TYPES)[number]['value']>('accident');
-  const [severity, setSeverity] = useState<(typeof SEVERITIES)[number]['value']>('medium');
-  const [description, setDescription] = useState('');
+  const [type, setType] =
+    useState<(typeof INCIDENT_TYPES)[number]["value"]>("accident");
+  const [severity, setSeverity] =
+    useState<(typeof SEVERITIES)[number]["value"]>("medium");
+  const [description, setDescription] = useState("");
 
   const createIncident = useCreateIncident();
 
   const submit = () => {
+    if (isFallback && (severity === "high" || severity === "critical")) {
+      Alert.alert(
+        "Precise location required",
+        "Enable location access before submitting a high-priority report, or call 911 now.",
+        [
+          { text: "Close", style: "cancel" },
+          { text: "Call 911", style: "destructive", onPress: () => Linking.openURL("tel:911") },
+        ],
+      );
+      return;
+    }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     createIncident.mutate(
       {
@@ -55,18 +71,22 @@ export default function ReportScreen() {
           lat,
           lon,
           description: description.trim() || undefined,
+          tripId: Number.isFinite(tripId) ? tripId : undefined,
         },
       },
       {
         onSuccess: () => {
           Alert.alert(
-            'Report submitted',
-            'Thank you — the operations team has been notified.',
-            [{ text: 'OK', onPress: () => router.back() }],
+            "Report submitted",
+            "Thank you — the operations team has been notified.",
+            [{ text: "OK", onPress: () => router.back() }],
           );
         },
         onError: () => {
-          Alert.alert('Could not submit', 'Please check your connection and try again.');
+          Alert.alert(
+            "Could not submit",
+            "Please check your connection and try again.",
+          );
         },
       },
     );
@@ -88,7 +108,7 @@ export default function ReportScreen() {
         styles.chip,
         {
           borderColor: active ? colors.primary : colors.border,
-          backgroundColor: active ? colors.primary + '18' : 'transparent',
+          backgroundColor: active ? colors.primary + "18" : "transparent",
         },
       ]}
     >
@@ -99,7 +119,12 @@ export default function ReportScreen() {
           color={active ? colors.primary : colors.mutedForeground}
         />
       )}
-      <Text style={[styles.chipText, { color: active ? colors.primary : colors.foreground }]}>
+      <Text
+        style={[
+          styles.chipText,
+          { color: active ? colors.primary : colors.foreground },
+        ]}
+      >
         {label}
       </Text>
     </Pressable>
@@ -111,21 +136,34 @@ export default function ReportScreen() {
         <Pressable onPress={() => router.back()} hitSlop={8}>
           <Feather name="arrow-left" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.foreground }]}>Report an Issue</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>
+          Report an Issue
+        </Text>
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}>
-        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>What happened?</Text>
+      <ScrollView
+        contentContainerStyle={{
+          padding: 20,
+          paddingBottom: insets.bottom + 32,
+        }}
+      >
+        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+          What happened?
+        </Text>
         <View style={styles.chipRow}>
           {INCIDENT_TYPES.map((t) =>
             chip(type === t.value, t.label, () => setType(t.value), t.icon),
           )}
         </View>
 
-        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>How serious is it?</Text>
+        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+          How serious is it?
+        </Text>
         <View style={styles.chipRow}>
-          {SEVERITIES.map((s) => chip(severity === s.value, s.label, () => setSeverity(s.value)))}
+          {SEVERITIES.map((s) =>
+            chip(severity === s.value, s.label, () => setSeverity(s.value)),
+          )}
         </View>
 
         <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
@@ -139,7 +177,11 @@ export default function ReportScreen() {
           multiline
           style={[
             styles.textarea,
-            { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card },
+            {
+              color: colors.foreground,
+              borderColor: colors.border,
+              backgroundColor: colors.card,
+            },
           ]}
         />
 
@@ -147,8 +189,8 @@ export default function ReportScreen() {
           <Feather name="map-pin" size={16} color={colors.primary} />
           <Text style={[styles.locText, { color: colors.mutedForeground }]}>
             {isFallback
-              ? 'Location unavailable — report will use the Apayao area center.'
-              : 'Your current location will be attached to this report.'}
+              ? "Location unavailable — report will use the Apayao area center."
+              : "Your current location will be attached to this report."}
           </Text>
         </View>
 
@@ -156,7 +198,9 @@ export default function ReportScreen() {
           title="Submit Report"
           onPress={submit}
           loading={createIncident.isPending}
-          icon={<Feather name="send" size={18} color={colors.primaryForeground} />}
+          icon={
+            <Feather name="send" size={18} color={colors.primaryForeground} />
+          }
           style={{ marginTop: 20 }}
         />
       </ScrollView>
@@ -167,48 +211,48 @@ export default function ReportScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingBottom: 12,
   },
-  title: { fontSize: 20, fontFamily: 'Inter_700Bold' },
+  title: { fontSize: 20, fontFamily: "Inter_700Bold" },
   sectionLabel: {
     fontSize: 13,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: "Inter_600SemiBold",
     marginBottom: 10,
     marginTop: 18,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     borderWidth: 1,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
-  chipText: { fontSize: 14, fontFamily: 'Inter_500Medium' },
+  chipText: { fontSize: 14, fontFamily: "Inter_500Medium" },
   textarea: {
     minHeight: 100,
     borderWidth: 1,
     borderRadius: 12,
     padding: 14,
     fontSize: 15,
-    fontFamily: 'Inter_400Regular',
-    textAlignVertical: 'top',
+    fontFamily: "Inter_400Regular",
+    textAlignVertical: "top",
   },
   locRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
     padding: 12,
     borderRadius: 10,
     marginTop: 18,
   },
-  locText: { fontSize: 13, fontFamily: 'Inter_400Regular', flex: 1 },
+  locText: { fontSize: 13, fontFamily: "Inter_400Regular", flex: 1 },
 });

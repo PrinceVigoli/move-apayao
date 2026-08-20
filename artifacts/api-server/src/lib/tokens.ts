@@ -67,6 +67,34 @@ export async function verifyAccessToken(token: string): Promise<AccessTokenClaim
   return { sub: payload.sub, email: payload.email, role: payload.role };
 }
 
+export async function signTrackingTicket(userId: string, tripId: number): Promise<string> {
+  return new SignJWT({ type: "tracking", tripId })
+    .setProtectedHeader({ alg: "HS256" })
+    .setSubject(userId)
+    .setIssuer(ISSUER)
+    .setAudience("trip-tracking")
+    .setIssuedAt()
+    .setExpirationTime("2m")
+    .sign(getSecret());
+}
+
+export async function verifyTrackingTicket(
+  token: string,
+): Promise<{ userId: string; tripId: number }> {
+  const { payload } = await jwtVerify(token, getSecret(), {
+    issuer: ISSUER,
+    audience: "trip-tracking",
+  });
+  if (
+    payload.type !== "tracking" ||
+    typeof payload.sub !== "string" ||
+    typeof payload.tripId !== "number"
+  ) {
+    throw new Error("Malformed tracking ticket");
+  }
+  return { userId: payload.sub, tripId: payload.tripId };
+}
+
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
@@ -101,7 +129,12 @@ export async function issueSession(
   return { accessToken, refreshToken, expiresIn: ACCESS_TOKEN_TTL_SECONDS };
 }
 
-export class RefreshTokenError extends Error {}
+export class RefreshTokenError extends Error {
+  constructor(message: string, readonly userId?: string) {
+    super(message);
+    this.name = "RefreshTokenError";
+  }
+}
 
 /**
  * Exchanges a refresh token for a fresh session, rotating the token.
@@ -114,46 +147,72 @@ export async function rotateRefreshToken(
 ): Promise<IssuedSession> {
   const tokenHash = hashToken(rawToken);
 
-  const [row] = await db
-    .select()
-    .from(refreshTokensTable)
-    .where(eq(refreshTokensTable.tokenHash, tokenHash));
+  const result = await db.transaction(async (trx) => {
+    // Only one concurrent redeemer can observe the token as active. Later
+    // requests wait for this lock and then see the committed revocation.
+    const [row] = await trx
+      .select()
+      .from(refreshTokensTable)
+      .where(eq(refreshTokensTable.tokenHash, tokenHash))
+      .for("update");
 
-  if (!row) throw new RefreshTokenError("Invalid refresh token");
+    if (!row) return { kind: "invalid" as const };
 
-  if (row.revokedAt) {
-    // Replay of an already-rotated token: assume theft and end every session
-    // for this user rather than trying to guess which holder is legitimate.
-    logger.warn({ userId: row.userId }, "Refresh token replay detected — revoking all sessions");
-    await revokeAllUserSessions(row.userId);
-    throw new RefreshTokenError("Refresh token already used");
-  }
+    if (row.revokedAt) {
+      // Return instead of throwing so the revocation commits with the
+      // transaction; throwing here would roll it back.
+      await trx
+        .update(refreshTokensTable)
+        .set({ revokedAt: new Date() })
+        .where(and(eq(refreshTokensTable.userId, row.userId), isNull(refreshTokensTable.revokedAt)));
+      return { kind: "replayed" as const, userId: row.userId };
+    }
 
-  if (row.expiresAt.getTime() < Date.now()) {
-    throw new RefreshTokenError("Refresh token expired");
-  }
+    if (row.expiresAt.getTime() < Date.now()) return { kind: "expired" as const };
 
-  const user = await lookupUser(row.userId);
-  if (!user || !user.isActive) throw new RefreshTokenError("User not found or inactive");
+    const user = await lookupUser(row.userId);
+    if (!user || !user.isActive) return { kind: "inactive" as const };
 
-  const newRaw = await createRefreshToken(user.id, userAgent);
+    const newRaw = randomBytes(REFRESH_TOKEN_BYTES).toString("base64url");
+    const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
+    await trx.insert(refreshTokensTable).values({
+      userId: user.id,
+      tokenHash: hashToken(newRaw),
+      expiresAt,
+      userAgent: userAgent?.slice(0, 200),
+    });
 
-  await db
-    .update(refreshTokensTable)
-    .set({ revokedAt: new Date(), replacedBy: hashToken(newRaw) })
-    .where(eq(refreshTokensTable.id, row.id));
+    const [claimed] = await trx
+      .update(refreshTokensTable)
+      .set({ revokedAt: new Date(), replacedBy: hashToken(newRaw) })
+      .where(and(eq(refreshTokensTable.id, row.id), isNull(refreshTokensTable.revokedAt)))
+      .returning({ id: refreshTokensTable.id });
+    if (!claimed) return { kind: "invalid" as const };
 
-  const accessToken = await signAccessToken({
-    sub: user.id,
-    email: user.email,
-    role: user.role,
+    return { kind: "rotated" as const, user, newRaw };
   });
 
-  return { accessToken, refreshToken: newRaw, expiresIn: ACCESS_TOKEN_TTL_SECONDS };
+  if (result.kind === "replayed") {
+    logger.warn({ userId: result.userId }, "Refresh token replay detected; revoking all sessions");
+    throw new RefreshTokenError("Refresh token already used", result.userId);
+  }
+  if (result.kind !== "rotated") {
+    throw new RefreshTokenError(
+      result.kind === "expired" ? "Refresh token expired" : "Invalid refresh token",
+    );
+  }
+
+  const accessToken = await signAccessToken({
+    sub: result.user.id,
+    email: result.user.email,
+    role: result.user.role,
+  });
+
+  return { accessToken, refreshToken: result.newRaw, expiresIn: ACCESS_TOKEN_TTL_SECONDS };
 }
 
-export async function revokeRefreshToken(rawToken: string): Promise<void> {
-  await db
+export async function revokeRefreshToken(rawToken: string): Promise<string | null> {
+  const [revoked] = await db
     .update(refreshTokensTable)
     .set({ revokedAt: new Date() })
     .where(
@@ -161,7 +220,9 @@ export async function revokeRefreshToken(rawToken: string): Promise<void> {
         eq(refreshTokensTable.tokenHash, hashToken(rawToken)),
         isNull(refreshTokensTable.revokedAt),
       ),
-    );
+    )
+    .returning({ userId: refreshTokensTable.userId });
+  return revoked?.userId ?? null;
 }
 
 export async function revokeAllUserSessions(userId: string): Promise<void> {

@@ -1,4 +1,5 @@
-import { pgTable, text, uuid, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, boolean, index, check } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -16,16 +17,22 @@ export const usersTable = pgTable(
     // Nullable so an admin can pre-create an account that has no password yet.
     passwordHash: text("password_hash"),
     fullName: text("full_name"),
-    role: text("role").notNull().default("passenger"), // passenger | driver | admin
+    role: text("role").notNull().default("passenger"),
     avatarUrl: text("avatar_url"),
     isActive: boolean("is_active").notNull().default(true),
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+    termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
+    termsVersion: text("terms_version"),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
     phoneIdx: index("users_phone_idx").on(table.phone),
+    roleCheck: check(
+      "users_role_check",
+      sql`${table.role} in ('passenger', 'driver_applicant', 'driver', 'admin', 'superadmin', 'developer')`,
+    ),
   }),
 );
 

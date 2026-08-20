@@ -1,4 +1,4 @@
-import { routeStrip } from '@/content/site';
+import type { FeaturedLoop } from '@/lib/loops';
 
 /**
  * The page's signature element.
@@ -12,19 +12,30 @@ import { routeStrip } from '@/content/site';
  * Horizontal on desktop, vertical on mobile, because a column of stops is how
  * a route reads on a phone-sized screen.
  */
-export function RouteStrip({ tone = 'dark' }: { tone?: 'dark' | 'light' }) {
+export function RouteStrip({
+  tone = 'dark',
+  loop,
+}: {
+  tone?: 'dark' | 'light';
+  loop: FeaturedLoop | null;
+}) {
   const lineColor = tone === 'dark' ? 'bg-white/15' : 'bg-foreground/12';
   const stopColor = tone === 'dark' ? 'bg-white/35' : 'bg-foreground/30';
   const labelColor = tone === 'dark' ? 'text-ink-soft' : 'text-muted-foreground';
   const endLabel = tone === 'dark' ? 'text-white' : 'text-foreground';
+  const stops = [...(loop?.stops ?? [])]
+    .sort((a, b) => a.sequence - b.sequence)
+    .map((stop) => stop.name);
+  const code = loop ? `LOOP ${String(loop.route.id).padStart(2, '0')}` : 'LOOP';
+  const name = loop?.route.name ?? 'Route not configured';
 
   return (
     <div className="w-full">
       <div className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="eyebrow rounded bg-primary px-2 py-1 text-primary-foreground">
-          {routeStrip.code}
+          {code}
         </span>
-        <span className={`text-sm font-semibold ${endLabel}`}>{routeStrip.name}</span>
+        <span className={`text-sm font-semibold ${endLabel}`}>{name}</span>
         <span
           className={`eyebrow rounded-full border px-2 py-0.5 ${
             tone === 'dark'
@@ -32,7 +43,7 @@ export function RouteStrip({ tone = 'dark' }: { tone?: 'dark' | 'light' }) {
               : 'border-accent/60 text-accent-foreground'
           }`}
         >
-          {routeStrip.status}
+          {loop ? 'Active' : 'Unavailable'}
         </span>
       </div>
 
@@ -44,8 +55,8 @@ export function RouteStrip({ tone = 'dark' }: { tone?: 'dark' | 'light' }) {
           style={{ animation: 'bead-travel 9s cubic-bezier(0.6,0,0.4,1) infinite alternate' }}
         />
         <div className="relative flex justify-between">
-          {routeStrip.stops.map((stop, i) => {
-            const terminus = i === 0 || i === routeStrip.stops.length - 1;
+          {stops.map((stop, i) => {
+            const terminus = i === 0 || i === stops.length - 1;
             return (
               <div key={stop} className="flex flex-col items-center gap-3">
                 <span
@@ -75,8 +86,8 @@ export function RouteStrip({ tone = 'dark' }: { tone?: 'dark' | 'light' }) {
       <div className="relative md:hidden" aria-hidden="true">
         <div className={`absolute bottom-2 left-[7px] top-2 w-[2px] ${lineColor}`} />
         <ul className="space-y-4">
-          {routeStrip.stops.map((stop, i) => {
-            const terminus = i === 0 || i === routeStrip.stops.length - 1;
+          {stops.map((stop, i) => {
+            const terminus = i === 0 || i === stops.length - 1;
             return (
               <li key={stop} className="relative flex items-center gap-4">
                 <span
@@ -99,7 +110,7 @@ export function RouteStrip({ tone = 'dark' }: { tone?: 'dark' | 'light' }) {
 
       {/* Screen-reader equivalent of the diagram above */}
       <p className="sr-only">
-        {routeStrip.code}, {routeStrip.name}: stops at {routeStrip.stops.join(', ')}.
+        {code}, {name}: stops at {stops.join(', ')}.
       </p>
     </div>
   );

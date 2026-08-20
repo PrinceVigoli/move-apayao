@@ -4,6 +4,8 @@ import { db } from "@workspace/db";
 import { tripsTable, fareTransactionsTable, incidentReportsTable, usersTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { parsePagination, parseDateRange } from "../lib/http";
+import { hasProvincialAdminAccess, type AuthenticatedRequest } from "../middlewares/auth";
+import { z } from "zod";
 
 const router: IRouter = Router();
 
@@ -97,9 +99,16 @@ router.get(
   requireRole("admin"),
   async (req, res): Promise<void> => {
     const { limit, offset } = parsePagination(req.query, { defaultLimit: 50, maxLimit: 200 });
-    const statusFilter = req.query.status as string | undefined;
-    const driverIdFilter = req.query.driverId as string | undefined;
-    const passengerIdFilter = req.query.passengerId as string | undefined;
+    const parsedFilters = z.object({
+      status: z.enum(["requested", "matched", "accepted", "arrived", "in_progress", "completed", "cancelled"]).optional(),
+      driverId: z.string().uuid().optional(),
+      passengerId: z.string().uuid().optional(),
+    }).safeParse(req.query);
+    if (!parsedFilters.success) {
+      res.status(400).json({ error: "Invalid analytics filter" });
+      return;
+    }
+    const { status: statusFilter, driverId: driverIdFilter, passengerId: passengerIdFilter } = parsedFilters.data;
 
     const filters = [];
     if (statusFilter) filters.push(eq(tripsTable.status, statusFilter));
@@ -121,12 +130,18 @@ router.get(
 /**
  * GET /api/analytics/earnings
  */
-router.get("/analytics/earnings", requireAuth, async (req, res): Promise<void> => {
-  const authReq = req as import("../middlewares/auth").AuthenticatedRequest;
+router.get("/analytics/earnings", requireAuth, requireRole("driver", "admin"), async (req, res): Promise<void> => {
+  const authReq = req as AuthenticatedRequest;
+
+  const requestedDriverId = z.string().uuid().optional().safeParse(req.query.driverId);
+  if (!requestedDriverId.success) {
+    res.status(400).json({ error: "Invalid driver ID" });
+    return;
+  }
 
   const driverId =
-    authReq.user.role === "admin" && req.query.driverId
-      ? String(req.query.driverId)
+    hasProvincialAdminAccess(authReq.user.role) && requestedDriverId.data
+      ? requestedDriverId.data
       : authReq.user.id;
 
   const { startDate, endDate } = parseDateRange(req.query);

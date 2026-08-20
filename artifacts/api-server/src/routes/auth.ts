@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, eq, isNull, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, notInArray, or } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   usersTable,
@@ -7,11 +7,12 @@ import {
   fareWalletsTable,
   subscriptionsTable,
   passwordResetTokensTable,
+  tripsTable,
   hashPassword,
   verifyPassword,
   needsRehash,
 } from "@workspace/db";
-import { requireAuth, type AuthenticatedRequest } from "../middlewares/auth";
+import { requireAuth, requireRole, type AuthenticatedRequest } from "../middlewares/auth";
 import { parsePagination } from "../lib/http";
 import { sensitiveActionLimiter } from "../lib/rate-limit";
 import { defaultCapacityForVehicleType } from "../lib/vehicle-capacity";
@@ -26,10 +27,19 @@ import {
 import { sendPasswordResetEmail } from "../lib/mailer";
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
+import { removeDriverGeo } from "../lib/redis";
 
 const router: IRouter = Router();
 
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+async function takeAccountOutOfDriverPool(userId: string): Promise<void> {
+  await db
+    .update(driverProfilesTable)
+    .set({ isOnShift: false, isAvailable: false, updatedAt: new Date() })
+    .where(eq(driverProfilesTable.userId, userId));
+  await removeDriverGeo(userId).catch(() => undefined);
+}
 
 /** Length beats character-class rules; keep the floor simple and honest. */
 const passwordSchema = z.string().min(8, "Password must be at least 8 characters").max(200);
@@ -60,17 +70,36 @@ function publicUser(u: typeof usersTable.$inferSelect) {
 /* Register                                                            */
 /* ------------------------------------------------------------------ */
 
-const RegisterBody = z.object({
-  email: z.string().email(),
-  password: passwordSchema,
-  fullName: z.string().min(1),
-  phone: phoneSchema.optional(),
-  role: z.enum(["passenger", "driver"]),
-  vehicleType: z.string().optional(),
-  licenseNumber: z.string().optional(),
-  plateNumber: z.string().optional(),
-  vehicleColor: z.string().optional(),
-});
+export const RegisterBody = z
+  .object({
+    email: z.string().email(),
+    password: passwordSchema,
+    fullName: z.string().trim().min(1),
+    phone: phoneSchema.optional(),
+    // Public callers may apply to drive, but only an administrator can grant
+    // the privileged "driver" role.
+    role: z.enum(["passenger", "driver_applicant"]),
+    vehicleType: z.string().trim().min(1).optional(),
+    licenseNumber: z.string().trim().min(1).optional(),
+    plateNumber: z.string().trim().min(1).optional(),
+    vehicleColor: z.string().trim().min(1).optional(),
+    acceptedTerms: z.literal(true, {
+      message: "You must accept the Terms and Privacy Policy",
+    }),
+    termsVersion: z.string().trim().min(1).max(40).default("2026-08-19"),
+  })
+  .superRefine((body, ctx) => {
+    if (body.role !== "driver_applicant") return;
+    for (const field of ["vehicleType", "licenseNumber", "plateNumber"] as const) {
+      if (!body[field]) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [field],
+          message: `${field} is required for driver applications`,
+        });
+      }
+    }
+  });
 
 /**
  * POST /api/auth/register
@@ -115,29 +144,34 @@ router.post("/auth/register", sensitiveActionLimiter, async (req, res): Promise<
         passwordHash,
         fullName: body.fullName,
         role: body.role,
+        termsAcceptedAt: now,
+        termsVersion: body.termsVersion,
       })
       .returning();
 
     await trx.insert(fareWalletsTable).values({ userId: created!.id });
 
-    const expiresAt = new Date(now);
-    expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-    await trx.insert(subscriptionsTable).values({
-      userId: created!.id,
-      plan: "annual",
-      status: "active",
-      startsAt: now,
-      expiresAt,
-    });
+    if (body.role === "passenger") {
+      const expiresAt = new Date(now);
+      expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+      await trx.insert(subscriptionsTable).values({
+        userId: created!.id,
+        plan: "annual",
+        status: "active",
+        startsAt: now,
+        expiresAt,
+      });
+    }
 
-    if (body.role === "driver") {
+    if (body.role === "driver_applicant") {
       await trx.insert(driverProfilesTable).values({
         userId: created!.id,
-        vehicleType: body.vehicleType ?? "e-trike",
+        vehicleType: body.vehicleType!,
         capacity: defaultCapacityForVehicleType(body.vehicleType),
-        licenseNumber: body.licenseNumber,
-        plateNumber: body.plateNumber,
+        licenseNumber: body.licenseNumber!,
+        plateNumber: body.plateNumber!,
         vehicleColor: body.vehicleColor,
+        approvalStatus: "pending",
       });
     }
 
@@ -203,8 +237,22 @@ router.post("/auth/login", sensitiveActionLimiter, async (req, res): Promise<voi
 
   await db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.id, user.id));
 
+  const [driverApplication] = await db
+    .select({
+      status: driverProfilesTable.approvalStatus,
+      reason: driverProfilesTable.reviewReason,
+    })
+    .from(driverProfilesTable)
+    .where(eq(driverProfilesTable.userId, user.id));
   const session = await issueSession(user, req.headers["user-agent"]);
-  res.json({ user: publicUser(user), ...session });
+  res.json({
+    user: {
+      ...publicUser(user),
+      driverApplicationStatus: driverApplication?.status,
+      driverApplicationReason: driverApplication?.reason,
+    },
+    ...session,
+  });
 });
 
 /* ------------------------------------------------------------------ */
@@ -240,6 +288,7 @@ router.post("/auth/refresh", async (req, res): Promise<void> => {
     res.json(session);
   } catch (err) {
     if (err instanceof RefreshTokenError) {
+      if (err.userId) await takeAccountOutOfDriverPool(err.userId);
       res.status(401).json({ error: "Session expired, please sign in again" });
       return;
     }
@@ -250,7 +299,8 @@ router.post("/auth/refresh", async (req, res): Promise<void> => {
 router.post("/auth/logout", async (req, res): Promise<void> => {
   const parsed = RefreshBody.safeParse(req.body);
   if (parsed.success) {
-    await revokeRefreshToken(parsed.data.refreshToken);
+    const userId = await revokeRefreshToken(parsed.data.refreshToken);
+    if (userId) await takeAccountOutOfDriverPool(userId);
   }
   // Always 204 — a client signing out has nothing useful to do with the
   // information that its token was already invalid.
@@ -261,6 +311,7 @@ router.post("/auth/logout", async (req, res): Promise<void> => {
 router.post("/auth/logout-all", requireAuth, async (req, res): Promise<void> => {
   const authReq = req as AuthenticatedRequest;
   await revokeAllUserSessions(authReq.user.id);
+  await takeAccountOutOfDriverPool(authReq.user.id);
   res.status(204).end();
 });
 
@@ -288,10 +339,23 @@ router.post("/auth/forgot-password", sensitiveActionLimiter, async (req, res): P
 
   if (user && user.isActive) {
     const rawToken = randomBytes(32).toString("base64url");
-    await db.insert(passwordResetTokensTable).values({
-      userId: user.id,
-      tokenHash: hashToken(rawToken),
-      expiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
+    await db.transaction(async (trx) => {
+      // Only the newest reset email remains usable. This prevents an older
+      // link from unexpectedly changing the password after a newer request.
+      await trx
+        .update(passwordResetTokensTable)
+        .set({ usedAt: new Date() })
+        .where(
+          and(
+            eq(passwordResetTokensTable.userId, user.id),
+            isNull(passwordResetTokensTable.usedAt),
+          ),
+        );
+      await trx.insert(passwordResetTokensTable).values({
+        userId: user.id,
+        tokenHash: hashToken(rawToken),
+        expiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
+      });
     });
 
     const base =
@@ -322,39 +386,64 @@ router.post("/auth/reset-password", sensitiveActionLimiter, async (req, res): Pr
     return;
   }
 
-  const [row] = await db
-    .select()
-    .from(passwordResetTokensTable)
-    .where(
-      and(
-        eq(passwordResetTokensTable.tokenHash, hashToken(parsed.data.token)),
-        isNull(passwordResetTokensTable.usedAt),
-      ),
-    );
-
-  if (!row || row.expiresAt.getTime() < Date.now()) {
-    res.status(400).json({ error: "This reset link is invalid or has expired" });
-    return;
-  }
-
   const passwordHash = await hashPassword(parsed.data.password);
 
-  await db.transaction(async (trx) => {
+  const consumed = await db.transaction(async (trx) => {
+    // Serialise consumers of this token. Without the row lock, two requests
+    // can both pass the unused check and race to set different passwords.
+    const [row] = await trx
+      .select()
+      .from(passwordResetTokensTable)
+      .where(
+        and(
+          eq(passwordResetTokensTable.tokenHash, hashToken(parsed.data.token)),
+          isNull(passwordResetTokensTable.usedAt),
+        ),
+      )
+      .for("update");
+
+    if (!row || row.expiresAt.getTime() < Date.now()) return null;
+
+    const [claimed] = await trx
+      .update(passwordResetTokensTable)
+      .set({ usedAt: new Date() })
+      .where(
+        and(
+          eq(passwordResetTokensTable.id, row.id),
+          isNull(passwordResetTokensTable.usedAt),
+        ),
+      )
+      .returning({ id: passwordResetTokensTable.id });
+    if (!claimed) return null;
+
     await trx
       .update(usersTable)
       .set({ passwordHash, updatedAt: new Date() })
       .where(eq(usersTable.id, row.userId));
+
     await trx
       .update(passwordResetTokensTable)
       .set({ usedAt: new Date() })
-      .where(eq(passwordResetTokensTable.id, row.id));
+      .where(
+        and(
+          eq(passwordResetTokensTable.userId, row.userId),
+          isNull(passwordResetTokensTable.usedAt),
+        ),
+      );
+    return { userId: row.userId };
   });
+
+  if (!consumed) {
+    res.status(400).json({ error: "This reset link is invalid or has expired" });
+    return;
+  }
 
   // A password change must end existing sessions, or whoever already had
   // access keeps it — which defeats the point of resetting.
-  await revokeAllUserSessions(row.userId);
+  await revokeAllUserSessions(consumed.userId);
+  await takeAccountOutOfDriverPool(consumed.userId);
 
-  req.log.info({ userId: row.userId }, "Password reset completed");
+  req.log.info({ userId: consumed.userId }, "Password reset completed");
   res.json({ message: "Password updated. Please sign in with your new password." });
 });
 
@@ -388,6 +477,7 @@ router.post(
       .where(eq(usersTable.id, user.id));
 
     await revokeAllUserSessions(user.id);
+    await takeAccountOutOfDriverPool(user.id);
     res.json({ message: "Password changed. Please sign in again." });
   },
 );
@@ -412,7 +502,7 @@ router.get("/auth/profile", requireAuth, async (req, res): Promise<void> => {
       .select()
       .from(subscriptionsTable)
       .where(eq(subscriptionsTable.userId, user.id))
-      .orderBy(subscriptionsTable.createdAt)
+      .orderBy(desc(subscriptionsTable.createdAt))
       .limit(1),
     user.role === "driver"
       ? db.select().from(driverProfilesTable).where(eq(driverProfilesTable.userId, user.id))
@@ -448,16 +538,74 @@ router.patch("/auth/profile", requireAuth, async (req, res): Promise<void> => {
   res.json({ user: publicUser(user!) });
 });
 
+const DeleteAccountBody = z.object({
+  password: z.string().min(1),
+  reason: z.string().trim().max(500).optional(),
+});
+
+/**
+ * Deactivation is recoverable by an administrator and preserves trip/audit
+ * records. It immediately revokes every session and removes the account from
+ * active service without destroying legally relevant operational history.
+ */
+router.post(
+  "/auth/deactivate-account",
+  requireAuth,
+  sensitiveActionLimiter,
+  async (req, res): Promise<void> => {
+    const authReq = req as AuthenticatedRequest;
+    const parsed = DeleteAccountBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid request" });
+      return;
+    }
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, authReq.user.id));
+    if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
+      res.status(401).json({ error: "Password is incorrect" });
+      return;
+    }
+    const [activeTrip] = await db
+      .select({ id: tripsTable.id })
+      .from(tripsTable)
+      .where(
+        and(
+          or(eq(tripsTable.passengerId, user.id), eq(tripsTable.driverId, user.id)),
+          inArray(tripsTable.status, ["requested", "matched", "accepted", "arrived", "in_progress"]),
+        ),
+      )
+      .limit(1);
+    if (activeTrip) {
+      res.status(409).json({
+        error: "Your account cannot be deactivated during an active trip. Cancel or complete it first.",
+        activeTripId: activeTrip.id,
+      });
+      return;
+    }
+    await db.transaction(async (trx) => {
+      await trx
+        .update(usersTable)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(usersTable.id, user.id));
+      if (user.role === "driver") {
+        await trx
+          .update(driverProfilesTable)
+          .set({ isOnShift: false, isAvailable: false, updatedAt: new Date() })
+          .where(eq(driverProfilesTable.userId, user.id));
+      }
+    });
+    await revokeAllUserSessions(user.id);
+    await takeAccountOutOfDriverPool(user.id);
+    req.log.info({ userId: user.id, reason: parsed.data.reason }, "Account deactivated by owner");
+    res.json({ message: "Your account has been deactivated." });
+  },
+);
+
 /* ------------------------------------------------------------------ */
 /* Admin                                                               */
 /* ------------------------------------------------------------------ */
 
-router.get("/auth/users", requireAuth, async (req, res): Promise<void> => {
+router.get("/auth/users", requireAuth, requireRole("admin"), async (req, res): Promise<void> => {
   const authReq = req as AuthenticatedRequest;
-  if (authReq.user.role !== "admin") {
-    res.status(403).json({ error: "Forbidden" });
-    return;
-  }
 
   const { limit, offset } = parsePagination(req.query, { defaultLimit: 50, maxLimit: 100 });
 
@@ -477,6 +625,11 @@ router.get("/auth/users", requireAuth, async (req, res): Promise<void> => {
       updatedAt: usersTable.updatedAt,
     })
     .from(usersTable)
+    .where(
+      authReq.user.role === "admin"
+        ? notInArray(usersTable.role, ["superadmin", "developer"])
+        : undefined,
+    )
     .limit(limit)
     .offset(offset)
     .orderBy(usersTable.createdAt);

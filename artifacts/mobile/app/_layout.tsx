@@ -1,23 +1,24 @@
-import React, { useEffect } from 'react';
-import { View, ActivityIndicator } from 'react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { KeyboardProvider } from 'react-native-keyboard-controller';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
+import React, { useEffect } from "react";
+import { View, ActivityIndicator } from "react-native";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import {
   Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,
   Inter_700Bold,
   useFonts,
-} from '@expo-google-fonts/inter';
-import { Stack, useRouter, useSegments } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { setBaseUrl } from '@workspace/api-client-react';
-import { API_BASE_URL } from '@/lib/api-config';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { useColors } from '@/hooks/useColors';
+} from "@expo-google-fonts/inter";
+import { Stack, useRouter, useSegments } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { setBaseUrl } from "@workspace/api-client-react";
+import { API_BASE_URL } from "@/lib/api-config";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { useColors } from "@/hooks/useColors";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 // Initialize API Base URL.
 // Set EXPO_PUBLIC_API_URL to the API server's address. On a physical device
@@ -42,38 +43,53 @@ function useAuthGuard() {
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
+    const inAuthGroup = segments[0] === "(auth)";
 
     if (!isAuthenticated && !inAuthGroup) {
-      router.replace('/(auth)/login');
+      router.replace("/(auth)/login");
     } else if (isAuthenticated && inAuthGroup) {
-      router.replace('/(tabs)');
+      router.replace("/(tabs)");
     }
   }, [isAuthenticated, isLoading, segments]);
 }
 
 function RootLayoutNav() {
-  const { isLoading } = useAuth();
+  const { isLoading, isAuthenticated } = useAuth();
   const colors = useColors();
   useAuthGuard();
+  usePushNotifications(isAuthenticated);
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: colors.background,
+        }}
+      >
         <ActivityIndicator color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <Stack screenOptions={{ headerBackTitle: 'Back', headerShown: false }}>
+    <Stack screenOptions={{ headerBackTitle: "Back", headerShown: false }}>
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="report" options={{ headerShown: false, presentation: 'card' }} />
-      <Stack.Screen name="history" options={{ headerShown: false, presentation: 'card' }} />
-      <Stack.Screen name="trip/[id]" options={{ presentation: 'modal' }} />
+      <Stack.Screen
+        name="report"
+        options={{ headerShown: false, presentation: "card" }}
+      />
+      <Stack.Screen
+        name="history"
+        options={{ headerShown: false, presentation: "card" }}
+      />
+      <Stack.Screen name="account" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="trip/[id]" options={{ presentation: "modal" }} />
       <Stack.Screen name="trip/[id]/track" options={{ headerShown: false }} />
-      <Stack.Screen name="route/[id]" options={{ presentation: 'card' }} />
+      <Stack.Screen name="route/[id]" options={{ presentation: "card" }} />
     </Stack>
   );
 }

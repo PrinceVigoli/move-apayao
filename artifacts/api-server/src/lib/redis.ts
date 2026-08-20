@@ -51,7 +51,29 @@ export async function publishDriverLocation(
   const pub = getRedisPub();
   await pub.publish(
     `driver:location:${driverId}`,
-    JSON.stringify({ driverId, lat, lon, ts: Date.now() }),
+    JSON.stringify({ driverId, lat, lon, ts: Date.now(), source: "smartphone_gps" }),
+  );
+}
+
+/** Publish a physical vehicle tracker fix without adding it to dispatch geo. */
+export async function publishVehicleLocation(
+  vehicleId: string,
+  driverId: string | null,
+  lat: number,
+  lon: number,
+  capturedAt: Date,
+): Promise<void> {
+  const pub = getRedisPub();
+  await pub.publish(
+    `vehicle:location:${vehicleId}`,
+    JSON.stringify({
+      vehicleId,
+      driverId,
+      lat,
+      lon,
+      ts: capturedAt.getTime(),
+      source: "iot_gps",
+    }),
   );
 }
 

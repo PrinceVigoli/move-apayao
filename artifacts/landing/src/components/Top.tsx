@@ -1,54 +1,54 @@
-import { ArrowRight, Menu, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { hero, links, steps, storesAreLive } from '@/content/site';
-import { ILOCANO_READY, LANGUAGES } from '@/content/i18n';
-import { RouteStrip } from '@/components/RouteStrip';
+import {
+  ArrowRight,
+  CarFront,
+  CheckCircle2,
+  MapPin,
+  Menu,
+  ShieldCheck,
+  Smartphone,
+  Star,
+  Users,
+  X,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { hero, links, steps, storesAreLive } from "@/content/site";
+import { ILOCANO_READY, LANGUAGES } from "@/content/i18n";
+import { BrandLockup } from "@/components/Brand";
+import { Reveal } from "@/components/Motion";
+import { ProductPhone } from "@/components/ProductPhone";
 
 const NAV = [
-  { href: '#how', label: 'How it works' },
-  { href: '#coverage', label: 'Coverage' },
-  { href: '#drivers', label: 'For drivers' },
-  { href: '#partners', label: 'For the LGU' },
-  { href: '#faq', label: 'FAQ' },
+  { href: "#how", label: "How it works" },
+  { href: "#coverage", label: "Coverage" },
+  { href: "#drivers", label: "For drivers" },
+  { href: "#partners", label: "For the LGU" },
+  { href: "#faq", label: "FAQ" },
 ];
+
+const STEP_ICONS = [Smartphone, MapPin, CarFront, Star];
 
 export function Nav() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
-  // The nav used to be `absolute`, which meant it only ever existed over the
-  // hero and scrolled away with everything else — there was no way to get
-  // back to nav links or the primary CTA without scrolling to the very top.
-  // It's `fixed` now, transparent over the dark hero and picking up a solid
-  // ink background once you've scrolled past it.
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
+    const onScroll = () => setScrolled(window.scrollY > 24);
     onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   return (
-    <header
-      className={`fixed inset-x-0 top-0 z-30 transition-colors duration-300 ${
-        scrolled
-          ? 'border-b border-white/10 bg-[hsl(var(--ink)/0.92)] backdrop-blur-sm'
-          : 'border-b border-transparent bg-transparent'
-      }`}
-    >
-      <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <a href="#top" className="flex items-baseline gap-2 py-2 text-white">
-          <span className="display text-xl">MOVE</span>
-          <span className="eyebrow text-accent">Apayao</span>
+    <header className={`site-header ${scrolled ? "is-scrolled" : ""}`}>
+      <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3.5 sm:px-8">
+        <a href="#top" aria-label="MOVE Apayao home" className="shrink-0">
+          <BrandLockup />
         </a>
 
-        <ul className="hidden items-center gap-7 md:flex">
+        <ul className="hidden items-center gap-7 lg:flex">
           {NAV.map((item) => (
             <li key={item.href}>
-              <a
-                href={item.href}
-                className="text-sm text-ink-soft transition-colors hover:text-white"
-              >
+              <a href={item.href} className="nav-link">
                 {item.label}
               </a>
             </li>
@@ -61,119 +61,164 @@ export function Nav() {
           <li>
             <a
               href={links.passengerAndroid}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97]"
+              className="button button-primary button-sm"
             >
               Get the app
+              <ArrowRight size={15} />
             </a>
           </li>
         </ul>
 
         <button
           type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="-mr-2 flex h-11 w-11 items-center justify-center text-white md:hidden"
+          onClick={() => setOpen((value) => !value)}
+          className="grid h-11 w-11 place-items-center rounded-full border border-border bg-white text-foreground lg:hidden"
           aria-expanded={open}
-          aria-label={open ? 'Close menu' : 'Open menu'}
+          aria-controls="mobile-navigation"
+          aria-label={open ? "Close menu" : "Open menu"}
         >
-          {open ? <X size={22} /> : <Menu size={22} />}
+          {open ? <X size={21} /> : <Menu size={21} />}
         </button>
       </nav>
 
-      {open && (
-        <div className="rise mx-6 rounded-xl border border-white/10 bg-[hsl(var(--ink))] p-4 md:hidden">
-          <ul className="space-y-1">
-            {NAV.map((item) => (
-              <li key={item.href}>
-                <a
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className="block rounded-lg px-3 py-2.5 text-sm text-ink-soft transition-colors hover:bg-white/5 hover:text-white"
-                >
-                  {item.label}
-                </a>
-              </li>
-            ))}
-            <li className="pt-2">
-              <a
-                href={links.passengerAndroid}
-                className="block rounded-lg bg-primary px-3 py-2.5 text-center text-sm font-semibold text-primary-foreground transition-transform duration-150 active:scale-[0.97]"
-              >
-                Get the app
-              </a>
-            </li>
-          </ul>
+      <div
+        id="mobile-navigation"
+        className={`mobile-nav lg:hidden ${open ? "is-open" : ""}`}
+      >
+        <div className="mx-5 mb-4 rounded-3xl border border-border bg-background p-3 shadow-2xl shadow-foreground/10 sm:mx-8">
+          {NAV.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold hover:bg-muted"
+            >
+              {item.label}
+              <ArrowRight size={15} className="text-primary" />
+            </a>
+          ))}
+          <a
+            href={links.passengerAndroid}
+            className="button button-primary mt-2 w-full justify-center"
+          >
+            Get the app <ArrowRight size={16} />
+          </a>
         </div>
-      )}
+      </div>
     </header>
   );
 }
 
 export function Hero() {
+  const sceneRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (
+      !scene ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const shift = Math.min(window.scrollY * 0.08, 42);
+      scene.style.setProperty("--hero-shift", `${shift}px`);
+    };
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, []);
+
   return (
-    <section
-      id="top"
-      className="relative overflow-hidden bg-[hsl(var(--ink))] pb-20 pt-32 md:pb-28 md:pt-40"
-    >
-      {/* Ambient: a faint contour wash, like the highland terrain the loop runs through */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-24 -top-24 h-[520px] w-[520px] rounded-full opacity-[0.16]"
-        style={{
-          background:
-            'radial-gradient(circle, hsl(var(--accent)) 0%, transparent 62%)',
-        }}
-      />
+    <section id="top" className="hero-section">
+      <div className="hero-stage">
+        <img
+          ref={sceneRef}
+          src="/images/move-apayao-hero.webp"
+          alt="A green electric tricycle overlooking the mountain landscape of Apayao"
+          className="hero-scene"
+          fetchPriority="high"
+        />
+        <div className="hero-wash" aria-hidden="true" />
+        <div className="topo-pattern" aria-hidden="true" />
 
-      <div className="relative mx-auto max-w-6xl px-6">
-        <p className="eyebrow rise text-accent">{hero.eyebrow}</p>
+        <div className="hero-layout relative z-10 mx-auto grid min-h-[680px] max-w-7xl items-center gap-10 px-5 pb-16 pt-32 sm:px-8 lg:grid-cols-[1.12fr_0.88fr] lg:pb-20 lg:pt-36">
+          <div className="hero-copy max-w-2xl">
+            <div className="hero-eyebrow">
+              <span className="status-dot" />
+              {hero.eyebrow}
+              <span>Now in pilot</span>
+            </div>
 
-        <h1
-          className="display rise mt-5 max-w-3xl text-[2.6rem] text-white sm:text-6xl lg:text-7xl"
-          style={{ animationDelay: '60ms' }}
-        >
-          {hero.title}
-        </h1>
+            <h1 className="display mt-6 text-[clamp(3.2rem,5.7vw,5.25rem)] text-foreground">
+              E-trike rides you can{" "}
+              <span className="text-primary">actually track.</span>
+            </h1>
 
-        <p
-          className="rise mt-6 max-w-xl text-lg leading-relaxed text-ink-soft"
-          style={{ animationDelay: '120ms' }}
-        >
-          {hero.body}
-        </p>
+            <p className="mt-7 max-w-xl text-lg leading-8 text-muted-foreground sm:text-xl">
+              Book from your barangay, follow your driver live, and arrive with
+              confidence.
+            </p>
 
-        <div
-          className="rise mt-9 flex flex-wrap items-center gap-3"
-          style={{ animationDelay: '180ms' }}
-        >
-          <a
-            href={links.passengerAndroid}
-            className="group inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3.5 font-semibold text-primary-foreground transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]"
-          >
-            {hero.primaryCta}
-            <ArrowRight
-              size={18}
-              className="transition-transform group-hover:translate-x-0.5"
-            />
-          </a>
-          <a
-            href="#drivers"
-            className="rounded-lg border border-white/20 px-6 py-3.5 font-semibold text-white transition-colors duration-150 hover:bg-white/5 active:bg-white/10"
-          >
-            {hero.secondaryCta}
-          </a>
-        </div>
+            <div className="hero-actions mt-9 flex flex-wrap gap-3">
+              <a
+                href={links.passengerAndroid}
+                className="button button-primary"
+              >
+                {hero.primaryCta}
+                <span className="button-orb">
+                  <ArrowRight size={17} />
+                </span>
+              </a>
+              <a href="#drivers" className="button button-secondary">
+                {hero.secondaryCta}
+                <CarFront size={17} />
+              </a>
+            </div>
 
-        <p className="rise mt-4 text-xs text-ink-soft" style={{ animationDelay: '220ms' }}>
-          {hero.note}
-          {!storesAreLive && ' Currently in pilot testing.'}
-        </p>
+            <p className="hero-note mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+              <CheckCircle2 size={15} className="text-primary" />
+              {hero.note}
+              {!storesAreLive && " Currently in pilot testing."}
+            </p>
 
-        {/* Signature */}
-        <div
-          className="rise mt-16 rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:mt-20 md:p-8"
-          style={{ animationDelay: '280ms' }}
-        >
-          <RouteStrip tone="dark" />
+            <div className="hero-trust mt-10 grid max-w-xl grid-cols-3 gap-2 border-t border-foreground/10 pt-6 sm:gap-5">
+              {[
+                { Icon: ShieldCheck, label: "Local & trusted" },
+                { Icon: MapPin, label: "Live driver tracking" },
+                { Icon: Users, label: "Group booking" },
+              ].map(({ Icon, label }) => (
+                <div key={label} className="hero-trust-item">
+                  <Icon size={20} />
+                  <span>{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="hero-product" aria-hidden="true">
+            <div className="hero-halo" />
+            <ProductPhone />
+            <div className="arrival-pill">
+              <span className="arrival-icon">
+                <CarFront size={18} />
+              </span>
+              <span>
+                <strong>Driver nearby</strong>Live location updated
+              </span>
+              <span className="arrival-live">LIVE</span>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -182,58 +227,67 @@ export function Hero() {
 
 export function HowItWorks() {
   return (
-    <section id="how" className="mx-auto max-w-6xl px-6 py-20 md:py-28">
-      <p className="eyebrow text-primary-strong">How it works</p>
-      <h2 className="display mt-4 max-w-2xl text-3xl sm:text-4xl">
-        Four steps, start to finish.
-      </h2>
+    <section id="how" className="border-b border-border bg-background">
+      <div className="mx-auto grid max-w-7xl gap-8 px-5 py-14 sm:px-8 lg:grid-cols-[0.65fr_2.35fr] lg:items-center lg:py-16">
+        <Reveal>
+          <p className="eyebrow text-primary">Simple from the start</p>
+          <h2 className="display mt-3 text-3xl sm:text-4xl">
+            Your ride in four steps.
+          </h2>
+        </Reveal>
 
-      {/* Numbered because this genuinely is a sequence — the order is the
-          information. */}
-      <ol className="mt-12 grid gap-x-10 gap-y-10 sm:grid-cols-2">
-        {steps.map((step) => (
-          <li key={step.n} className="border-t border-border pt-5">
-            <span className="font-mono text-sm font-semibold text-primary-strong">{step.n}</span>
-            <h3 className="mt-2 text-lg font-bold">{step.title}</h3>
-            <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-              {step.body}
-            </p>
-          </li>
-        ))}
-      </ol>
+        <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {steps.map((step, index) => {
+            const Icon = STEP_ICONS[index] ?? MapPin;
+            return (
+              <Reveal key={step.n} delay={index * 80}>
+                <li className="step-card">
+                  <div className="flex items-center justify-between">
+                    <span className="step-icon">
+                      <Icon size={21} />
+                    </span>
+                    <span className="step-number">{index + 1}</span>
+                  </div>
+                  <h3 className="mt-5 font-bold leading-snug">{step.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    {step.body}
+                  </p>
+                </li>
+              </Reveal>
+            );
+          })}
+        </ol>
+      </div>
     </section>
   );
 }
 
-
-/**
- * Language switcher. Hidden until ILOCANO_READY is set — see content/i18n.ts
- * for why (unreviewed translation on a government site is worse than English).
- */
 function LangToggle() {
   const [lang, setLang] = useState<string>(
-    () => localStorage.getItem('moveapayao.lang') ?? 'en',
+    () => localStorage.getItem("moveapayao.lang") ?? "en",
   );
 
   const choose = (code: string) => {
     setLang(code);
-    localStorage.setItem('moveapayao.lang', code);
+    localStorage.setItem("moveapayao.lang", code);
     document.documentElement.lang = code;
   };
 
   return (
-    <div className="flex items-center gap-1 rounded-lg border border-white/20 p-0.5">
-      {LANGUAGES.map((l) => (
+    <div className="flex items-center gap-1 rounded-full border border-border bg-white p-1">
+      {LANGUAGES.map((language) => (
         <button
-          key={l.code}
+          key={language.code}
           type="button"
-          onClick={() => choose(l.code)}
-          aria-pressed={lang === l.code}
-          className={`rounded px-2 py-1 font-mono text-[11px] tracking-wide transition-colors ${
-            lang === l.code ? 'bg-white/15 text-white' : 'text-ink-soft hover:text-white'
+          onClick={() => choose(language.code)}
+          aria-pressed={lang === language.code}
+          className={`rounded-full px-2 py-1 font-mono text-[11px] ${
+            lang === language.code
+              ? "bg-primary text-white"
+              : "text-muted-foreground"
           }`}
         >
-          {l.short}
+          {language.short}
         </button>
       ))}
     </div>

@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
-import * as Location from 'expo-location';
+import { useEffect, useState, useCallback } from "react";
+import * as Location from "expo-location";
 
 // Apayao provincial center — used as a safe fallback when the device has not
 // yet returned a fix or the user denied the location permission. Keeps the UI
@@ -12,7 +12,7 @@ export type LocationState = {
   /** True while the first fix is being acquired. */
   loading: boolean;
   /** 'granted' | 'denied' | 'undetermined' — mirrors expo-location. */
-  permission: Location.PermissionStatus | 'undetermined';
+  permission: Location.PermissionStatus | "undetermined";
   /** True when lat/lon are the Apayao fallback rather than a real device fix. */
   isFallback: boolean;
   /** Human-readable error, if any. */
@@ -35,7 +35,7 @@ export function useLocation(): LocationState {
   const [lon, setLon] = useState<number>(APAYAO_FALLBACK.lon);
   const [loading, setLoading] = useState<boolean>(true);
   const [permission, setPermission] =
-    useState<LocationState['permission']>('undetermined');
+    useState<LocationState["permission"]>("undetermined");
   const [isFallback, setIsFallback] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,10 +46,10 @@ export function useLocation(): LocationState {
       const { status } = await Location.requestForegroundPermissionsAsync();
       setPermission(status);
 
-      if (status !== 'granted') {
+      if (status !== "granted") {
         // Keep the fallback coordinates so weather / nearby still render.
         setIsFallback(true);
-        setError('Location permission denied. Showing Apayao area.');
+        setError("Location permission denied. Showing Apayao area.");
         return;
       }
 
@@ -62,7 +62,7 @@ export function useLocation(): LocationState {
     } catch (e) {
       setIsFallback(true);
       setError(
-        e instanceof Error ? e.message : 'Could not determine your location.',
+        e instanceof Error ? e.message : "Could not determine your location.",
       );
     } finally {
       setLoading(false);

@@ -12,6 +12,10 @@ import placesRouter from "./places";
 import subscriptionsRouter from "./subscriptions";
 import auditLogsRouter from "./audit-logs";
 import trackingRouter from "./tracking";
+import gisRouter from "./gis";
+import notificationsRouter from "./notifications";
+import farePolicyRouter from "./fare-policy";
+import iotRouter from "./iot";
 
 const router = Router();
 
@@ -28,6 +32,10 @@ router.use(placesRouter);
 router.use(subscriptionsRouter);
 router.use(auditLogsRouter);
 router.use(trackingRouter);
+router.use(gisRouter);
+router.use(notificationsRouter);
+router.use(farePolicyRouter);
+router.use(iotRouter);
 
 
 export default router;

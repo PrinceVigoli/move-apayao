@@ -1,4 +1,4 @@
-import { Nav, Hero, HowItWorks } from '@/components/Top';
+import { Nav, Hero, HowItWorks } from "@/components/Top";
 import {
   Coverage,
   Features,
@@ -6,10 +6,14 @@ import {
   Stakeholders,
   Faq,
   Footer,
-} from '@/components/Body';
-import { RouteRule } from '@/components/RouteStrip';
+} from "@/components/Body";
+import { ResetPassword } from "@/components/ResetPassword";
 
 export default function App() {
+  if (window.location.pathname.replace(/\/+$/, "") === "/reset-password") {
+    return <ResetPassword />;
+  }
+
   return (
     <>
       <a
@@ -22,7 +26,6 @@ export default function App() {
       <main>
         <Hero />
         <HowItWorks />
-        <RouteRule />
         <Coverage />
         <Features />
         <Drivers />

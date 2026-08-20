@@ -5,8 +5,19 @@
  * MOVE Apayao — Transit & Trip Booking API
  * OpenAPI spec version: 1.0.0
  */
+export type HealthStatusStatus = typeof HealthStatusStatus[keyof typeof HealthStatusStatus];
+
+
+export const HealthStatusStatus = {
+  ok: 'ok',
+  degraded: 'degraded',
+} as const;
+
+export type HealthStatusDependencies = {[key: string]: string};
+
 export interface HealthStatus {
-  status: string;
+  status: HealthStatusStatus;
+  dependencies?: HealthStatusDependencies;
 }
 
 export interface ErrorResponse {
@@ -22,8 +33,21 @@ export type UserRole = typeof UserRole[keyof typeof UserRole];
 
 export const UserRole = {
   passenger: 'passenger',
+  driver_applicant: 'driver_applicant',
   driver: 'driver',
   admin: 'admin',
+  superadmin: 'superadmin',
+  developer: 'developer',
+} as const;
+
+export type UserDriverApplicationStatus = typeof UserDriverApplicationStatus[keyof typeof UserDriverApplicationStatus];
+
+
+export const UserDriverApplicationStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+  revoked: 'revoked',
 } as const;
 
 export interface User {
@@ -34,16 +58,21 @@ export interface User {
   role: UserRole;
   avatarUrl?: string | null;
   isActive: boolean;
+  driverApplicationStatus?: UserDriverApplicationStatus;
+  driverApplicationReason?: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
+/**
+ * Use driver_applicant for driver applications; public registration cannot grant the driver role.
+ */
 export type RegisterUserBodyRole = typeof RegisterUserBodyRole[keyof typeof RegisterUserBodyRole];
 
 
 export const RegisterUserBodyRole = {
   passenger: 'passenger',
-  driver: 'driver',
+  driver_applicant: 'driver_applicant',
 } as const;
 
 export interface RegisterUserBody {
@@ -52,11 +81,14 @@ export interface RegisterUserBody {
   password: string;
   fullName: string;
   phone?: string;
+  /** Use driver_applicant for driver applications; public registration cannot grant the driver role. */
   role: RegisterUserBodyRole;
   vehicleType?: string;
   licenseNumber?: string;
   plateNumber?: string;
   vehicleColor?: string;
+  acceptedTerms: true;
+  termsVersion?: string;
 }
 
 export interface LoginBody {
@@ -83,6 +115,12 @@ export interface ChangePasswordBody {
   currentPassword: string;
   /** @minLength 8 */
   newPassword: string;
+}
+
+export interface DeactivateAccountBody {
+  password: string;
+  /** @maxLength 500 */
+  reason?: string;
 }
 
 export interface SessionTokens {
@@ -129,6 +167,16 @@ export interface Subscription {
   createdAt: string;
 }
 
+export type DriverProfileApprovalStatus = typeof DriverProfileApprovalStatus[keyof typeof DriverProfileApprovalStatus];
+
+
+export const DriverProfileApprovalStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+  revoked: 'revoked',
+} as const;
+
 export interface DriverProfile {
   id: number;
   userId: string;
@@ -138,7 +186,12 @@ export interface DriverProfile {
   licenseNumber?: string | null;
   plateNumber?: string | null;
   vehicleColor?: string | null;
+  approvalStatus: DriverProfileApprovalStatus;
+  reviewReason?: string | null;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
   isAvailable: boolean;
+  isOnShift: boolean;
   currentLat?: number | null;
   currentLon?: number | null;
   rating: number;
@@ -172,9 +225,219 @@ export interface DriverProfileResponse {
   profile: DriverProfile;
 }
 
+export type DriverApprovalBodyStatus = typeof DriverApprovalBodyStatus[keyof typeof DriverApprovalBodyStatus];
+
+
+export const DriverApprovalBodyStatus = {
+  approved: 'approved',
+  rejected: 'rejected',
+  revoked: 'revoked',
+} as const;
+
+export interface DriverApprovalBody {
+  status: DriverApprovalBodyStatus;
+  /**
+     * Required when rejecting an application or revoking driver access.
+     * @minLength 10
+     * @maxLength 500
+     */
+  reason?: string;
+}
+
+export interface DriverApprovalResponse {
+  user: User;
+  profile: DriverProfile;
+}
+
+export type DriverApplicationApprovalStatus = typeof DriverApplicationApprovalStatus[keyof typeof DriverApplicationApprovalStatus];
+
+
+export const DriverApplicationApprovalStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+  revoked: 'revoked',
+} as const;
+
+export interface DriverApplication {
+  userId: string;
+  fullName?: string | null;
+  email: string;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  isActive: boolean;
+  vehicleType: string;
+  vehicleColor?: string | null;
+  capacity: number;
+  plateNumber?: string | null;
+  licenseNumber?: string | null;
+  approvalStatus: DriverApplicationApprovalStatus;
+  reviewReason?: string | null;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DriverApplicationCounts {
+  pending: number;
+  approved: number;
+  rejected: number;
+  revoked: number;
+}
+
+export interface DriverApplicationsResponse {
+  applications: DriverApplication[];
+  counts: DriverApplicationCounts;
+}
+
 export interface UpdateLocationBody {
   lat: number;
   lon: number;
+  capturedAt?: string;
+  accuracyM?: number | null;
+  speedMps?: number | null;
+  headingDegrees?: number | null;
+  devicePointId?: string;
+  isMocked?: boolean;
+}
+
+export interface GisOverview {
+  totalPoints: number;
+  points24h: number;
+  activeDrivers24h: number;
+  validPoints: number;
+  mockedPoints: number;
+  lowAccuracyPoints: number;
+  averageAccuracyM: number | null;
+  latestPointAt: string | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  qualityScore: number;
+  totalCandidates: number;
+  draftCandidates: number;
+  approvedCandidates: number;
+  generatedAt: string;
+}
+
+export type GisLineGeometryType = typeof GisLineGeometryType[keyof typeof GisLineGeometryType];
+
+
+export const GisLineGeometryType = {
+  LineString: 'LineString',
+} as const;
+
+export interface GisLineGeometry {
+  type: GisLineGeometryType;
+  /**
+     * @items.minItems 2
+     * @items.maxItems 2
+     */
+  coordinates: number[][];
+}
+
+export interface GisTrackProperties {
+  driverId: string;
+  driverName?: string | null;
+  tripId?: number | null;
+  trackSession?: number;
+  pointCount: number;
+  startedAt: string;
+  endedAt: string;
+}
+
+export type GisTrackFeatureType = typeof GisTrackFeatureType[keyof typeof GisTrackFeatureType];
+
+
+export const GisTrackFeatureType = {
+  Feature: 'Feature',
+} as const;
+
+export interface GisTrackFeature {
+  type: GisTrackFeatureType;
+  geometry: GisLineGeometry;
+  properties: GisTrackProperties;
+}
+
+export type GisTrackCollectionType = typeof GisTrackCollectionType[keyof typeof GisTrackCollectionType];
+
+
+export const GisTrackCollectionType = {
+  FeatureCollection: 'FeatureCollection',
+} as const;
+
+export interface GisTrackCollection {
+  type: GisTrackCollectionType;
+  features: GisTrackFeature[];
+  generatedAt: string;
+}
+
+export type GisRouteCandidateStatus = typeof GisRouteCandidateStatus[keyof typeof GisRouteCandidateStatus];
+
+
+export const GisRouteCandidateStatus = {
+  draft: 'draft',
+  reviewing: 'reviewing',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export type GisRouteCandidateGeometryGeoJson = { [key: string]: unknown };
+
+export interface GisRouteCandidate {
+  id: number;
+  name: string;
+  status: GisRouteCandidateStatus;
+  geometryGeoJson: GisRouteCandidateGeometryGeoJson;
+  supportingRuns: number;
+  supportingDrivers: number;
+  confidence: number;
+  distanceKm?: number | null;
+  sourceWindowStart?: string | null;
+  sourceWindowEnd?: string | null;
+  createdAt: string;
+  reviewedAt?: string | null;
+  reviewReason?: string | null;
+}
+
+export interface GisCandidateList {
+  candidates: GisRouteCandidate[];
+}
+
+export interface GenerateGisCandidatesBody {
+  /**
+     * @minimum 7
+     * @maximum 90
+     */
+  days?: number;
+}
+
+export interface GenerateGisCandidatesResponse {
+  days: number;
+  eligibleCorridors: number;
+  created: number;
+  updated: number;
+  skipped: number;
+}
+
+export type ReviewGisCandidateBodyStatus = typeof ReviewGisCandidateBodyStatus[keyof typeof ReviewGisCandidateBodyStatus];
+
+
+export const ReviewGisCandidateBodyStatus = {
+  reviewing: 'reviewing',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface ReviewGisCandidateBody {
+  status: ReviewGisCandidateBodyStatus;
+  /**
+     * @minLength 5
+     * @maxLength 500
+     */
+  reason: string;
 }
 
 export interface AvailabilityBody {
@@ -206,15 +469,27 @@ export type TripStatus = typeof TripStatus[keyof typeof TripStatus];
 export const TripStatus = {
   requested: 'requested',
   matched: 'matched',
+  accepted: 'accepted',
+  arrived: 'arrived',
   in_progress: 'in_progress',
+  completing: 'completing',
   completed: 'completed',
   cancelled: 'cancelled',
+} as const;
+
+export type TripDistanceSource = typeof TripDistanceSource[keyof typeof TripDistanceSource] | null;
+
+
+export const TripDistanceSource = {
+  google_routes: 'google_routes',
+  haversine_fallback: 'haversine_fallback',
 } as const;
 
 export interface Trip {
   id: number;
   passengerId: string;
   driverId?: string | null;
+  vehicleId?: string | null;
   pickupLat: number;
   pickupLon: number;
   pickupAddress?: string | null;
@@ -223,15 +498,29 @@ export interface Trip {
   dropoffAddress?: string | null;
   /** Seats requested for this booking (group booking). */
   passengerCount?: number;
+  clientRequestId?: string | null;
+  /** Passenger-only pickup verification PIN. */
+  pickupCode?: string | null;
   /** Rating (1-5) the passenger gave the driver for this trip, if any. */
   driverRating?: number | null;
   /** Free-text feedback the passenger left with their rating, if any. */
   driverRatingComment?: string | null;
+  driverRatingTags?: string[] | null;
   status: TripStatus;
   fareAmount?: number | null;
+  farePolicyId?: number | null;
   distanceKm?: number | null;
+  routeDurationSeconds?: number | null;
+  routePolyline?: string | null;
+  distanceSource?: TripDistanceSource;
   cancelReason?: string | null;
+  cancelReasonCode?: string | null;
+  cancelDetails?: string | null;
+  cancelledBy?: string | null;
   matchedAt?: string | null;
+  offerExpiresAt?: string | null;
+  acceptedAt?: string | null;
+  arrivedAt?: string | null;
   startedAt?: string | null;
   completedAt?: string | null;
   cancelledAt?: string | null;
@@ -244,12 +533,35 @@ export interface Trip {
 export type TripResponseMyRating = {
   rating: number;
   comment?: string | null;
+  tags?: string[];
 } | null;
+
+export interface TripPassenger {
+  id: string;
+  fullName?: string | null;
+  phone?: string | null;
+  avatarUrl?: string | null;
+}
+
+export interface TripDriver {
+  id: string;
+  fullName?: string | null;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  vehicleType: string;
+  vehicleColor?: string | null;
+  plateNumber?: string | null;
+  rating: number;
+  totalTrips: number;
+}
 
 export interface TripResponse {
   trip: Trip;
   /** The calling user's own rating for this trip, if already given. */
   myRating?: TripResponseMyRating;
+  passenger?: TripPassenger | null;
+  driver?: TripDriver | null;
+  idempotentReplay?: boolean;
 }
 
 export interface ListTripsResponse {
@@ -258,7 +570,7 @@ export interface ListTripsResponse {
   offset: number;
 }
 
-export interface CreateTripBody {
+export interface TripRouteBody {
   pickupLat: number;
   pickupLon: number;
   pickupAddress?: string;
@@ -268,9 +580,139 @@ export interface CreateTripBody {
   /**
      * Seats requested for this booking (group booking).
      * @minimum 1
-     * @maximum 16
+     * @maximum 15
      */
   passengerCount?: number;
+}
+
+export type CreateTripBody = TripRouteBody & {
+  /**
+     * @minLength 8
+     * @maxLength 120
+     */
+  clientRequestId: string;
+};
+
+export interface CreateIotVehicleBody {
+  /**
+     * @minLength 3
+     * @maxLength 30
+     */
+  plateNumber: string;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  label?: string;
+  vehicleType?: string;
+  /**
+     * @minimum 1
+     * @maximum 100
+     */
+  capacity?: number;
+}
+
+export interface ProvisionGpsDeviceBody {
+  vehicleId: string;
+  /**
+     * @minLength 4
+     * @maxLength 64
+     */
+  externalId?: string;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  label?: string;
+  protocol?: string;
+}
+
+export interface AssignIotVehicleBody {
+  vehicleId: string;
+  driverId: string;
+}
+
+export interface DeviceLocationBody {
+  /**
+     * @minLength 8
+     * @maxLength 64
+     */
+  eventId: string;
+  capturedAt: string;
+  /**
+     * @minimum -90
+     * @maximum 90
+     */
+  lat: number;
+  /**
+     * @minimum -180
+     * @maximum 180
+     */
+  lon: number;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     */
+  accuracyM?: number | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  speedMps?: number | null;
+  /**
+     * @minimum 0
+     * @maximum 360
+     */
+  headingDegrees?: number | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  batteryPercent?: number | null;
+  /**
+     * @minimum -200
+     * @maximum 0
+     */
+  signalDbm?: number | null;
+}
+
+export type DeclineTripBodyReason = typeof DeclineTripBodyReason[keyof typeof DeclineTripBodyReason];
+
+
+export const DeclineTripBodyReason = {
+  too_far: 'too_far',
+  vehicle_issue: 'vehicle_issue',
+  unsafe_pickup: 'unsafe_pickup',
+  personal_emergency: 'personal_emergency',
+  other: 'other',
+} as const;
+
+export interface DeclineTripBody {
+  reason: DeclineTripBodyReason;
+}
+
+export interface StartTripBody {
+  /** @pattern ^\\d{4}$ */
+  pickupCode: string;
+}
+
+export type CancelTripBodyReason = typeof CancelTripBodyReason[keyof typeof CancelTripBodyReason];
+
+
+export const CancelTripBodyReason = {
+  changed_mind: 'changed_mind',
+  wrong_pickup: 'wrong_pickup',
+  driver_taking_too_long: 'driver_taking_too_long',
+  cannot_contact_driver: 'cannot_contact_driver',
+  safety_concern: 'safety_concern',
+  driver_emergency: 'driver_emergency',
+  other: 'other',
+} as const;
+
+export interface CancelTripBody {
+  reason: CancelTripBodyReason;
+  /** @maxLength 300 */
+  details?: string;
 }
 
 export interface TripRating {
@@ -284,6 +726,7 @@ export interface TripRating {
      */
   rating: number;
   comment?: string | null;
+  tags?: string[];
   createdAt: string;
 }
 
@@ -297,8 +740,45 @@ export interface RateTripBody {
      * @maximum 5
      */
   rating: number;
+  /** @maxLength 500 */
   comment?: string;
+  /**
+     * @maxItems 5
+     * @items.maxLength 50
+     */
+  tags?: string[];
 }
+
+export type RegisterNotificationDeviceBodyPlatform = typeof RegisterNotificationDeviceBodyPlatform[keyof typeof RegisterNotificationDeviceBodyPlatform];
+
+
+export const RegisterNotificationDeviceBodyPlatform = {
+  ios: 'ios',
+  android: 'android',
+  web: 'web',
+} as const;
+
+export type RegisterNotificationDeviceBodyApp = typeof RegisterNotificationDeviceBodyApp[keyof typeof RegisterNotificationDeviceBodyApp];
+
+
+export const RegisterNotificationDeviceBodyApp = {
+  passenger: 'passenger',
+  driver: 'driver',
+} as const;
+
+export interface RegisterNotificationDeviceBody {
+  token: string;
+  platform: RegisterNotificationDeviceBodyPlatform;
+  app: RegisterNotificationDeviceBodyApp;
+}
+
+export type LoopRouteDistanceSource = typeof LoopRouteDistanceSource[keyof typeof LoopRouteDistanceSource] | null;
+
+
+export const LoopRouteDistanceSource = {
+  google_routes: 'google_routes',
+  haversine_fallback: 'haversine_fallback',
+} as const;
 
 export interface LoopRoute {
   id: number;
@@ -306,7 +786,48 @@ export interface LoopRoute {
   description?: string | null;
   isActive: boolean;
   baseFare: number;
+  distanceKm?: number | null;
+  routeDurationSeconds?: number | null;
+  routePolyline?: string | null;
+  distanceSource?: LoopRouteDistanceSource;
   createdAt: string;
+}
+
+export interface RoutePoint {
+  lat: number;
+  lon: number;
+}
+
+export interface PreviewLoopRouteBody {
+  /**
+     * @minItems 2
+     * @maxItems 25
+     */
+  stops: RoutePoint[];
+}
+
+export type DrivingRouteSource = typeof DrivingRouteSource[keyof typeof DrivingRouteSource];
+
+
+export const DrivingRouteSource = {
+  google_routes: 'google_routes',
+  haversine_fallback: 'haversine_fallback',
+} as const;
+
+export interface DrivingRoute {
+  distanceKm: number;
+  durationSeconds?: number | null;
+  encodedPolyline?: string | null;
+  source: DrivingRouteSource;
+}
+
+export interface DrivingRouteResponse {
+  route: DrivingRoute;
+}
+
+export interface TripFarePreviewResponse {
+  route: DrivingRoute;
+  fareAmount: number;
 }
 
 export interface LoopStop {
@@ -455,6 +976,7 @@ export const IncidentReportStatus = {
 export interface IncidentReport {
   id: number;
   reporterId: string;
+  tripId?: number | null;
   type: IncidentReportType;
   lat: number;
   lon: number;
@@ -497,12 +1019,51 @@ export const CreateIncidentBodySeverity = {
 } as const;
 
 export interface CreateIncidentBody {
+  tripId?: number;
   type: CreateIncidentBodyType;
   lat: number;
   lon: number;
   severity: CreateIncidentBodySeverity;
   description?: string;
   photoUrl?: string;
+}
+
+export interface TrackingTicketResponse {
+  ticket: string;
+  /** Ticket lifetime in seconds */
+  expiresIn: number;
+}
+
+export interface FarePolicy {
+  id: number | null;
+  name: string;
+  baseFare: number;
+  perKmFare: number;
+  minimumFare: number;
+  extraPassengerFare: number;
+  isActive: boolean;
+  createdBy: string | null;
+  createdAt: string | null;
+}
+
+export interface FarePolicyResponse {
+  policy: FarePolicy;
+}
+
+export interface UpdateFarePolicyBody {
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  name: string;
+  /** @minimum 0 */
+  baseFare: number;
+  /** @minimum 0 */
+  perKmFare: number;
+  /** @minimum 0 */
+  minimumFare: number;
+  /** @minimum 0 */
+  extraPassengerFare: number;
 }
 
 export type UpdateIncidentBodyStatus = typeof UpdateIncidentBodyStatus[keyof typeof UpdateIncidentBodyStatus];
@@ -659,6 +1220,23 @@ limit?: number;
 offset?: number;
 };
 
+export type GetRecentGisTracksParams = {
+/**
+ * @minimum 1
+ * @maximum 168
+ */
+hours?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+};
+
+export type ReviewGisCandidate200 = {
+  candidate: GisRouteCandidate;
+};
+
 export type GetNearbyDriversParams = {
 lat: number;
 lon: number;
@@ -670,8 +1248,15 @@ limit?: number;
 offset?: number;
 };
 
-export type CancelTripBody = {
-  reason?: string;
+export type UnregisterNotificationDeviceBody = {
+  token: string;
+};
+
+export type GetLoopRouteParams = {
+/**
+ * Compute transient road geometry for display on a Google Map.
+ */
+includeRoute?: boolean;
 };
 
 export type GetLoopVehiclesParams = {
@@ -723,4 +1308,16 @@ status?: string;
 limit?: number;
 offset?: number;
 };
+
+export type GetIotFleet200 = { [key: string]: unknown };
+
+export type CreateIotVehicle201 = { [key: string]: unknown };
+
+export type ProvisionGpsDevice201 = { [key: string]: unknown };
+
+export type AssignIotVehicle201 = { [key: string]: unknown };
+
+export type RevokeGpsDevice200 = { [key: string]: unknown };
+
+export type IngestGpsLocation202 = { [key: string]: unknown };
 

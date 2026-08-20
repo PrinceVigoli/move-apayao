@@ -1,13 +1,20 @@
-import React, { useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Animated } from 'react-native';
-import { useColors } from '@/hooks/useColors';
-import * as Haptics from 'expo-haptics';
+import React, { useRef } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+  Animated,
+} from "react-native";
+import { useColors } from "@/hooks/useColors";
+import * as Haptics from "expo-haptics";
 
 interface ButtonProps {
   onPress: () => void;
   title: string;
-  variant?: 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: "default" | "secondary" | "outline" | "ghost" | "destructive";
+  size?: "sm" | "md" | "lg";
   loading?: boolean;
   disabled?: boolean;
   icon?: React.ReactNode;
@@ -31,8 +38,8 @@ interface ButtonProps {
 export function Button({
   onPress,
   title,
-  variant = 'default',
-  size = 'md',
+  variant = "default",
+  size = "md",
   loading = false,
   disabled = false,
   icon,
@@ -42,7 +49,7 @@ export function Button({
   const colors = useColors();
   const scale = useRef(new Animated.Value(1)).current;
 
-  const isFilled = variant === 'default' || variant === 'destructive';
+  const isFilled = variant === "default" || variant === "destructive";
   const inactive = disabled || loading;
 
   const handlePress = () => {
@@ -60,27 +67,27 @@ export function Button({
     }).start();
 
   const backgroundColor =
-    variant === 'default'
+    variant === "default"
       ? colors.primary
-      : variant === 'secondary'
+      : variant === "secondary"
         ? colors.secondary
-        : variant === 'destructive'
+        : variant === "destructive"
           ? colors.destructive
-          : 'transparent';
+          : "transparent";
 
   const textColor =
-    variant === 'default'
+    variant === "default"
       ? colors.primaryForeground
-      : variant === 'secondary'
+      : variant === "secondary"
         ? colors.secondaryForeground
-        : variant === 'destructive'
+        : variant === "destructive"
           ? colors.destructiveForeground
-          : variant === 'ghost'
+          : variant === "ghost"
             ? colors.primaryStrong
             : colors.foreground;
 
-  const height = size === 'sm' ? 40 : size === 'lg' ? 56 : 48;
-  const fontSize = size === 'sm' ? 14 : size === 'lg' ? 17 : 16;
+  const height = size === "sm" ? 40 : size === "lg" ? 56 : 48;
+  const fontSize = size === "sm" ? 14 : size === "lg" ? 17 : 16;
 
   return (
     <Animated.View style={[{ transform: [{ scale }] }, style]}>
@@ -97,8 +104,8 @@ export function Button({
           styles.button,
           {
             backgroundColor,
-            borderColor: variant === 'outline' ? colors.input : 'transparent',
-            borderWidth: variant === 'outline' ? 1.5 : 0,
+            borderColor: variant === "outline" ? colors.input : "transparent",
+            borderWidth: variant === "outline" ? 1.5 : 0,
             height,
             borderRadius: colors.radius,
             opacity: disabled ? 0.45 : 1,
@@ -111,7 +118,10 @@ export function Button({
         ) : (
           <View style={styles.content}>
             {icon && <View style={styles.iconContainer}>{icon}</View>}
-            <Text style={[styles.text, { color: textColor, fontSize }]} numberOfLines={1}>
+            <Text
+              style={[styles.text, { color: textColor, fontSize }]}
+              numberOfLines={1}
+            >
               {title}
             </Text>
           </View>
@@ -123,26 +133,26 @@ export function Button({
 
 const styles = StyleSheet.create({
   button: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
+    justifyContent: "center",
+    alignItems: "center",
+    flexDirection: "row",
     paddingHorizontal: 18,
   },
   raised: {
     elevation: 3,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.18,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
   },
   content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
   iconContainer: { marginRight: 8 },
   text: {
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.1,
   },
 });

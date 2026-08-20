@@ -1,268 +1,332 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, ActivityIndicator } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useColors } from '@/hooks/useColors';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Skeleton } from '@/components/ui/Skeleton';
-import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useLocation } from '@/hooks/useLocation';
+import React from "react";
 import {
-  useGetWeather,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Platform,
+  Pressable,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useColors } from "@/hooks/useColors";
+import { Button } from "@/components/ui/Button";
+import { RouteMap, type NearbyDriverPin } from "@/components/RouteMap";
+import { useLocation } from "@/hooks/useLocation";
+import {
   useGetNearbyDrivers,
   useGetProfile,
-  useListTrips
-} from '@workspace/api-client-react';
+  useListTrips,
+} from "@workspace/api-client-react";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const router = useRouter();
-
-  const { lat, lon, isFallback, loading: isLoadingLocation } = useLocation();
-
-  const { data: profileData, isLoading: isLoadingProfile } = useGetProfile();
-  const { data: weatherData, isLoading: isLoadingWeather } = useGetWeather({ lat, lon });
-  const { data: nearbyData, isLoading: isLoadingNearby } = useGetNearbyDrivers({ lat, lon });
-  const { data: tripsData, isLoading: isLoadingTrips } = useListTrips({ limit: 1 });
-
+  const { lat, lon, isFallback } = useLocation();
+  const { data: profile } = useGetProfile();
+  const { data: nearby } = useGetNearbyDrivers({ lat, lon });
+  const { data: trips } = useListTrips({ limit: 1 });
+  const firstName =
+    profile?.user?.fullName?.split(" ")[0] ||
+    profile?.user?.email?.split("@")[0] ||
+    "Maria";
+  const pins: NearbyDriverPin[] = (nearby?.drivers ?? [])
+    .filter((d) => d.currentLat != null && d.currentLon != null)
+    .map((d) => ({
+      id: d.userId,
+      latitude: d.currentLat!,
+      longitude: d.currentLon!,
+      label: d.fullName || "Available E-Trike",
+    }));
+  const recent = trips?.trips?.[0];
+  const shortcuts = [
+    { title: "Pudtol", sub: "Municipal Hall", icon: "home" },
+    { title: "Pudtol", sub: "Public Market", icon: "shopping-bag" },
+    { title: "Sta. Marcela", sub: "Elementary School", icon: "map-pin" },
+  ] as const;
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.page, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={{
-          paddingTop: insets.top + 24,
-          paddingBottom: insets.bottom + (Platform.OS === 'web' ? 84 : 100),
-          paddingHorizontal: 16,
+          paddingBottom: insets.bottom + (Platform.OS === "web" ? 96 : 112),
         }}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
           <View>
-            <Text style={[styles.greeting, { color: colors.mutedForeground }]}>
-              {isLoadingProfile ? 'Loading...' : `Magandang araw,`}
+            <Text style={[styles.brand, { color: colors.foreground }]}>
+              MOVE <Text style={{ color: colors.primary }}>Apayao</Text>
             </Text>
-            <Text style={[styles.name, { color: colors.foreground }]}>
-              {profileData?.user?.fullName || profileData?.user?.email?.split('@')[0] || 'Apayao Commuter'}
+            <Text style={[styles.greeting, { color: colors.foreground }]}>
+              Good morning, {firstName}
             </Text>
+            <View style={styles.location}>
+              <Feather name="map-pin" size={13} color={colors.primary} />
+              <Text
+                style={[styles.locationText, { color: colors.mutedForeground }]}
+              >
+                {isFallback ? "Pudtol, Apayao" : "Your current location"}
+              </Text>
+            </View>
           </View>
-          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-            <Text style={styles.avatarText}>
-              {profileData?.user?.fullName?.[0]?.toUpperCase() || 'A'}
-            </Text>
-          </View>
+          <Pressable style={[styles.alert, { backgroundColor: colors.card }]}>
+            <Feather name="bell" size={20} color={colors.foreground} />
+            <View
+              style={[styles.alertDot, { backgroundColor: colors.destructive }]}
+            />
+          </Pressable>
         </View>
-
-        {/* Quick Book */}
-        <Card style={styles.heroCard}>
-          <Text style={[styles.heroTitle, { color: colors.cardForeground }]}>
-            Where to?
-          </Text>
-          <Text style={[styles.heroSub, { color: colors.mutedForeground }]}>
-            Book a fast & reliable e-trike ride
-          </Text>
-          <Button
-            title="Book a Ride"
-            size="lg"
-            onPress={() => router.push('/trips')}
-            icon={<Feather name="navigation" size={20} color={colors.primaryForeground} />}
-            style={{ marginTop: 16 }}
+        <View style={styles.mapWrap}>
+          <RouteMap
+            userLocation={{ latitude: lat, longitude: lon }}
+            userLocationIsFallback={isFallback}
+            nearbyDrivers={pins}
+            interactive
+            style={StyleSheet.absoluteFill}
           />
-        </Card>
-
-        {/* Widgets Row */}
-        <View style={styles.widgetsRow}>
-          <Card style={styles.widgetCard}>
-            {isLoadingNearby ? (
-              <Skeleton style={{ height: 40, width: '100%' }} />
-            ) : (
-              <>
-                <View style={styles.widgetHeader}>
-                  <Feather name="zap" size={20} color={colors.accent} />
-                  <Text style={[styles.widgetValue, { color: colors.foreground }]}>
-                    {nearbyData?.drivers?.length || 0}
-                  </Text>
-                </View>
-                <Text style={[styles.widgetLabel, { color: colors.mutedForeground }]}>
-                  Nearby E-Trikes
-                </Text>
-              </>
-            )}
-          </Card>
-
-          <Card style={styles.widgetCard}>
-            {isLoadingWeather ? (
-              <Skeleton style={{ height: 40, width: '100%' }} />
-            ) : (
-              <>
-                <View style={styles.widgetHeader}>
-                  <Feather name={weatherData?.weather?.icon === '01d' ? 'sun' : 'cloud'} size={20} color={colors.primary} />
-                  <Text style={[styles.widgetValue, { color: colors.foreground }]}>
-                    {weatherData?.weather?.temp ? `${Math.round(weatherData.weather.temp)}°C` : '28°C'}
-                  </Text>
-                </View>
-                <Text style={[styles.widgetLabel, { color: colors.mutedForeground }]}>
-                  {isFallback ? 'Apayao Weather' : 'Local Weather'}
-                </Text>
-              </>
-            )}
-          </Card>
-        </View>
-
-        {isFallback && !isLoadingLocation && (
-          <View style={styles.locationNotice}>
-            <Feather name="map-pin" size={13} color={colors.mutedForeground} />
-            <Text style={[styles.locationNoticeText, { color: colors.mutedForeground }]}>
-              Location off — showing Apayao area. Enable location for nearby rides.
+          <View style={[styles.mapBadge, { backgroundColor: colors.card }]}>
+            <View
+              style={[styles.onlineDot, { backgroundColor: colors.success }]}
+            />
+            <Text style={[styles.mapBadgeText, { color: colors.foreground }]}>
+              {pins.length} e-trikes nearby
             </Text>
           </View>
-        )}
-
-        {/* Recent Trip */}
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Recent Trip</Text>
-        {isLoadingTrips ? (
-          <Card><Skeleton style={{ height: 80, width: '100%' }} /></Card>
-        ) : tripsData?.trips?.length ? (
-          <Card>
-            <View style={styles.tripRow}>
-              <View style={[styles.tripIcon, { backgroundColor: colors.muted }]}>
-                <Feather name="map-pin" size={20} color={colors.primary} />
-              </View>
-              <View style={styles.tripDetails}>
-                <Text style={[styles.tripAddress, { color: colors.foreground }]} numberOfLines={1}>
-                  {tripsData.trips[0].dropoffAddress || 'Dropped off'}
+        </View>
+        <View style={[styles.sheet, { backgroundColor: colors.card }]}>
+          <Pressable
+            onPress={() => router.push("/trips")}
+            style={[
+              styles.search,
+              {
+                borderColor: colors.border,
+                backgroundColor: colors.background,
+              },
+            ]}
+          >
+            <Feather name="search" size={21} color={colors.foreground} />
+            <Text
+              style={[styles.searchText, { color: colors.mutedForeground }]}
+            >
+              Where are you going?
+            </Text>
+          </Pressable>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.shortcuts}
+          >
+            {shortcuts.map((item) => (
+              <Pressable
+                key={item.sub}
+                onPress={() => router.push("/trips")}
+                style={[
+                  styles.shortcut,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Feather name={item.icon} size={18} color={colors.primary} />
+                <Text
+                  style={[styles.shortcutTitle, { color: colors.foreground }]}
+                >
+                  {item.title}
                 </Text>
-                <Text style={[styles.tripDate, { color: colors.mutedForeground }]}>
-                  {new Date(tripsData.trips[0].createdAt).toLocaleDateString()} • {tripsData.trips[0].status}
+                <Text
+                  style={[
+                    styles.shortcutSub,
+                    { color: colors.mutedForeground },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {item.sub}
                 </Text>
-              </View>
-              <Button
-                title="View"
-                variant="ghost"
-                size="sm"
-                onPress={() => router.push(`/trip/${tripsData.trips[0].id}`)}
+              </Pressable>
+            ))}
+          </ScrollView>
+          <View style={[styles.eco, { backgroundColor: colors.secondary }]}>
+            <View style={[styles.ecoIcon, { backgroundColor: colors.primary }]}>
+              <Feather name="zap" size={22} color={colors.accent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.ecoTitle, { color: colors.primaryStrong }]}>
+                Green rides, stronger Apayao.
+              </Text>
+              <Text style={[styles.ecoSub, { color: colors.mutedForeground }]}>
+                Choose E-Trike. Ride sustainably.
+              </Text>
+            </View>
+            <Feather name="feather" size={22} color={colors.primary} />
+          </View>
+          <Button
+            title="Book a ride"
+            size="lg"
+            onPress={() => router.push("/trips")}
+            icon={
+              <Feather
+                name="truck"
+                size={20}
+                color={colors.primaryForeground}
               />
-            </View>
-          </Card>
-        ) : (
-          <Card>
-            <View style={{ alignItems: 'center', paddingVertical: 16 }}>
-              <Feather name="compass" size={32} color={colors.mutedForeground} style={{ marginBottom: 8 }} />
-              <Text style={{ color: colors.mutedForeground, textAlign: 'center' }}>No trips yet.</Text>
-            </View>
-          </Card>
-        )}
+            }
+          />
+          {recent && (
+            <Pressable
+              onPress={() => router.push(`/trip/${recent.id}`)}
+              style={[styles.recent, { borderColor: colors.border }]}
+            >
+              <View
+                style={[styles.recentIcon, { backgroundColor: colors.muted }]}
+              >
+                <Feather name="clock" size={17} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={[styles.recentTitle, { color: colors.foreground }]}
+                  numberOfLines={1}
+                >
+                  {recent.dropoffAddress || "Recent trip"}
+                </Text>
+                <Text
+                  style={[styles.recentSub, { color: colors.mutedForeground }]}
+                >
+                  {recent.status.replace("_", " ")}
+                </Text>
+              </View>
+              <Feather
+                name="chevron-right"
+                size={18}
+                color={colors.mutedForeground}
+              />
+            </Pressable>
+          )}
+        </View>
       </ScrollView>
     </View>
   );
 }
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  page: { flex: 1 },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  greeting: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    marginBottom: 4,
+  brand: { fontFamily: "Inter_700Bold", fontSize: 20, letterSpacing: -0.5 },
+  greeting: { fontFamily: "Inter_700Bold", fontSize: 20, marginTop: 18 },
+  location: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 5,
   },
-  name: {
-    fontSize: 24,
-    fontFamily: 'Inter_700Bold',
+  locationText: { fontFamily: "Inter_400Regular", fontSize: 12 },
+  alert: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 2,
   },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+  alertDot: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: "#fff",
   },
-  avatarText: {
-    color: '#fff',
-    fontSize: 20,
-    fontFamily: 'Inter_600SemiBold',
+  mapWrap: { height: 280, overflow: "hidden" },
+  mapBadge: {
+    position: "absolute",
+    left: 18,
+    top: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    height: 36,
+    elevation: 4,
   },
-  heroCard: {
-    marginBottom: 16,
-    padding: 24,
-  },
-  heroTitle: {
-    fontSize: 24,
-    fontFamily: 'Inter_700Bold',
-    marginBottom: 4,
-  },
-  heroSub: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-  },
-  widgetsRow: {
-    flexDirection: 'row',
+  onlineDot: { width: 8, height: 8, borderRadius: 4 },
+  mapBadgeText: { fontFamily: "Inter_600SemiBold", fontSize: 12 },
+  sheet: {
+    marginTop: -18,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 18,
     gap: 16,
-    marginBottom: 24,
+    elevation: 8,
   },
-  locationNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: -8,
-    marginBottom: 20,
-    paddingHorizontal: 4,
+  search: {
+    height: 58,
+    borderWidth: 1,
+    borderRadius: 17,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
-  locationNoticeText: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    flex: 1,
+  searchText: { fontFamily: "Inter_400Regular", fontSize: 15 },
+  shortcuts: { gap: 10 },
+  shortcut: {
+    width: 124,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 13,
+    gap: 3,
   },
-  widgetCard: {
-    flex: 1,
-    padding: 16,
+  shortcutTitle: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 13,
+    marginTop: 5,
   },
-  widgetHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+  shortcutSub: { fontFamily: "Inter_400Regular", fontSize: 10 },
+  eco: {
+    borderRadius: 17,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
-  widgetValue: {
-    fontSize: 20,
-    fontFamily: 'Inter_700Bold',
+  ecoIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  widgetLabel: {
-    fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+  ecoTitle: { fontFamily: "Inter_700Bold", fontSize: 14 },
+  ecoSub: { fontFamily: "Inter_400Regular", fontSize: 11, marginTop: 3 },
+  recent: {
+    borderTopWidth: 1,
+    paddingTop: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 11,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter_600SemiBold',
-    marginBottom: 12,
+  recentIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  tripRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  tripIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  tripDetails: {
-    flex: 1,
-  },
-  tripAddress: {
-    fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-    marginBottom: 4,
-  },
-  tripDate: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
+  recentTitle: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
+  recentSub: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    textTransform: "capitalize",
+    marginTop: 2,
   },
 });

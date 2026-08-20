@@ -13,6 +13,8 @@ import {
   PanelLeft,
   ShieldCheck,
   LocateFixed,
+  Network,
+  Calculator,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -20,7 +22,12 @@ import { Button } from "./ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip"
 import { useAuth } from "@/lib/auth-context"
 
-const navItems = [
+const navItems: Array<{
+  href: string
+  label: string
+  icon: React.ElementType
+  gisOnly?: boolean
+}> = [
   { href: "/", label: "Overview", icon: Activity },
   { href: "/trips", label: "Trips", icon: MapIcon },
   { href: "/drivers", label: "Drivers", icon: CarFront },
@@ -29,8 +36,10 @@ const navItems = [
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/subscriptions", label: "Subscriptions", icon: CreditCard },
   { href: "/loops", label: "Loop Routes", icon: MapIcon },
+  { href: "/fare-policy", label: "Fare Policy", icon: Calculator },
   { href: "/users", label: "Users", icon: Users },
   { href: "/audit-logs", label: "Audit Logs", icon: ShieldCheck },
+  { href: "/gis-intelligence", label: "GIS Intelligence", icon: Network, gisOnly: true },
 ]
 
 const COLLAPSE_KEY = "move-apayao:sidebar-collapsed"
@@ -87,6 +96,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
     return window.localStorage.getItem(COLLAPSE_KEY) === "1"
   })
   const { user, signOut } = useAuth()
+  const hasGisAccess = user?.role === "superadmin" || user?.role === "developer"
+  const visibleNavItems = navItems.filter((item) =>
+    item.gisOnly ? hasGisAccess : user?.role !== "developer",
+  )
 
   React.useEffect(() => {
     window.localStorage.setItem(COLLAPSE_KEY, collapsed ? "1" : "0")
@@ -158,7 +171,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               Control Center
             </div>
           )}
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href))
             return (
               <NavRow
@@ -212,7 +225,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 <span className="text-xs font-semibold">{initials}</span>
               </div>
               <div className="flex-1 overflow-hidden">
-                <div className="truncate font-semibold text-sidebar-foreground">Admin</div>
+                <div className="truncate font-semibold capitalize text-sidebar-foreground">
+                  {user?.role === "admin" ? "Provincial Admin" : user?.role ?? "Staff"}
+                </div>
                 <div className="truncate text-xs text-sidebar-foreground/50">{user?.email}</div>
               </div>
               <Button

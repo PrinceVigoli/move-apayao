@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { setAuthTokenGetter } from "@workspace/api-client-react"
+import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react"
 import {
   getAccessToken,
+  getStoredUser,
   hasSession,
   signIn as apiSignIn,
   signOut as apiSignOut,
@@ -19,20 +20,24 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AdminUser | null>(null)
+  const [user, setUser] = useState<AdminUser | null>(() => getStoredUser())
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     // Every generated API hook pulls its token from here; the getter
     // refreshes on demand so callers never handle expiry.
+    setBaseUrl(import.meta.env.VITE_API_URL || null)
     setAuthTokenGetter(() => getAccessToken())
 
     let cancelled = false
     ;(async () => {
       if (hasSession()) {
         const token = await getAccessToken()
-        if (!cancelled) setIsAuthenticated(!!token)
+        if (!cancelled) {
+          setIsAuthenticated(!!token)
+          if (!token) setUser(null)
+        }
       }
       if (!cancelled) setIsLoading(false)
     })()
@@ -40,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
       setAuthTokenGetter(null)
+      setBaseUrl(null)
     }
   }, [])
 

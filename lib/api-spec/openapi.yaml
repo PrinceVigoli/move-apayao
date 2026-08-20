@@ -28,6 +28,10 @@ tags:
     description: Weather proxy
   - name: subscriptions
     description: Subscription management
+  - name: gis
+    description: Privileged internal GIS Intelligence gateway
+  - name: iot
+    description: Developer/superadmin fleet GPS provisioning and device telemetry
 
 paths:
   /healthz:
@@ -38,6 +42,25 @@ paths:
       responses:
         "200":
           description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+        "503":
+          description: A required dependency is unavailable or unconfigured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /livez:
+    get:
+      operationId: livenessCheck
+      tags: [health]
+      summary: Process liveness check
+      responses:
+        "200":
+          description: Process is running
           content:
             application/json:
               schema:
@@ -243,6 +266,26 @@ paths:
               schema:
                 $ref: "#/components/schemas/UpdateProfileResponse"
 
+  /auth/deactivate-account:
+    post:
+      operationId: deactivateAccount
+      tags: [auth]
+      summary: Deactivate the current account and revoke every session
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeactivateAccountBody"
+      responses:
+        "200":
+          description: Account deactivated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
   /auth/users:
     get:
       operationId: listUsers
@@ -289,6 +332,123 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OkResponse"
+
+  /admin/gis/overview:
+    get:
+      operationId: getGisOverview
+      tags: [gis]
+      summary: Get privileged GIS collection and candidate statistics
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: GIS overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GisOverview"
+        "403":
+          description: Developer or superadmin role required
+
+  /admin/gis/tracks/recent:
+    get:
+      operationId: getRecentGisTracks
+      tags: [gis]
+      summary: Get recent cleaned driver tracks as GeoJSON
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 168
+            default: 24
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: GeoJSON track collection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GisTrackCollection"
+        "403":
+          description: Developer or superadmin role required
+
+  /admin/gis/candidates:
+    get:
+      operationId: listGisCandidates
+      tags: [gis]
+      summary: List isolated GIS route candidates
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: GIS route candidates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GisCandidateList"
+        "403":
+          description: Developer or superadmin role required
+
+  /admin/gis/candidates/generate:
+    post:
+      operationId: generateGisCandidates
+      tags: [gis]
+      summary: Generate review-only route candidates from repeated cleaned GPS corridors
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateGisCandidatesBody"
+      responses:
+        "200":
+          description: Candidate analysis result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateGisCandidatesResponse"
+        "403":
+          description: Developer or superadmin role required
+
+  /admin/gis/candidates/{id}/review:
+    patch:
+      operationId: reviewGisCandidate
+      tags: [gis]
+      summary: Record a privileged review decision without publishing a route
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewGisCandidateBody"
+      responses:
+        "200":
+          description: Candidate review recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  candidate:
+                    $ref: "#/components/schemas/GisRouteCandidate"
+                required: [candidate]
+        "403":
+          description: Developer or superadmin role required
+        "409":
+          description: Candidate already has a final decision
 
   /drivers/nearby:
     get:
@@ -354,6 +514,61 @@ paths:
               schema:
                 $ref: "#/components/schemas/DriverProfileResponse"
 
+  /admin/drivers/{id}/approval:
+    patch:
+      operationId: updateDriverApproval
+      tags: [drivers]
+      summary: Approve or reject a driver application (admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DriverApprovalBody"
+      responses:
+        "200":
+          description: Driver application updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DriverApprovalResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator role required
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Invalid driver status transition
+
+  /admin/drivers/applications:
+    get:
+      operationId: listDriverApplications
+      tags: [drivers]
+      summary: List driver applications and review counts (admin only)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Driver application queue and review history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DriverApplicationsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator role required
+
   # ── Trips ────────────────────────────────────────────────────────────────────
 
   /trips:
@@ -399,6 +614,58 @@ paths:
               schema:
                 $ref: "#/components/schemas/ListTripsResponse"
 
+  /trips/fare-estimate:
+    post:
+      operationId: previewTripFare
+      tags: [trips]
+      summary: Preview road distance, route geometry, and fare (passenger only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TripRouteBody"
+      responses:
+        "200":
+          description: Fare and road route preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TripFarePreviewResponse"
+
+  /admin/fare-policy:
+    get:
+      operationId: getActiveFarePolicy
+      tags: [fares]
+      summary: Get the active point-to-point fare policy (admin only)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Active fare policy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FarePolicyResponse"
+    put:
+      operationId: updateFarePolicy
+      tags: [fares]
+      summary: Activate a new versioned fare policy (admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFarePolicyBody"
+      responses:
+        "200":
+          description: Newly activated fare policy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FarePolicyResponse"
+
   /trips/{id}:
     get:
       operationId: getTrip
@@ -418,6 +685,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TripResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /trips/{id}/track/ticket:
+    post:
+      operationId: createTripTrackingTicket
+      tags: [trips]
+      summary: Create a short-lived ticket for the trip location stream
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Short-lived trip tracking ticket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackingTicketResponse"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -453,9 +742,59 @@ paths:
           required: true
           schema:
             type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeclineTripBody"
       responses:
         "200":
           description: Trip declined and re-queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TripResponse"
+
+  /trips/{id}/arrive:
+    post:
+      operationId: arriveTrip
+      tags: [trips]
+      summary: Driver confirms arrival at pickup
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Driver arrived
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TripResponse"
+
+  /trips/{id}/start:
+    post:
+      operationId: startTrip
+      tags: [trips]
+      summary: Verify passenger pickup PIN and start the ride
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartTripBody"
+      responses:
+        "200":
+          description: Trip started
           content:
             application/json:
               schema:
@@ -494,13 +833,11 @@ paths:
           schema:
             type: integer
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                reason:
-                  type: string
+              $ref: "#/components/schemas/CancelTripBody"
       responses:
         "200":
           description: Trip cancelled
@@ -534,6 +871,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TripRatingResponse"
+
+  /notifications/device:
+    put:
+      operationId: registerNotificationDevice
+      tags: [auth]
+      summary: Register or refresh a push notification destination
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterNotificationDeviceBody"
+      responses:
+        "200":
+          description: Device registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+    delete:
+      operationId: unregisterNotificationDevice
+      tags: [auth]
+      summary: Remove a push notification destination
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token: { type: string }
+              required: [token]
+      responses:
+        "204":
+          description: Device removed
 
   # ── Loop Routes ──────────────────────────────────────────────────────────────
 
@@ -579,6 +953,12 @@ paths:
           required: true
           schema:
             type: integer
+        - name: includeRoute
+          in: query
+          required: false
+          description: Compute transient road geometry for display on a Google Map.
+          schema:
+            type: boolean
       responses:
         "200":
           description: Route detail
@@ -588,6 +968,26 @@ paths:
                 $ref: "#/components/schemas/LoopRouteDetailResponse"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /admin/loops/route-preview:
+    post:
+      operationId: previewLoopRoute
+      tags: [loops]
+      summary: Preview a road-following loop route (admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreviewLoopRouteBody"
+      responses:
+        "200":
+          description: Road route preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DrivingRouteResponse"
 
   /loops/{id}/vehicles:
     get:
@@ -1047,6 +1447,137 @@ paths:
               schema:
                 $ref: "#/components/schemas/SubscriptionResponse"
 
+  # Hardware-neutral IoT GPS management. Management endpoints are restricted
+  # to developer/superadmin roles; ingestion uses per-device credentials.
+  /iot/fleet:
+    get:
+      operationId: getIotFleet
+      tags: [iot]
+      summary: List IoT vehicles, trackers, and active assignments
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: IoT fleet state
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /iot/vehicles:
+    post:
+      operationId: createIotVehicle
+      tags: [iot]
+      summary: Register a fleet vehicle
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateIotVehicleBody"
+      responses:
+        "201":
+          description: Vehicle created
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /iot/devices/provision:
+    post:
+      operationId: provisionGpsDevice
+      tags: [iot]
+      summary: Provision or replace a vehicle GPS device
+      description: Returns the raw device token once. Store it immediately.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProvisionGpsDeviceBody"
+      responses:
+        "201":
+          description: Device provisioned
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /iot/assignments:
+    post:
+      operationId: assignIotVehicle
+      tags: [iot]
+      summary: Assign an approved driver to a fleet vehicle
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignIotVehicleBody"
+      responses:
+        "201":
+          description: Assignment created
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /iot/devices/{id}/revoke:
+    patch:
+      operationId: revokeGpsDevice
+      tags: [iot]
+      summary: Revoke a GPS device credential
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Device revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /iot/v1/locations:
+    post:
+      operationId: ingestGpsLocation
+      tags: [iot]
+      summary: Ingest one authenticated GPS observation
+      description: "Use Authorization: Device <token> and the provisioned external ID."
+      parameters:
+        - name: X-Device-ID
+          in: header
+          required: true
+          schema: { type: string }
+        - name: Authorization
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceLocationBody"
+      responses:
+        "202":
+          description: Observation accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1086,6 +1617,11 @@ components:
       properties:
         status:
           type: string
+          enum: [ok, degraded]
+        dependencies:
+          type: object
+          additionalProperties:
+            type: string
       required: [status]
 
     ErrorResponse:
@@ -1120,12 +1656,18 @@ components:
           nullable: true
         role:
           type: string
-          enum: [passenger, driver, admin]
+          enum: [passenger, driver_applicant, driver, admin, superadmin, developer]
         avatarUrl:
           type: string
           nullable: true
         isActive:
           type: boolean
+        driverApplicationStatus:
+          type: string
+          enum: [pending, approved, rejected, revoked]
+        driverApplicationReason:
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -1149,7 +1691,8 @@ components:
           type: string
         role:
           type: string
-          enum: [passenger, driver]
+          enum: [passenger, driver_applicant]
+          description: Use driver_applicant for driver applications; public registration cannot grant the driver role.
         vehicleType:
           type: string
         licenseNumber:
@@ -1158,7 +1701,13 @@ components:
           type: string
         vehicleColor:
           type: string
-      required: [email, password, fullName, role]
+        acceptedTerms:
+          type: boolean
+          const: true
+        termsVersion:
+          type: string
+          default: "2026-08-19"
+      required: [email, password, fullName, role, acceptedTerms]
 
     LoginBody:
       type: object
@@ -1204,6 +1753,16 @@ components:
           type: string
           minLength: 8
       required: [currentPassword, newPassword]
+
+    DeactivateAccountBody:
+      type: object
+      properties:
+        password:
+          type: string
+        reason:
+          type: string
+          maxLength: 500
+      required: [password]
 
     SessionTokens:
       type: object
@@ -1304,7 +1863,23 @@ components:
         vehicleColor:
           type: string
           nullable: true
+        approvalStatus:
+          type: string
+          enum: [pending, approved, rejected, revoked]
+        reviewReason:
+          type: string
+          nullable: true
+        reviewedBy:
+          type: string
+          format: uuid
+          nullable: true
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
         isAvailable:
+          type: boolean
+        isOnShift:
           type: boolean
         currentLat:
           type: number
@@ -1316,7 +1891,7 @@ components:
           type: number
         totalTrips:
           type: integer
-      required: [id, userId, vehicleType, capacity, isAvailable, rating, totalTrips]
+      required: [id, userId, vehicleType, capacity, approvalStatus, isOnShift, isAvailable, rating, totalTrips]
 
     DriverProfileResponse:
       type: object
@@ -1325,6 +1900,107 @@ components:
           $ref: "#/components/schemas/DriverProfile"
       required: [profile]
 
+    DriverApprovalBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [approved, rejected, revoked]
+        reason:
+          type: string
+          minLength: 10
+          maxLength: 500
+          description: Required when rejecting an application or revoking driver access.
+      required: [status]
+
+    DriverApprovalResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        profile:
+          $ref: "#/components/schemas/DriverProfile"
+      required: [user, profile]
+
+    DriverApplication:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        vehicleType:
+          type: string
+        vehicleColor:
+          type: string
+          nullable: true
+        capacity:
+          type: integer
+        plateNumber:
+          type: string
+          nullable: true
+        licenseNumber:
+          type: string
+          nullable: true
+        approvalStatus:
+          type: string
+          enum: [pending, approved, rejected, revoked]
+        reviewReason:
+          type: string
+          nullable: true
+        reviewedBy:
+          type: string
+          format: uuid
+          nullable: true
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [userId, email, isActive, vehicleType, capacity, approvalStatus, createdAt, updatedAt]
+
+    DriverApplicationCounts:
+      type: object
+      properties:
+        pending:
+          type: integer
+        approved:
+          type: integer
+        rejected:
+          type: integer
+        revoked:
+          type: integer
+      required: [pending, approved, rejected, revoked]
+
+    DriverApplicationsResponse:
+      type: object
+      properties:
+        applications:
+          type: array
+          items:
+            $ref: "#/components/schemas/DriverApplication"
+        counts:
+          $ref: "#/components/schemas/DriverApplicationCounts"
+      required: [applications, counts]
+
     UpdateLocationBody:
       type: object
       properties:
@@ -1332,7 +2008,153 @@ components:
           type: number
         lon:
           type: number
+        capturedAt:
+          type: string
+          format: date-time
+        accuracyM:
+          type: number
+          nullable: true
+        speedMps:
+          type: number
+          nullable: true
+        headingDegrees:
+          type: number
+          nullable: true
+        devicePointId:
+          type: string
+        isMocked:
+          type: boolean
       required: [lat, lon]
+
+    GisOverview:
+      type: object
+      properties:
+        totalPoints: { type: integer }
+        points24h: { type: integer }
+        activeDrivers24h: { type: integer }
+        validPoints: { type: integer }
+        mockedPoints: { type: integer }
+        lowAccuracyPoints: { type: integer }
+        averageAccuracyM: { type: number, nullable: true }
+        latestPointAt: { type: string, format: date-time, nullable: true }
+        qualityScore: { type: integer, minimum: 0, maximum: 100 }
+        totalCandidates: { type: integer }
+        draftCandidates: { type: integer }
+        approvedCandidates: { type: integer }
+        generatedAt: { type: string, format: date-time }
+      required: [totalPoints, points24h, activeDrivers24h, validPoints, mockedPoints, lowAccuracyPoints, averageAccuracyM, latestPointAt, qualityScore, totalCandidates, draftCandidates, approvedCandidates, generatedAt]
+
+    GisLineGeometry:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [LineString]
+        coordinates:
+          type: array
+          items:
+            type: array
+            minItems: 2
+            maxItems: 2
+            items: { type: number }
+      required: [type, coordinates]
+
+    GisTrackProperties:
+      type: object
+      properties:
+        driverId: { type: string, format: uuid }
+        driverName: { type: string, nullable: true }
+        tripId: { type: integer, nullable: true }
+        trackSession: { type: integer }
+        pointCount: { type: integer }
+        startedAt: { type: string, format: date-time }
+        endedAt: { type: string, format: date-time }
+      required: [driverId, pointCount, startedAt, endedAt]
+
+    GisTrackFeature:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [Feature]
+        geometry:
+          $ref: "#/components/schemas/GisLineGeometry"
+        properties:
+          $ref: "#/components/schemas/GisTrackProperties"
+      required: [type, geometry, properties]
+
+    GisTrackCollection:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [FeatureCollection]
+        features:
+          type: array
+          items:
+            $ref: "#/components/schemas/GisTrackFeature"
+        generatedAt: { type: string, format: date-time }
+      required: [type, features, generatedAt]
+
+    GisRouteCandidate:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        status: { type: string, enum: [draft, reviewing, approved, rejected] }
+        geometryGeoJson:
+          type: object
+          additionalProperties: true
+        supportingRuns: { type: integer }
+        supportingDrivers: { type: integer }
+        confidence: { type: number }
+        distanceKm: { type: number, nullable: true }
+        sourceWindowStart: { type: string, format: date-time, nullable: true }
+        sourceWindowEnd: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        reviewedAt: { type: string, format: date-time, nullable: true }
+        reviewReason: { type: string, nullable: true }
+      required: [id, name, status, geometryGeoJson, supportingRuns, supportingDrivers, confidence, createdAt]
+
+    GisCandidateList:
+      type: object
+      properties:
+        candidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/GisRouteCandidate"
+      required: [candidates]
+
+    GenerateGisCandidatesBody:
+      type: object
+      properties:
+        days:
+          type: integer
+          minimum: 7
+          maximum: 90
+          default: 30
+
+    GenerateGisCandidatesResponse:
+      type: object
+      properties:
+        days: { type: integer }
+        eligibleCorridors: { type: integer }
+        created: { type: integer }
+        updated: { type: integer }
+        skipped: { type: integer }
+      required: [days, eligibleCorridors, created, updated, skipped]
+
+    ReviewGisCandidateBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [reviewing, approved, rejected]
+        reason:
+          type: string
+          minLength: 5
+          maxLength: 500
+      required: [status, reason]
 
     AvailabilityBody:
       type: object
@@ -1400,6 +2222,10 @@ components:
           type: string
           format: uuid
           nullable: true
+        vehicleId:
+          type: string
+          format: uuid
+          nullable: true
         pickupLat:
           type: number
         pickupLon:
@@ -1417,6 +2243,13 @@ components:
         passengerCount:
           type: integer
           description: Seats requested for this booking (group booking).
+        clientRequestId:
+          type: string
+          nullable: true
+        pickupCode:
+          type: string
+          nullable: true
+          description: Passenger-only pickup verification PIN.
         driverRating:
           type: integer
           nullable: true
@@ -1425,19 +2258,58 @@ components:
           type: string
           nullable: true
           description: Free-text feedback the passenger left with their rating, if any.
+        driverRatingTags:
+          type: array
+          items: { type: string }
+          nullable: true
         status:
           type: string
-          enum: [requested, matched, in_progress, completed, cancelled]
+          enum: [requested, matched, accepted, arrived, in_progress, completing, completed, cancelled]
         fareAmount:
           type: number
+          nullable: true
+        farePolicyId:
+          type: integer
           nullable: true
         distanceKm:
           type: number
           nullable: true
+        routeDurationSeconds:
+          type: integer
+          nullable: true
+        routePolyline:
+          type: string
+          nullable: true
+        distanceSource:
+          type: string
+          nullable: true
+          enum: [google_routes, haversine_fallback]
         cancelReason:
           type: string
           nullable: true
+        cancelReasonCode:
+          type: string
+          nullable: true
+        cancelDetails:
+          type: string
+          nullable: true
+        cancelledBy:
+          type: string
+          format: uuid
+          nullable: true
         matchedAt:
+          type: string
+          format: date-time
+          nullable: true
+        offerExpiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        acceptedAt:
+          type: string
+          format: date-time
+          nullable: true
+        arrivedAt:
           type: string
           format: date-time
           nullable: true
@@ -1473,8 +2345,44 @@ components:
             comment:
               type: string
               nullable: true
+            tags:
+              type: array
+              items: { type: string }
           required: [rating]
+        passenger:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/TripPassenger"
+        driver:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/TripDriver"
+        idempotentReplay:
+          type: boolean
       required: [trip]
+
+    TripPassenger:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        fullName: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        avatarUrl: { type: string, nullable: true }
+      required: [id]
+
+    TripDriver:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        fullName: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        avatarUrl: { type: string, nullable: true }
+        vehicleType: { type: string }
+        vehicleColor: { type: string, nullable: true }
+        plateNumber: { type: string, nullable: true }
+        rating: { type: number }
+        totalTrips: { type: integer }
+      required: [id, vehicleType, rating, totalTrips]
 
     ListTripsResponse:
       type: object
@@ -1489,7 +2397,7 @@ components:
           type: integer
       required: [trips, limit, offset]
 
-    CreateTripBody:
+    TripRouteBody:
       type: object
       properties:
         pickupLat:
@@ -1507,10 +2415,87 @@ components:
         passengerCount:
           type: integer
           minimum: 1
-          maximum: 16
+          maximum: 15
           default: 1
           description: Seats requested for this booking (group booking).
       required: [pickupLat, pickupLon, dropoffLat, dropoffLon]
+
+    CreateTripBody:
+      allOf:
+        - $ref: "#/components/schemas/TripRouteBody"
+        - type: object
+          properties:
+            clientRequestId:
+              type: string
+              minLength: 8
+              maxLength: 120
+          required: [clientRequestId]
+
+    CreateIotVehicleBody:
+      type: object
+      properties:
+        plateNumber: { type: string, minLength: 3, maxLength: 30 }
+        label: { type: string, minLength: 2, maxLength: 100 }
+        vehicleType: { type: string, default: e-jeepney }
+        capacity: { type: integer, minimum: 1, maximum: 100, default: 15 }
+      required: [plateNumber]
+
+    ProvisionGpsDeviceBody:
+      type: object
+      properties:
+        vehicleId: { type: string, format: uuid }
+        externalId: { type: string, minLength: 4, maxLength: 64 }
+        label: { type: string, minLength: 2, maxLength: 100 }
+        protocol: { type: string, default: https_json_v1 }
+      required: [vehicleId]
+
+    AssignIotVehicleBody:
+      type: object
+      properties:
+        vehicleId: { type: string, format: uuid }
+        driverId: { type: string, format: uuid }
+      required: [vehicleId, driverId]
+
+    DeviceLocationBody:
+      type: object
+      properties:
+        eventId: { type: string, minLength: 8, maxLength: 64 }
+        capturedAt: { type: string, format: date-time }
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lon: { type: number, minimum: -180, maximum: 180 }
+        accuracyM: { type: number, nullable: true, minimum: 0, maximum: 10000 }
+        speedMps: { type: number, nullable: true, minimum: 0, maximum: 100 }
+        headingDegrees: { type: number, nullable: true, minimum: 0, maximum: 360 }
+        batteryPercent: { type: number, nullable: true, minimum: 0, maximum: 100 }
+        signalDbm: { type: number, nullable: true, minimum: -200, maximum: 0 }
+      required: [eventId, capturedAt, lat, lon]
+
+    DeclineTripBody:
+      type: object
+      properties:
+        reason:
+          type: string
+          enum: [too_far, vehicle_issue, unsafe_pickup, personal_emergency, other]
+      required: [reason]
+
+    StartTripBody:
+      type: object
+      properties:
+        pickupCode:
+          type: string
+          pattern: '^\\d{4}$'
+      required: [pickupCode]
+
+    CancelTripBody:
+      type: object
+      properties:
+        reason:
+          type: string
+          enum: [changed_mind, wrong_pickup, driver_taking_too_long, cannot_contact_driver, safety_concern, driver_emergency, other]
+        details:
+          type: string
+          maxLength: 300
+      required: [reason]
 
     TripRating:
       type: object
@@ -1532,6 +2517,9 @@ components:
         comment:
           type: string
           nullable: true
+        tags:
+          type: array
+          items: { type: string }
         createdAt:
           type: string
           format: date-time
@@ -1553,7 +2541,26 @@ components:
           maximum: 5
         comment:
           type: string
+          maxLength: 500
+        tags:
+          type: array
+          maxItems: 5
+          items:
+            type: string
+            maxLength: 50
       required: [rating]
+
+    RegisterNotificationDeviceBody:
+      type: object
+      properties:
+        token: { type: string }
+        platform:
+          type: string
+          enum: [ios, android, web]
+        app:
+          type: string
+          enum: [passenger, driver]
+      required: [token, platform, app]
 
     # ── Loop Routes ──────────────────────────────────────────────────────────
 
@@ -1571,10 +2578,75 @@ components:
           type: boolean
         baseFare:
           type: number
+        distanceKm:
+          type: number
+          nullable: true
+        routeDurationSeconds:
+          type: integer
+          nullable: true
+        routePolyline:
+          type: string
+          nullable: true
+        distanceSource:
+          type: string
+          nullable: true
+          enum: [google_routes, haversine_fallback]
         createdAt:
           type: string
           format: date-time
       required: [id, name, isActive, baseFare, createdAt]
+
+    RoutePoint:
+      type: object
+      properties:
+        lat:
+          type: number
+        lon:
+          type: number
+      required: [lat, lon]
+
+    PreviewLoopRouteBody:
+      type: object
+      properties:
+        stops:
+          type: array
+          minItems: 2
+          maxItems: 25
+          items:
+            $ref: "#/components/schemas/RoutePoint"
+      required: [stops]
+
+    DrivingRoute:
+      type: object
+      properties:
+        distanceKm:
+          type: number
+        durationSeconds:
+          type: integer
+          nullable: true
+        encodedPolyline:
+          type: string
+          nullable: true
+        source:
+          type: string
+          enum: [google_routes, haversine_fallback]
+      required: [distanceKm, source]
+
+    DrivingRouteResponse:
+      type: object
+      properties:
+        route:
+          $ref: "#/components/schemas/DrivingRoute"
+      required: [route]
+
+    TripFarePreviewResponse:
+      type: object
+      properties:
+        route:
+          $ref: "#/components/schemas/DrivingRoute"
+        fareAmount:
+          type: number
+      required: [route, fareAmount]
 
     LoopStop:
       type: object
@@ -1819,6 +2891,9 @@ components:
         reporterId:
           type: string
           format: uuid
+        tripId:
+          type: integer
+          nullable: true
         type:
           type: string
           enum: [accident, flood, fleet_issue]
@@ -1874,6 +2949,8 @@ components:
     CreateIncidentBody:
       type: object
       properties:
+        tripId:
+          type: integer
         type:
           type: string
           enum: [accident, flood, fleet_issue]
@@ -1890,6 +2967,72 @@ components:
           type: string
           format: uri
       required: [type, lat, lon, severity]
+
+    TrackingTicketResponse:
+      type: object
+      properties:
+        ticket:
+          type: string
+        expiresIn:
+          type: integer
+          description: Ticket lifetime in seconds
+      required: [ticket, expiresIn]
+
+    FarePolicy:
+      type: object
+      properties:
+        id:
+          type: integer
+          nullable: true
+        name:
+          type: string
+        baseFare:
+          type: number
+        perKmFare:
+          type: number
+        minimumFare:
+          type: number
+        extraPassengerFare:
+          type: number
+        isActive:
+          type: boolean
+        createdBy:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, name, baseFare, perKmFare, minimumFare, extraPassengerFare, isActive, createdBy, createdAt]
+
+    FarePolicyResponse:
+      type: object
+      properties:
+        policy:
+          $ref: "#/components/schemas/FarePolicy"
+      required: [policy]
+
+    UpdateFarePolicyBody:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        baseFare:
+          type: number
+          minimum: 0
+        perKmFare:
+          type: number
+          minimum: 0
+        minimumFare:
+          type: number
+          minimum: 0
+        extraPassengerFare:
+          type: number
+          minimum: 0
+      required: [name, baseFare, perKmFare, minimumFare, extraPassengerFare]
 
     UpdateIncidentBody:
       type: object

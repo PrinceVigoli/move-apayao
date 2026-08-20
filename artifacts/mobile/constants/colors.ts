@@ -1,90 +1,53 @@
-/**
- * Semantic design tokens for the mobile apps.
- *
- * These match the MOVE Apayao brand used on the public landing site and the
- * admin dashboard — a deep Cordillera forest green as the "black", an
- * orange-red primary, and a gold accent — so the whole product family reads
- * as one product rather than three.
- *
- * Every foreground/background pair below meets WCAG AA (4.5:1 for body text,
- * 3:1 for large text and UI surfaces), in BOTH light and dark. That matters
- * more than usual here: this app is used outdoors, in sunlight, on
- * inexpensive phone screens. The previous palette's primary button sat at
- * 2.84:1, which is genuinely hard to read in those conditions.
- *
- * `primaryStrong` exists because a colour dark enough for small text is
- * slightly too dark for a large button surface. Use `primary` for filled
- * buttons and `primaryStrong` for coloured text and icons on light
- * backgrounds.
- */
-
+/** Premium passenger palette approved in the MOVE Apayao UI concept. */
 const colors = {
   light: {
-    text: '#0f291d',
-    background: '#fbfaf9',
-    foreground: '#0f291d',
-
-    card: '#ffffff',
-    cardForeground: '#0f291d',
-
-    primary: '#da3510', // filled buttons — white text clears 4.67:1
-    primaryForeground: '#ffffff',
-    primaryStrong: '#cc320f', // coloured text/icons on light — 5.00:1
-
-    secondary: '#fdf1dd',
-    secondaryForeground: '#7a4a06',
-
-    muted: '#f2f0ed',
-    mutedForeground: '#5c7067',
-
-    accent: '#f9bf1f', // gold
-    accentForeground: '#0f291d', // dark on gold — 9.22:1
-
-    destructive: '#c62828',
-    destructiveForeground: '#ffffff',
-
-    success: '#0f7a43',
-    successForeground: '#ffffff',
-
-    border: '#e5e2dc',
-    input: '#d9d5cd',
+    text: "#0E1B2E",
+    background: "#F7F5F0",
+    foreground: "#0E1B2E",
+    card: "#FFFEFB",
+    cardForeground: "#0E1B2E",
+    primary: "#1B5E3A",
+    primaryForeground: "#FFFFFF",
+    primaryStrong: "#124B2D",
+    secondary: "#E8F1EA",
+    secondaryForeground: "#174A30",
+    muted: "#EEF0ED",
+    mutedForeground: "#617069",
+    accent: "#C6F15A",
+    accentForeground: "#0E1B2E",
+    destructive: "#E53935",
+    destructiveForeground: "#FFFFFF",
+    success: "#16875B",
+    successForeground: "#FFFFFF",
+    warning: "#FFB020",
+    border: "#DFE4DE",
+    input: "#D5DBD5",
+    mapRoute: "#155F3C",
   },
-
   dark: {
-    text: '#f9f8f6',
-    background: '#0a1a13',
-    foreground: '#f9f8f6',
-
-    card: '#152820',
-    cardForeground: '#f9f8f6',
-
-    // Same primary as light: white text clears 4.67:1 on it, and it still
-    // separates cleanly from the dark ground (3.84:1), so one value serves
-    // both schemes instead of drifting apart.
-    primary: '#da3510',
-    primaryForeground: '#ffffff',
-    primaryStrong: '#f6775a', // lightened for text on the dark ground — 6.59:1
-
-    secondary: '#2a2018',
-    secondaryForeground: '#f6d79a',
-
-    muted: '#24382f',
-    mutedForeground: '#a8bdb4',
-
-    accent: '#fac638',
-    accentForeground: '#0c2218',
-
-    destructive: '#ef5350',
-    destructiveForeground: '#0c2218',
-
-    success: '#34d399',
-    successForeground: '#0c2218',
-
-    border: '#2d4339',
-    input: '#354c41',
+    text: "#F7F6F2",
+    background: "#0E1B2E",
+    foreground: "#F7F6F2",
+    card: "#172638",
+    cardForeground: "#F7F6F2",
+    primary: "#2A8A59",
+    primaryForeground: "#FFFFFF",
+    primaryStrong: "#6FCF8D",
+    secondary: "#1F3B31",
+    secondaryForeground: "#DDF5E5",
+    muted: "#1C2B3B",
+    mutedForeground: "#A8B4B0",
+    accent: "#C6F15A",
+    accentForeground: "#0E1B2E",
+    destructive: "#EF5350",
+    destructiveForeground: "#FFFFFF",
+    success: "#45D483",
+    successForeground: "#071A12",
+    warning: "#FFB020",
+    border: "#2A3A4A",
+    input: "#354657",
+    mapRoute: "#7FD860",
   },
-
-  radius: 12,
+  radius: 18,
 };
-
 export default colors;

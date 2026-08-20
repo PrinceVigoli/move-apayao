@@ -11,7 +11,7 @@
  *     one requested) so "Active Trips" and the Trips/Analytics pages aren't empty
  *   - trip ratings on completed trips
  *   - 9 incident reports (open / reviewing / resolved, mixed severity, mixed type)
- *   - 2 loop routes with stops, and vehicles assigned to them
+ *   - the published Pudtol–Payanan loop with verified stops and an assigned vehicle
  *   - 8 audit log entries (wallet top-ups/refunds, driver suspend/reinstate,
  *     subscription cancel, incident resolve, user deactivate)
  *
@@ -39,10 +39,12 @@ dotenv.config({ path: path.resolve(__dirname, "../../artifacts/api-server/.env")
 
 const DEMO_PASSWORD = "DemoPass123!";
 
-// Roughly around Luna, Apayao (the town shown on the dashboard weather pill).
-const BASE_LAT = 18.192;
-const BASE_LON = 121.128;
-const jitter = () => (Math.random() - 0.5) * 0.02; // ~1km wobble
+// Pudtol town proper, centered on the public-market / municipal-hall road
+// network. Keep seeded vehicles close enough that a detailed roadmap is
+// useful; the previous Luna coordinates placed them in largely unmapped land.
+const BASE_LAT = 18.2357592;
+const BASE_LON = 121.3732817;
+const jitter = () => (Math.random() - 0.5) * 0.004; // ~200m wobble
 
 const PASSENGERS = [
   { email: "maria.santos@moveapayao.test", name: "Maria Santos", phone: "09171234501" },
@@ -314,6 +316,7 @@ async function main() {
       plateNumber: d.plate,
       vehicleColor: d.color,
       licenseNumber: d.license,
+      isOnShift: d.available,
       isAvailable: d.available,
       currentLat: coord.lat,
       currentLon: coord.lon,
@@ -622,27 +625,18 @@ async function main() {
   } else {
     const routesData = [
       {
-        name: "Luna Town Loop",
-        description: "Circular route covering the Luna town center, market, and terminal.",
-        baseFare: 15,
+        name: "Pudtol-Payanan Provincial Loop",
+        description: "Poblacion Pudtol via Payanan, Provincial Capitol, Apayao State College, Tumog, and back to Pudtol.",
+        baseFare: 50,
         stops: [
-          { name: "Luna Municipal Hall", seq: 1 },
-          { name: "Luna Public Market", seq: 2 },
-          { name: "Luna Bus Terminal", seq: 3 },
-          { name: "Luna National High School", seq: 4 },
+          { name: "Poblacion, Pudtol", seq: 1, lat: 18.2340899, lon: 121.3670283 },
+          { name: "Payanan, San Gregorio", seq: 2, lat: 18.30787, lon: 121.3599783 },
+          { name: "Apayao Provincial Capitol", seq: 3, lat: 18.3311841, lon: 121.372348 },
+          { name: "Apayao State College - Luna Campus", seq: 4, lat: 18.3321469, lon: 121.3779476 },
+          { name: "Tumog, Luna", seq: 5, lat: 18.3161536, lon: 121.3818568 },
+          { name: "Poblacion, Pudtol (Return)", seq: 6, lat: 18.2340899, lon: 121.3670283 },
         ],
         driverId: driverIds[0],
-      },
-      {
-        name: "Conner Loop",
-        description: "Connects Conner poblacion with nearby barangays — high demand route.",
-        baseFare: 20,
-        stops: [
-          { name: "Conner Poblacion", seq: 1 },
-          { name: "Conner Public Market", seq: 2 },
-          { name: "Malama Crossing", seq: 3 },
-        ],
-        driverId: driverIds[1],
       },
     ];
 
@@ -654,10 +648,9 @@ async function main() {
 
       let firstStopId: number | undefined;
       for (const stop of r.stops) {
-        const coord = randCoord();
         const [stopRow] = await db
           .insert(loopStopsTable)
-          .values({ routeId: route.id, name: stop.name, sequence: stop.seq, lat: coord.lat, lon: coord.lon })
+          .values({ routeId: route.id, name: stop.name, sequence: stop.seq, lat: stop.lat, lon: stop.lon })
           .returning();
         if (stop.seq === 1) firstStopId = stopRow.id;
       }

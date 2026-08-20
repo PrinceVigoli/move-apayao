@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db, driverProfilesTable } from "@workspace/db";
 import { updateDriverGeo, removeDriverGeo } from "./redis";
 import { logger } from "./logger";
+import { getEligibleDriverProfile } from "./driver-eligibility";
 
 /**
  * Single place that keeps `driver_profiles.is_available` and the Redis geo
@@ -31,6 +32,20 @@ export async function markDriverUnavailable(driverId: string): Promise<void> {
 }
 
 export async function markDriverAvailable(driverId: string): Promise<void> {
+  const eligible = await getEligibleDriverProfile(driverId);
+  if (!eligible) {
+    await db
+      .update(driverProfilesTable)
+      .set({ isAvailable: false, updatedAt: new Date() })
+      .where(eq(driverProfilesTable.userId, driverId));
+    try {
+      await removeDriverGeo(driverId);
+    } catch (err) {
+      logger.warn({ err, driverId }, "Redis geo cleanup failed for ineligible driver");
+    }
+    return;
+  }
+
   const [profile] = await db
     .update(driverProfilesTable)
     .set({ isAvailable: true, updatedAt: new Date() })
@@ -45,6 +60,27 @@ export async function markDriverAvailable(driverId: string): Promise<void> {
       await updateDriverGeo(driverId, profile.currentLat, profile.currentLon);
     } catch (err) {
       logger.warn({ err, driverId }, "Redis geo update failed while marking driver available (non-fatal)");
+    }
+  }
+}
+
+/** Explicit online/offline shift transition requested by the driver app. */
+export async function setDriverShift(driverId: string, isOnShift: boolean): Promise<void> {
+  await db
+    .update(driverProfilesTable)
+    .set({
+      isOnShift,
+      isAvailable: false,
+      updatedAt: new Date(),
+    })
+    .where(eq(driverProfilesTable.userId, driverId));
+
+  if (isOnShift) await markDriverAvailable(driverId);
+  else {
+    try {
+      await removeDriverGeo(driverId);
+    } catch (err) {
+      logger.warn({ err, driverId }, "Redis geo remove failed while ending driver shift");
     }
   }
 }

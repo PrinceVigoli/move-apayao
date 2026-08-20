@@ -12,7 +12,17 @@ import * as zod from 'zod';
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
-  "status": zod.string()
+  "status": zod.enum(['ok', 'degraded']),
+  "dependencies": zod.record(zod.string(), zod.string()).optional()
+})
+
+
+/**
+ * @summary Process liveness check
+ */
+export const LivenessCheckResponse = zod.object({
+  "status": zod.enum(['ok', 'degraded']),
+  "dependencies": zod.record(zod.string(), zod.string()).optional()
 })
 
 
@@ -21,18 +31,20 @@ export const HealthCheckResponse = zod.object({
  */
 export const registerUserBodyPasswordMin = 8;
 
-
+export const registerUserBodyTermsVersionDefault = `2026-08-19`;
 
 export const RegisterUserBody = zod.object({
   "email": zod.string().email(),
   "password": zod.string().min(registerUserBodyPasswordMin),
   "fullName": zod.string(),
   "phone": zod.string().optional(),
-  "role": zod.enum(['passenger', 'driver']),
+  "role": zod.enum(['passenger', 'driver_applicant']).describe('Use driver_applicant for driver applications; public registration cannot grant the driver role.'),
   "vehicleType": zod.string().optional(),
   "licenseNumber": zod.string().optional(),
   "plateNumber": zod.string().optional(),
-  "vehicleColor": zod.string().optional()
+  "vehicleColor": zod.string().optional(),
+  "acceptedTerms": zod.boolean(),
+  "termsVersion": zod.string().default(registerUserBodyTermsVersionDefault)
 })
 
 export const RegisterUserResponse = zod.object({
@@ -41,9 +53,11 @@ export const RegisterUserResponse = zod.object({
   "email": zod.string(),
   "fullName": zod.string().nullish(),
   "phone": zod.string().nullish(),
-  "role": zod.enum(['passenger', 'driver', 'admin']),
+  "role": zod.enum(['passenger', 'driver_applicant', 'driver', 'admin', 'superadmin', 'developer']),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
+  "driverApplicationStatus": zod.enum(['pending', 'approved', 'rejected', 'revoked']).optional(),
+  "driverApplicationReason": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 }),
@@ -67,9 +81,11 @@ export const LoginResponse = zod.object({
   "email": zod.string(),
   "fullName": zod.string().nullish(),
   "phone": zod.string().nullish(),
-  "role": zod.enum(['passenger', 'driver', 'admin']),
+  "role": zod.enum(['passenger', 'driver_applicant', 'driver', 'admin', 'superadmin', 'developer']),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
+  "driverApplicationStatus": zod.enum(['pending', 'approved', 'rejected', 'revoked']).optional(),
+  "driverApplicationReason": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 }),
@@ -166,9 +182,11 @@ export const GetProfileResponse = zod.object({
   "email": zod.string(),
   "fullName": zod.string().nullish(),
   "phone": zod.string().nullish(),
-  "role": zod.enum(['passenger', 'driver', 'admin']),
+  "role": zod.enum(['passenger', 'driver_applicant', 'driver', 'admin', 'superadmin', 'developer']),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
+  "driverApplicationStatus": zod.enum(['pending', 'approved', 'rejected', 'revoked']).optional(),
+  "driverApplicationReason": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 }),
@@ -195,7 +213,12 @@ export const GetProfileResponse = zod.object({
   "licenseNumber": zod.string().nullish(),
   "plateNumber": zod.string().nullish(),
   "vehicleColor": zod.string().nullish(),
+  "approvalStatus": zod.enum(['pending', 'approved', 'rejected', 'revoked']),
+  "reviewReason": zod.string().nullish(),
+  "reviewedBy": zod.string().uuid().nullish(),
+  "reviewedAt": zod.coerce.date().nullish(),
   "isAvailable": zod.boolean(),
+  "isOnShift": zod.boolean(),
   "currentLat": zod.number().nullish(),
   "currentLon": zod.number().nullish(),
   "rating": zod.number(),
@@ -219,12 +242,31 @@ export const UpdateProfileResponse = zod.object({
   "email": zod.string(),
   "fullName": zod.string().nullish(),
   "phone": zod.string().nullish(),
-  "role": zod.enum(['passenger', 'driver', 'admin']),
+  "role": zod.enum(['passenger', 'driver_applicant', 'driver', 'admin', 'superadmin', 'developer']),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
+  "driverApplicationStatus": zod.enum(['pending', 'approved', 'rejected', 'revoked']).optional(),
+  "driverApplicationReason": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
+})
+
+
+/**
+ * @summary Deactivate the current account and revoke every session
+ */
+export const deactivateAccountBodyReasonMax = 500;
+
+
+
+export const DeactivateAccountBody = zod.object({
+  "password": zod.string(),
+  "reason": zod.string().max(deactivateAccountBodyReasonMax).optional()
+})
+
+export const DeactivateAccountResponse = zod.object({
+  "message": zod.string()
 })
 
 
@@ -245,9 +287,11 @@ export const ListUsersResponse = zod.object({
   "email": zod.string(),
   "fullName": zod.string().nullish(),
   "phone": zod.string().nullish(),
-  "role": zod.enum(['passenger', 'driver', 'admin']),
+  "role": zod.enum(['passenger', 'driver_applicant', 'driver', 'admin', 'superadmin', 'developer']),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
+  "driverApplicationStatus": zod.enum(['pending', 'approved', 'rejected', 'revoked']).optional(),
+  "driverApplicationReason": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })),
@@ -261,11 +305,165 @@ export const ListUsersResponse = zod.object({
  */
 export const UpdateDriverLocationBody = zod.object({
   "lat": zod.number(),
-  "lon": zod.number()
+  "lon": zod.number(),
+  "capturedAt": zod.coerce.date().optional(),
+  "accuracyM": zod.number().nullish(),
+  "speedMps": zod.number().nullish(),
+  "headingDegrees": zod.number().nullish(),
+  "devicePointId": zod.string().optional(),
+  "isMocked": zod.boolean().optional()
 })
 
 export const UpdateDriverLocationResponse = zod.object({
   "ok": zod.boolean()
+})
+
+
+/**
+ * @summary Get privileged GIS collection and candidate statistics
+ */
+export const getGisOverviewResponseQualityScoreMin = 0;
+export const getGisOverviewResponseQualityScoreMax = 100;
+
+
+
+export const GetGisOverviewResponse = zod.object({
+  "totalPoints": zod.number(),
+  "points24h": zod.number(),
+  "activeDrivers24h": zod.number(),
+  "validPoints": zod.number(),
+  "mockedPoints": zod.number(),
+  "lowAccuracyPoints": zod.number(),
+  "averageAccuracyM": zod.number().nullable(),
+  "latestPointAt": zod.coerce.date().nullable(),
+  "qualityScore": zod.number().min(getGisOverviewResponseQualityScoreMin).max(getGisOverviewResponseQualityScoreMax),
+  "totalCandidates": zod.number(),
+  "draftCandidates": zod.number(),
+  "approvedCandidates": zod.number(),
+  "generatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get recent cleaned driver tracks as GeoJSON
+ */
+export const getRecentGisTracksQueryHoursDefault = 24;
+export const getRecentGisTracksQueryHoursMax = 168;
+
+export const getRecentGisTracksQueryLimitDefault = 50;
+export const getRecentGisTracksQueryLimitMax = 100;
+
+
+
+export const GetRecentGisTracksQueryParams = zod.object({
+  "hours": zod.coerce.number().min(1).max(getRecentGisTracksQueryHoursMax).default(getRecentGisTracksQueryHoursDefault),
+  "limit": zod.coerce.number().min(1).max(getRecentGisTracksQueryLimitMax).default(getRecentGisTracksQueryLimitDefault)
+})
+
+export const getRecentGisTracksResponseFeaturesItemGeometryCoordinatesItemMin = 2;
+export const getRecentGisTracksResponseFeaturesItemGeometryCoordinatesItemMax = 2;
+
+
+
+export const GetRecentGisTracksResponse = zod.object({
+  "type": zod.enum(['FeatureCollection']),
+  "features": zod.array(zod.object({
+  "type": zod.enum(['Feature']),
+  "geometry": zod.object({
+  "type": zod.enum(['LineString']),
+  "coordinates": zod.array(zod.array(zod.number()).min(getRecentGisTracksResponseFeaturesItemGeometryCoordinatesItemMin).max(getRecentGisTracksResponseFeaturesItemGeometryCoordinatesItemMax))
+}),
+  "properties": zod.object({
+  "driverId": zod.string().uuid(),
+  "driverName": zod.string().nullish(),
+  "tripId": zod.number().nullish(),
+  "trackSession": zod.number().optional(),
+  "pointCount": zod.number(),
+  "startedAt": zod.coerce.date(),
+  "endedAt": zod.coerce.date()
+})
+})),
+  "generatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List isolated GIS route candidates
+ */
+export const ListGisCandidatesResponse = zod.object({
+  "candidates": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "status": zod.enum(['draft', 'reviewing', 'approved', 'rejected']),
+  "geometryGeoJson": zod.record(zod.string(), zod.unknown()),
+  "supportingRuns": zod.number(),
+  "supportingDrivers": zod.number(),
+  "confidence": zod.number(),
+  "distanceKm": zod.number().nullish(),
+  "sourceWindowStart": zod.coerce.date().nullish(),
+  "sourceWindowEnd": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "reviewReason": zod.string().nullish()
+}))
+})
+
+
+/**
+ * @summary Generate review-only route candidates from repeated cleaned GPS corridors
+ */
+export const generateGisCandidatesBodyDaysDefault = 30;
+export const generateGisCandidatesBodyDaysMin = 7;
+export const generateGisCandidatesBodyDaysMax = 90;
+
+
+
+export const GenerateGisCandidatesBody = zod.object({
+  "days": zod.number().min(generateGisCandidatesBodyDaysMin).max(generateGisCandidatesBodyDaysMax).default(generateGisCandidatesBodyDaysDefault)
+})
+
+export const GenerateGisCandidatesResponse = zod.object({
+  "days": zod.number(),
+  "eligibleCorridors": zod.number(),
+  "created": zod.number(),
+  "updated": zod.number(),
+  "skipped": zod.number()
+})
+
+
+/**
+ * @summary Record a privileged review decision without publishing a route
+ */
+export const ReviewGisCandidateParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const reviewGisCandidateBodyReasonMin = 5;
+export const reviewGisCandidateBodyReasonMax = 500;
+
+
+
+export const ReviewGisCandidateBody = zod.object({
+  "status": zod.enum(['reviewing', 'approved', 'rejected']),
+  "reason": zod.string().min(reviewGisCandidateBodyReasonMin).max(reviewGisCandidateBodyReasonMax)
+})
+
+export const ReviewGisCandidateResponse = zod.object({
+  "candidate": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "status": zod.enum(['draft', 'reviewing', 'approved', 'rejected']),
+  "geometryGeoJson": zod.record(zod.string(), zod.unknown()),
+  "supportingRuns": zod.number(),
+  "supportingDrivers": zod.number(),
+  "confidence": zod.number(),
+  "distanceKm": zod.number().nullish(),
+  "sourceWindowStart": zod.coerce.date().nullish(),
+  "sourceWindowEnd": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "reviewReason": zod.string().nullish()
+})
 })
 
 
@@ -314,7 +512,12 @@ export const UpdateDriverAvailabilityResponse = zod.object({
   "licenseNumber": zod.string().nullish(),
   "plateNumber": zod.string().nullish(),
   "vehicleColor": zod.string().nullish(),
+  "approvalStatus": zod.enum(['pending', 'approved', 'rejected', 'revoked']),
+  "reviewReason": zod.string().nullish(),
+  "reviewedBy": zod.string().uuid().nullish(),
+  "reviewedAt": zod.coerce.date().nullish(),
   "isAvailable": zod.boolean(),
+  "isOnShift": zod.boolean(),
   "currentLat": zod.number().nullish(),
   "currentLon": zod.number().nullish(),
   "rating": zod.number(),
@@ -335,7 +538,12 @@ export const GetMyDriverProfileResponse = zod.object({
   "licenseNumber": zod.string().nullish(),
   "plateNumber": zod.string().nullish(),
   "vehicleColor": zod.string().nullish(),
+  "approvalStatus": zod.enum(['pending', 'approved', 'rejected', 'revoked']),
+  "reviewReason": zod.string().nullish(),
+  "reviewedBy": zod.string().uuid().nullish(),
+  "reviewedAt": zod.coerce.date().nullish(),
   "isAvailable": zod.boolean(),
+  "isOnShift": zod.boolean(),
   "currentLat": zod.number().nullish(),
   "currentLon": zod.number().nullish(),
   "rating": zod.number(),
@@ -345,10 +553,98 @@ export const GetMyDriverProfileResponse = zod.object({
 
 
 /**
+ * @summary Approve or reject a driver application (admin only)
+ */
+export const UpdateDriverApprovalParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const updateDriverApprovalBodyReasonMin = 10;
+export const updateDriverApprovalBodyReasonMax = 500;
+
+
+
+export const UpdateDriverApprovalBody = zod.object({
+  "status": zod.enum(['approved', 'rejected', 'revoked']),
+  "reason": zod.string().min(updateDriverApprovalBodyReasonMin).max(updateDriverApprovalBodyReasonMax).optional().describe('Required when rejecting an application or revoking driver access.')
+})
+
+export const UpdateDriverApprovalResponse = zod.object({
+  "user": zod.object({
+  "id": zod.string().uuid(),
+  "email": zod.string(),
+  "fullName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "role": zod.enum(['passenger', 'driver_applicant', 'driver', 'admin', 'superadmin', 'developer']),
+  "avatarUrl": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "driverApplicationStatus": zod.enum(['pending', 'approved', 'rejected', 'revoked']).optional(),
+  "driverApplicationReason": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}),
+  "profile": zod.object({
+  "id": zod.number(),
+  "userId": zod.string().uuid(),
+  "vehicleType": zod.string(),
+  "capacity": zod.number().describe('Total passenger seats this vehicle can carry.'),
+  "licenseNumber": zod.string().nullish(),
+  "plateNumber": zod.string().nullish(),
+  "vehicleColor": zod.string().nullish(),
+  "approvalStatus": zod.enum(['pending', 'approved', 'rejected', 'revoked']),
+  "reviewReason": zod.string().nullish(),
+  "reviewedBy": zod.string().uuid().nullish(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "isAvailable": zod.boolean(),
+  "isOnShift": zod.boolean(),
+  "currentLat": zod.number().nullish(),
+  "currentLon": zod.number().nullish(),
+  "rating": zod.number(),
+  "totalTrips": zod.number()
+})
+})
+
+
+/**
+ * @summary List driver applications and review counts (admin only)
+ */
+export const ListDriverApplicationsResponse = zod.object({
+  "applications": zod.array(zod.object({
+  "userId": zod.string().uuid(),
+  "fullName": zod.string().nullish(),
+  "email": zod.string().email(),
+  "phone": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "vehicleType": zod.string(),
+  "vehicleColor": zod.string().nullish(),
+  "capacity": zod.number(),
+  "plateNumber": zod.string().nullish(),
+  "licenseNumber": zod.string().nullish(),
+  "approvalStatus": zod.enum(['pending', 'approved', 'rejected', 'revoked']),
+  "reviewReason": zod.string().nullish(),
+  "reviewedBy": zod.string().uuid().nullish(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),
+  "counts": zod.object({
+  "pending": zod.number(),
+  "approved": zod.number(),
+  "rejected": zod.number(),
+  "revoked": zod.number()
+})
+})
+
+
+/**
  * @summary Request a trip (passenger only)
  */
-export const createTripBodyPassengerCountDefault = 1;
-export const createTripBodyPassengerCountMax = 16;
+export const createTripBodyOnePassengerCountDefault = 1;
+export const createTripBodyOnePassengerCountMax = 15;
+
+export const createTripBodyTwoClientRequestIdMin = 8;
+export const createTripBodyTwoClientRequestIdMax = 120;
 
 
 
@@ -359,14 +655,17 @@ export const CreateTripBody = zod.object({
   "dropoffLat": zod.number(),
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().optional(),
-  "passengerCount": zod.number().min(1).max(createTripBodyPassengerCountMax).default(createTripBodyPassengerCountDefault).describe('Seats requested for this booking (group booking).')
-})
+  "passengerCount": zod.number().min(1).max(createTripBodyOnePassengerCountMax).default(createTripBodyOnePassengerCountDefault).describe('Seats requested for this booking (group booking).')
+}).and(zod.object({
+  "clientRequestId": zod.string().min(createTripBodyTwoClientRequestIdMin).max(createTripBodyTwoClientRequestIdMax)
+}))
 
 export const CreateTripResponse = zod.object({
   "trip": zod.object({
   "id": zod.number(),
   "passengerId": zod.string().uuid(),
   "driverId": zod.string().uuid().nullish(),
+  "vehicleId": zod.string().uuid().nullish(),
   "pickupLat": zod.number(),
   "pickupLon": zod.number(),
   "pickupAddress": zod.string().nullish(),
@@ -374,13 +673,26 @@ export const CreateTripResponse = zod.object({
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
+  "clientRequestId": zod.string().nullish(),
+  "pickupCode": zod.string().nullish().describe('Passenger-only pickup verification PIN.'),
   "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
   "driverRatingComment": zod.string().nullish().describe('Free-text feedback the passenger left with their rating, if any.'),
-  "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
+  "driverRatingTags": zod.array(zod.string()).nullish(),
+  "status": zod.enum(['requested', 'matched', 'accepted', 'arrived', 'in_progress', 'completing', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
+  "farePolicyId": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
+  "routeDurationSeconds": zod.number().nullish(),
+  "routePolyline": zod.string().nullish(),
+  "distanceSource": zod.enum(['google_routes', 'haversine_fallback']).nullish(),
   "cancelReason": zod.string().nullish(),
+  "cancelReasonCode": zod.string().nullish(),
+  "cancelDetails": zod.string().nullish(),
+  "cancelledBy": zod.string().uuid().nullish(),
   "matchedAt": zod.coerce.date().nullish(),
+  "offerExpiresAt": zod.coerce.date().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "arrivedAt": zod.coerce.date().nullish(),
   "startedAt": zod.coerce.date().nullish(),
   "completedAt": zod.coerce.date().nullish(),
   "cancelledAt": zod.coerce.date().nullish(),
@@ -388,8 +700,27 @@ export const CreateTripResponse = zod.object({
 }),
   "myRating": zod.object({
   "rating": zod.number(),
-  "comment": zod.string().nullish()
-}).nullish().describe('The calling user\'s own rating for this trip, if already given.')
+  "comment": zod.string().nullish(),
+  "tags": zod.array(zod.string()).optional()
+}).nullish().describe('The calling user\'s own rating for this trip, if already given.'),
+  "passenger": zod.object({
+  "id": zod.string().uuid(),
+  "fullName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish()
+}).nullish(),
+  "driver": zod.object({
+  "id": zod.string().uuid(),
+  "fullName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "vehicleType": zod.string(),
+  "vehicleColor": zod.string().nullish(),
+  "plateNumber": zod.string().nullish(),
+  "rating": zod.number(),
+  "totalTrips": zod.number()
+}).nullish(),
+  "idempotentReplay": zod.boolean().optional()
 })
 
 
@@ -409,6 +740,7 @@ export const ListTripsResponse = zod.object({
   "id": zod.number(),
   "passengerId": zod.string().uuid(),
   "driverId": zod.string().uuid().nullish(),
+  "vehicleId": zod.string().uuid().nullish(),
   "pickupLat": zod.number(),
   "pickupLon": zod.number(),
   "pickupAddress": zod.string().nullish(),
@@ -416,13 +748,26 @@ export const ListTripsResponse = zod.object({
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
+  "clientRequestId": zod.string().nullish(),
+  "pickupCode": zod.string().nullish().describe('Passenger-only pickup verification PIN.'),
   "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
   "driverRatingComment": zod.string().nullish().describe('Free-text feedback the passenger left with their rating, if any.'),
-  "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
+  "driverRatingTags": zod.array(zod.string()).nullish(),
+  "status": zod.enum(['requested', 'matched', 'accepted', 'arrived', 'in_progress', 'completing', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
+  "farePolicyId": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
+  "routeDurationSeconds": zod.number().nullish(),
+  "routePolyline": zod.string().nullish(),
+  "distanceSource": zod.enum(['google_routes', 'haversine_fallback']).nullish(),
   "cancelReason": zod.string().nullish(),
+  "cancelReasonCode": zod.string().nullish(),
+  "cancelDetails": zod.string().nullish(),
+  "cancelledBy": zod.string().uuid().nullish(),
   "matchedAt": zod.coerce.date().nullish(),
+  "offerExpiresAt": zod.coerce.date().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "arrivedAt": zod.coerce.date().nullish(),
   "startedAt": zod.coerce.date().nullish(),
   "completedAt": zod.coerce.date().nullish(),
   "cancelledAt": zod.coerce.date().nullish(),
@@ -430,6 +775,92 @@ export const ListTripsResponse = zod.object({
 })),
   "limit": zod.number(),
   "offset": zod.number()
+})
+
+
+/**
+ * @summary Preview road distance, route geometry, and fare (passenger only)
+ */
+export const previewTripFareBodyPassengerCountDefault = 1;
+export const previewTripFareBodyPassengerCountMax = 15;
+
+
+
+export const PreviewTripFareBody = zod.object({
+  "pickupLat": zod.number(),
+  "pickupLon": zod.number(),
+  "pickupAddress": zod.string().optional(),
+  "dropoffLat": zod.number(),
+  "dropoffLon": zod.number(),
+  "dropoffAddress": zod.string().optional(),
+  "passengerCount": zod.number().min(1).max(previewTripFareBodyPassengerCountMax).default(previewTripFareBodyPassengerCountDefault).describe('Seats requested for this booking (group booking).')
+})
+
+export const PreviewTripFareResponse = zod.object({
+  "route": zod.object({
+  "distanceKm": zod.number(),
+  "durationSeconds": zod.number().nullish(),
+  "encodedPolyline": zod.string().nullish(),
+  "source": zod.enum(['google_routes', 'haversine_fallback'])
+}),
+  "fareAmount": zod.number()
+})
+
+
+/**
+ * @summary Get the active point-to-point fare policy (admin only)
+ */
+export const GetActiveFarePolicyResponse = zod.object({
+  "policy": zod.object({
+  "id": zod.number().nullable(),
+  "name": zod.string(),
+  "baseFare": zod.number(),
+  "perKmFare": zod.number(),
+  "minimumFare": zod.number(),
+  "extraPassengerFare": zod.number(),
+  "isActive": zod.boolean(),
+  "createdBy": zod.string().uuid().nullable(),
+  "createdAt": zod.coerce.date().nullable()
+})
+})
+
+
+/**
+ * @summary Activate a new versioned fare policy (admin only)
+ */
+export const updateFarePolicyBodyNameMin = 2;
+export const updateFarePolicyBodyNameMax = 100;
+
+export const updateFarePolicyBodyBaseFareMin = 0;
+
+export const updateFarePolicyBodyPerKmFareMin = 0;
+
+export const updateFarePolicyBodyMinimumFareMin = 0;
+
+export const updateFarePolicyBodyExtraPassengerFareMin = 0;
+
+
+
+export const UpdateFarePolicyBody = zod.object({
+  "name": zod.string().min(updateFarePolicyBodyNameMin).max(updateFarePolicyBodyNameMax),
+  "baseFare": zod.number().min(updateFarePolicyBodyBaseFareMin),
+  "perKmFare": zod.number().min(updateFarePolicyBodyPerKmFareMin),
+  "minimumFare": zod.number().min(updateFarePolicyBodyMinimumFareMin),
+  "extraPassengerFare": zod.number().min(updateFarePolicyBodyExtraPassengerFareMin)
+})
+
+export const UpdateFarePolicyResponse = zod.object({
+  "policy": zod.object({
+  "id": zod.number().nullable(),
+  "name": zod.string(),
+  "baseFare": zod.number(),
+  "perKmFare": zod.number(),
+  "minimumFare": zod.number(),
+  "extraPassengerFare": zod.number(),
+  "isActive": zod.boolean(),
+  "createdBy": zod.string().uuid().nullable(),
+  "createdAt": zod.coerce.date().nullable()
+})
 })
 
 
@@ -445,6 +876,7 @@ export const GetTripResponse = zod.object({
   "id": zod.number(),
   "passengerId": zod.string().uuid(),
   "driverId": zod.string().uuid().nullish(),
+  "vehicleId": zod.string().uuid().nullish(),
   "pickupLat": zod.number(),
   "pickupLon": zod.number(),
   "pickupAddress": zod.string().nullish(),
@@ -452,13 +884,26 @@ export const GetTripResponse = zod.object({
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
+  "clientRequestId": zod.string().nullish(),
+  "pickupCode": zod.string().nullish().describe('Passenger-only pickup verification PIN.'),
   "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
   "driverRatingComment": zod.string().nullish().describe('Free-text feedback the passenger left with their rating, if any.'),
-  "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
+  "driverRatingTags": zod.array(zod.string()).nullish(),
+  "status": zod.enum(['requested', 'matched', 'accepted', 'arrived', 'in_progress', 'completing', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
+  "farePolicyId": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
+  "routeDurationSeconds": zod.number().nullish(),
+  "routePolyline": zod.string().nullish(),
+  "distanceSource": zod.enum(['google_routes', 'haversine_fallback']).nullish(),
   "cancelReason": zod.string().nullish(),
+  "cancelReasonCode": zod.string().nullish(),
+  "cancelDetails": zod.string().nullish(),
+  "cancelledBy": zod.string().uuid().nullish(),
   "matchedAt": zod.coerce.date().nullish(),
+  "offerExpiresAt": zod.coerce.date().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "arrivedAt": zod.coerce.date().nullish(),
   "startedAt": zod.coerce.date().nullish(),
   "completedAt": zod.coerce.date().nullish(),
   "cancelledAt": zod.coerce.date().nullish(),
@@ -466,8 +911,40 @@ export const GetTripResponse = zod.object({
 }),
   "myRating": zod.object({
   "rating": zod.number(),
-  "comment": zod.string().nullish()
-}).nullish().describe('The calling user\'s own rating for this trip, if already given.')
+  "comment": zod.string().nullish(),
+  "tags": zod.array(zod.string()).optional()
+}).nullish().describe('The calling user\'s own rating for this trip, if already given.'),
+  "passenger": zod.object({
+  "id": zod.string().uuid(),
+  "fullName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish()
+}).nullish(),
+  "driver": zod.object({
+  "id": zod.string().uuid(),
+  "fullName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "vehicleType": zod.string(),
+  "vehicleColor": zod.string().nullish(),
+  "plateNumber": zod.string().nullish(),
+  "rating": zod.number(),
+  "totalTrips": zod.number()
+}).nullish(),
+  "idempotentReplay": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Create a short-lived ticket for the trip location stream
+ */
+export const CreateTripTrackingTicketParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const CreateTripTrackingTicketResponse = zod.object({
+  "ticket": zod.string(),
+  "expiresIn": zod.number().describe('Ticket lifetime in seconds')
 })
 
 
@@ -483,6 +960,7 @@ export const AcceptTripResponse = zod.object({
   "id": zod.number(),
   "passengerId": zod.string().uuid(),
   "driverId": zod.string().uuid().nullish(),
+  "vehicleId": zod.string().uuid().nullish(),
   "pickupLat": zod.number(),
   "pickupLon": zod.number(),
   "pickupAddress": zod.string().nullish(),
@@ -490,13 +968,26 @@ export const AcceptTripResponse = zod.object({
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
+  "clientRequestId": zod.string().nullish(),
+  "pickupCode": zod.string().nullish().describe('Passenger-only pickup verification PIN.'),
   "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
   "driverRatingComment": zod.string().nullish().describe('Free-text feedback the passenger left with their rating, if any.'),
-  "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
+  "driverRatingTags": zod.array(zod.string()).nullish(),
+  "status": zod.enum(['requested', 'matched', 'accepted', 'arrived', 'in_progress', 'completing', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
+  "farePolicyId": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
+  "routeDurationSeconds": zod.number().nullish(),
+  "routePolyline": zod.string().nullish(),
+  "distanceSource": zod.enum(['google_routes', 'haversine_fallback']).nullish(),
   "cancelReason": zod.string().nullish(),
+  "cancelReasonCode": zod.string().nullish(),
+  "cancelDetails": zod.string().nullish(),
+  "cancelledBy": zod.string().uuid().nullish(),
   "matchedAt": zod.coerce.date().nullish(),
+  "offerExpiresAt": zod.coerce.date().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "arrivedAt": zod.coerce.date().nullish(),
   "startedAt": zod.coerce.date().nullish(),
   "completedAt": zod.coerce.date().nullish(),
   "cancelledAt": zod.coerce.date().nullish(),
@@ -504,8 +995,27 @@ export const AcceptTripResponse = zod.object({
 }),
   "myRating": zod.object({
   "rating": zod.number(),
-  "comment": zod.string().nullish()
-}).nullish().describe('The calling user\'s own rating for this trip, if already given.')
+  "comment": zod.string().nullish(),
+  "tags": zod.array(zod.string()).optional()
+}).nullish().describe('The calling user\'s own rating for this trip, if already given.'),
+  "passenger": zod.object({
+  "id": zod.string().uuid(),
+  "fullName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish()
+}).nullish(),
+  "driver": zod.object({
+  "id": zod.string().uuid(),
+  "fullName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "vehicleType": zod.string(),
+  "vehicleColor": zod.string().nullish(),
+  "plateNumber": zod.string().nullish(),
+  "rating": zod.number(),
+  "totalTrips": zod.number()
+}).nullish(),
+  "idempotentReplay": zod.boolean().optional()
 })
 
 
@@ -516,11 +1026,16 @@ export const DeclineTripParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const DeclineTripBody = zod.object({
+  "reason": zod.enum(['too_far', 'vehicle_issue', 'unsafe_pickup', 'personal_emergency', 'other'])
+})
+
 export const DeclineTripResponse = zod.object({
   "trip": zod.object({
   "id": zod.number(),
   "passengerId": zod.string().uuid(),
   "driverId": zod.string().uuid().nullish(),
+  "vehicleId": zod.string().uuid().nullish(),
   "pickupLat": zod.number(),
   "pickupLon": zod.number(),
   "pickupAddress": zod.string().nullish(),
@@ -528,13 +1043,26 @@ export const DeclineTripResponse = zod.object({
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
+  "clientRequestId": zod.string().nullish(),
+  "pickupCode": zod.string().nullish().describe('Passenger-only pickup verification PIN.'),
   "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
   "driverRatingComment": zod.string().nullish().describe('Free-text feedback the passenger left with their rating, if any.'),
-  "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
+  "driverRatingTags": zod.array(zod.string()).nullish(),
+  "status": zod.enum(['requested', 'matched', 'accepted', 'arrived', 'in_progress', 'completing', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
+  "farePolicyId": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
+  "routeDurationSeconds": zod.number().nullish(),
+  "routePolyline": zod.string().nullish(),
+  "distanceSource": zod.enum(['google_routes', 'haversine_fallback']).nullish(),
   "cancelReason": zod.string().nullish(),
+  "cancelReasonCode": zod.string().nullish(),
+  "cancelDetails": zod.string().nullish(),
+  "cancelledBy": zod.string().uuid().nullish(),
   "matchedAt": zod.coerce.date().nullish(),
+  "offerExpiresAt": zod.coerce.date().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "arrivedAt": zod.coerce.date().nullish(),
   "startedAt": zod.coerce.date().nullish(),
   "completedAt": zod.coerce.date().nullish(),
   "cancelledAt": zod.coerce.date().nullish(),
@@ -542,8 +1070,176 @@ export const DeclineTripResponse = zod.object({
 }),
   "myRating": zod.object({
   "rating": zod.number(),
-  "comment": zod.string().nullish()
-}).nullish().describe('The calling user\'s own rating for this trip, if already given.')
+  "comment": zod.string().nullish(),
+  "tags": zod.array(zod.string()).optional()
+}).nullish().describe('The calling user\'s own rating for this trip, if already given.'),
+  "passenger": zod.object({
+  "id": zod.string().uuid(),
+  "fullName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish()
+}).nullish(),
+  "driver": zod.object({
+  "id": zod.string().uuid(),
+  "fullName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "vehicleType": zod.string(),
+  "vehicleColor": zod.string().nullish(),
+  "plateNumber": zod.string().nullish(),
+  "rating": zod.number(),
+  "totalTrips": zod.number()
+}).nullish(),
+  "idempotentReplay": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Driver confirms arrival at pickup
+ */
+export const ArriveTripParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ArriveTripResponse = zod.object({
+  "trip": zod.object({
+  "id": zod.number(),
+  "passengerId": zod.string().uuid(),
+  "driverId": zod.string().uuid().nullish(),
+  "vehicleId": zod.string().uuid().nullish(),
+  "pickupLat": zod.number(),
+  "pickupLon": zod.number(),
+  "pickupAddress": zod.string().nullish(),
+  "dropoffLat": zod.number(),
+  "dropoffLon": zod.number(),
+  "dropoffAddress": zod.string().nullish(),
+  "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
+  "clientRequestId": zod.string().nullish(),
+  "pickupCode": zod.string().nullish().describe('Passenger-only pickup verification PIN.'),
+  "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
+  "driverRatingComment": zod.string().nullish().describe('Free-text feedback the passenger left with their rating, if any.'),
+  "driverRatingTags": zod.array(zod.string()).nullish(),
+  "status": zod.enum(['requested', 'matched', 'accepted', 'arrived', 'in_progress', 'completing', 'completed', 'cancelled']),
+  "fareAmount": zod.number().nullish(),
+  "farePolicyId": zod.number().nullish(),
+  "distanceKm": zod.number().nullish(),
+  "routeDurationSeconds": zod.number().nullish(),
+  "routePolyline": zod.string().nullish(),
+  "distanceSource": zod.enum(['google_routes', 'haversine_fallback']).nullish(),
+  "cancelReason": zod.string().nullish(),
+  "cancelReasonCode": zod.string().nullish(),
+  "cancelDetails": zod.string().nullish(),
+  "cancelledBy": zod.string().uuid().nullish(),
+  "matchedAt": zod.coerce.date().nullish(),
+  "offerExpiresAt": zod.coerce.date().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "arrivedAt": zod.coerce.date().nullish(),
+  "startedAt": zod.coerce.date().nullish(),
+  "completedAt": zod.coerce.date().nullish(),
+  "cancelledAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+}),
+  "myRating": zod.object({
+  "rating": zod.number(),
+  "comment": zod.string().nullish(),
+  "tags": zod.array(zod.string()).optional()
+}).nullish().describe('The calling user\'s own rating for this trip, if already given.'),
+  "passenger": zod.object({
+  "id": zod.string().uuid(),
+  "fullName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish()
+}).nullish(),
+  "driver": zod.object({
+  "id": zod.string().uuid(),
+  "fullName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "vehicleType": zod.string(),
+  "vehicleColor": zod.string().nullish(),
+  "plateNumber": zod.string().nullish(),
+  "rating": zod.number(),
+  "totalTrips": zod.number()
+}).nullish(),
+  "idempotentReplay": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Verify passenger pickup PIN and start the ride
+ */
+export const StartTripParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const startTripBodyPickupCodeRegExp = new RegExp('^\\\\d{4}$');
+
+
+export const StartTripBody = zod.object({
+  "pickupCode": zod.string().regex(startTripBodyPickupCodeRegExp)
+})
+
+export const StartTripResponse = zod.object({
+  "trip": zod.object({
+  "id": zod.number(),
+  "passengerId": zod.string().uuid(),
+  "driverId": zod.string().uuid().nullish(),
+  "vehicleId": zod.string().uuid().nullish(),
+  "pickupLat": zod.number(),
+  "pickupLon": zod.number(),
+  "pickupAddress": zod.string().nullish(),
+  "dropoffLat": zod.number(),
+  "dropoffLon": zod.number(),
+  "dropoffAddress": zod.string().nullish(),
+  "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
+  "clientRequestId": zod.string().nullish(),
+  "pickupCode": zod.string().nullish().describe('Passenger-only pickup verification PIN.'),
+  "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
+  "driverRatingComment": zod.string().nullish().describe('Free-text feedback the passenger left with their rating, if any.'),
+  "driverRatingTags": zod.array(zod.string()).nullish(),
+  "status": zod.enum(['requested', 'matched', 'accepted', 'arrived', 'in_progress', 'completing', 'completed', 'cancelled']),
+  "fareAmount": zod.number().nullish(),
+  "farePolicyId": zod.number().nullish(),
+  "distanceKm": zod.number().nullish(),
+  "routeDurationSeconds": zod.number().nullish(),
+  "routePolyline": zod.string().nullish(),
+  "distanceSource": zod.enum(['google_routes', 'haversine_fallback']).nullish(),
+  "cancelReason": zod.string().nullish(),
+  "cancelReasonCode": zod.string().nullish(),
+  "cancelDetails": zod.string().nullish(),
+  "cancelledBy": zod.string().uuid().nullish(),
+  "matchedAt": zod.coerce.date().nullish(),
+  "offerExpiresAt": zod.coerce.date().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "arrivedAt": zod.coerce.date().nullish(),
+  "startedAt": zod.coerce.date().nullish(),
+  "completedAt": zod.coerce.date().nullish(),
+  "cancelledAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+}),
+  "myRating": zod.object({
+  "rating": zod.number(),
+  "comment": zod.string().nullish(),
+  "tags": zod.array(zod.string()).optional()
+}).nullish().describe('The calling user\'s own rating for this trip, if already given.'),
+  "passenger": zod.object({
+  "id": zod.string().uuid(),
+  "fullName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish()
+}).nullish(),
+  "driver": zod.object({
+  "id": zod.string().uuid(),
+  "fullName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "vehicleType": zod.string(),
+  "vehicleColor": zod.string().nullish(),
+  "plateNumber": zod.string().nullish(),
+  "rating": zod.number(),
+  "totalTrips": zod.number()
+}).nullish(),
+  "idempotentReplay": zod.boolean().optional()
 })
 
 
@@ -559,6 +1255,7 @@ export const CompleteTripResponse = zod.object({
   "id": zod.number(),
   "passengerId": zod.string().uuid(),
   "driverId": zod.string().uuid().nullish(),
+  "vehicleId": zod.string().uuid().nullish(),
   "pickupLat": zod.number(),
   "pickupLon": zod.number(),
   "pickupAddress": zod.string().nullish(),
@@ -566,13 +1263,26 @@ export const CompleteTripResponse = zod.object({
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
+  "clientRequestId": zod.string().nullish(),
+  "pickupCode": zod.string().nullish().describe('Passenger-only pickup verification PIN.'),
   "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
   "driverRatingComment": zod.string().nullish().describe('Free-text feedback the passenger left with their rating, if any.'),
-  "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
+  "driverRatingTags": zod.array(zod.string()).nullish(),
+  "status": zod.enum(['requested', 'matched', 'accepted', 'arrived', 'in_progress', 'completing', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
+  "farePolicyId": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
+  "routeDurationSeconds": zod.number().nullish(),
+  "routePolyline": zod.string().nullish(),
+  "distanceSource": zod.enum(['google_routes', 'haversine_fallback']).nullish(),
   "cancelReason": zod.string().nullish(),
+  "cancelReasonCode": zod.string().nullish(),
+  "cancelDetails": zod.string().nullish(),
+  "cancelledBy": zod.string().uuid().nullish(),
   "matchedAt": zod.coerce.date().nullish(),
+  "offerExpiresAt": zod.coerce.date().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "arrivedAt": zod.coerce.date().nullish(),
   "startedAt": zod.coerce.date().nullish(),
   "completedAt": zod.coerce.date().nullish(),
   "cancelledAt": zod.coerce.date().nullish(),
@@ -580,8 +1290,27 @@ export const CompleteTripResponse = zod.object({
 }),
   "myRating": zod.object({
   "rating": zod.number(),
-  "comment": zod.string().nullish()
-}).nullish().describe('The calling user\'s own rating for this trip, if already given.')
+  "comment": zod.string().nullish(),
+  "tags": zod.array(zod.string()).optional()
+}).nullish().describe('The calling user\'s own rating for this trip, if already given.'),
+  "passenger": zod.object({
+  "id": zod.string().uuid(),
+  "fullName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish()
+}).nullish(),
+  "driver": zod.object({
+  "id": zod.string().uuid(),
+  "fullName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "vehicleType": zod.string(),
+  "vehicleColor": zod.string().nullish(),
+  "plateNumber": zod.string().nullish(),
+  "rating": zod.number(),
+  "totalTrips": zod.number()
+}).nullish(),
+  "idempotentReplay": zod.boolean().optional()
 })
 
 
@@ -592,8 +1321,13 @@ export const CancelTripParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const cancelTripBodyDetailsMax = 300;
+
+
+
 export const CancelTripBody = zod.object({
-  "reason": zod.string().optional()
+  "reason": zod.enum(['changed_mind', 'wrong_pickup', 'driver_taking_too_long', 'cannot_contact_driver', 'safety_concern', 'driver_emergency', 'other']),
+  "details": zod.string().max(cancelTripBodyDetailsMax).optional()
 })
 
 export const CancelTripResponse = zod.object({
@@ -601,6 +1335,7 @@ export const CancelTripResponse = zod.object({
   "id": zod.number(),
   "passengerId": zod.string().uuid(),
   "driverId": zod.string().uuid().nullish(),
+  "vehicleId": zod.string().uuid().nullish(),
   "pickupLat": zod.number(),
   "pickupLon": zod.number(),
   "pickupAddress": zod.string().nullish(),
@@ -608,13 +1343,26 @@ export const CancelTripResponse = zod.object({
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
+  "clientRequestId": zod.string().nullish(),
+  "pickupCode": zod.string().nullish().describe('Passenger-only pickup verification PIN.'),
   "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
   "driverRatingComment": zod.string().nullish().describe('Free-text feedback the passenger left with their rating, if any.'),
-  "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
+  "driverRatingTags": zod.array(zod.string()).nullish(),
+  "status": zod.enum(['requested', 'matched', 'accepted', 'arrived', 'in_progress', 'completing', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
+  "farePolicyId": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
+  "routeDurationSeconds": zod.number().nullish(),
+  "routePolyline": zod.string().nullish(),
+  "distanceSource": zod.enum(['google_routes', 'haversine_fallback']).nullish(),
   "cancelReason": zod.string().nullish(),
+  "cancelReasonCode": zod.string().nullish(),
+  "cancelDetails": zod.string().nullish(),
+  "cancelledBy": zod.string().uuid().nullish(),
   "matchedAt": zod.coerce.date().nullish(),
+  "offerExpiresAt": zod.coerce.date().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "arrivedAt": zod.coerce.date().nullish(),
   "startedAt": zod.coerce.date().nullish(),
   "completedAt": zod.coerce.date().nullish(),
   "cancelledAt": zod.coerce.date().nullish(),
@@ -622,8 +1370,27 @@ export const CancelTripResponse = zod.object({
 }),
   "myRating": zod.object({
   "rating": zod.number(),
-  "comment": zod.string().nullish()
-}).nullish().describe('The calling user\'s own rating for this trip, if already given.')
+  "comment": zod.string().nullish(),
+  "tags": zod.array(zod.string()).optional()
+}).nullish().describe('The calling user\'s own rating for this trip, if already given.'),
+  "passenger": zod.object({
+  "id": zod.string().uuid(),
+  "fullName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish()
+}).nullish(),
+  "driver": zod.object({
+  "id": zod.string().uuid(),
+  "fullName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "vehicleType": zod.string(),
+  "vehicleColor": zod.string().nullish(),
+  "plateNumber": zod.string().nullish(),
+  "rating": zod.number(),
+  "totalTrips": zod.number()
+}).nullish(),
+  "idempotentReplay": zod.boolean().optional()
 })
 
 
@@ -636,11 +1403,18 @@ export const RateTripParams = zod.object({
 
 export const rateTripBodyRatingMax = 5;
 
+export const rateTripBodyCommentMax = 500;
+
+export const rateTripBodyTagsItemMax = 50;
+
+export const rateTripBodyTagsMax = 5;
+
 
 
 export const RateTripBody = zod.object({
   "rating": zod.number().min(1).max(rateTripBodyRatingMax),
-  "comment": zod.string().optional()
+  "comment": zod.string().max(rateTripBodyCommentMax).optional(),
+  "tags": zod.array(zod.string().max(rateTripBodyTagsItemMax)).max(rateTripBodyTagsMax).optional()
 })
 
 export const rateTripResponseRatingRatingMax = 5;
@@ -655,9 +1429,34 @@ export const RateTripResponse = zod.object({
   "rateeId": zod.string().uuid(),
   "rating": zod.number().min(1).max(rateTripResponseRatingRatingMax),
   "comment": zod.string().nullish(),
+  "tags": zod.array(zod.string()).optional(),
   "createdAt": zod.coerce.date()
 })
 })
+
+
+/**
+ * @summary Register or refresh a push notification destination
+ */
+export const RegisterNotificationDeviceBody = zod.object({
+  "token": zod.string(),
+  "platform": zod.enum(['ios', 'android', 'web']),
+  "app": zod.enum(['passenger', 'driver'])
+})
+
+export const RegisterNotificationDeviceResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary Remove a push notification destination
+ */
+export const UnregisterNotificationDeviceBody = zod.object({
+  "token": zod.string()
+})
+
+export const UnregisterNotificationDeviceResponse = zod.void()
 
 
 /**
@@ -670,6 +1469,10 @@ export const ListLoopRoutesResponse = zod.object({
   "description": zod.string().nullish(),
   "isActive": zod.boolean(),
   "baseFare": zod.number(),
+  "distanceKm": zod.number().nullish(),
+  "routeDurationSeconds": zod.number().nullish(),
+  "routePolyline": zod.string().nullish(),
+  "distanceSource": zod.enum(['google_routes', 'haversine_fallback']).nullish(),
   "createdAt": zod.coerce.date()
 }))
 })
@@ -702,6 +1505,10 @@ export const CreateLoopRouteResponse = zod.object({
   "description": zod.string().nullish(),
   "isActive": zod.boolean(),
   "baseFare": zod.number(),
+  "distanceKm": zod.number().nullish(),
+  "routeDurationSeconds": zod.number().nullish(),
+  "routePolyline": zod.string().nullish(),
+  "distanceSource": zod.enum(['google_routes', 'haversine_fallback']).nullish(),
   "createdAt": zod.coerce.date()
 }),
   "stops": zod.array(zod.object({
@@ -724,6 +1531,10 @@ export const GetLoopRouteParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const GetLoopRouteQueryParams = zod.object({
+  "includeRoute": zod.coerce.boolean().optional().describe('Compute transient road geometry for display on a Google Map.')
+})
+
 export const GetLoopRouteResponse = zod.object({
   "route": zod.object({
   "id": zod.number(),
@@ -731,6 +1542,10 @@ export const GetLoopRouteResponse = zod.object({
   "description": zod.string().nullish(),
   "isActive": zod.boolean(),
   "baseFare": zod.number(),
+  "distanceKm": zod.number().nullish(),
+  "routeDurationSeconds": zod.number().nullish(),
+  "routePolyline": zod.string().nullish(),
+  "distanceSource": zod.enum(['google_routes', 'haversine_fallback']).nullish(),
   "createdAt": zod.coerce.date()
 }),
   "stops": zod.array(zod.object({
@@ -743,6 +1558,31 @@ export const GetLoopRouteResponse = zod.object({
   "distanceKm": zod.number().nullish(),
   "etaMinutes": zod.number().nullish()
 }))
+})
+
+
+/**
+ * @summary Preview a road-following loop route (admin only)
+ */
+export const previewLoopRouteBodyStopsMin = 2;
+export const previewLoopRouteBodyStopsMax = 25;
+
+
+
+export const PreviewLoopRouteBody = zod.object({
+  "stops": zod.array(zod.object({
+  "lat": zod.number(),
+  "lon": zod.number()
+})).min(previewLoopRouteBodyStopsMin).max(previewLoopRouteBodyStopsMax)
+})
+
+export const PreviewLoopRouteResponse = zod.object({
+  "route": zod.object({
+  "distanceKm": zod.number(),
+  "durationSeconds": zod.number().nullish(),
+  "encodedPolyline": zod.string().nullish(),
+  "source": zod.enum(['google_routes', 'haversine_fallback'])
+})
 })
 
 
@@ -889,6 +1729,7 @@ export const ListWalletsResponse = zod.object({
  * @summary Submit an incident report
  */
 export const CreateIncidentBody = zod.object({
+  "tripId": zod.number().optional(),
   "type": zod.enum(['accident', 'flood', 'fleet_issue']),
   "lat": zod.number(),
   "lon": zod.number(),
@@ -901,6 +1742,7 @@ export const CreateIncidentResponse = zod.object({
   "report": zod.object({
   "id": zod.number(),
   "reporterId": zod.string().uuid(),
+  "tripId": zod.number().nullish(),
   "type": zod.enum(['accident', 'flood', 'fleet_issue']),
   "lat": zod.number(),
   "lon": zod.number(),
@@ -930,6 +1772,7 @@ export const ListIncidentsResponse = zod.object({
   "reports": zod.array(zod.object({
   "id": zod.number(),
   "reporterId": zod.string().uuid(),
+  "tripId": zod.number().nullish(),
   "type": zod.enum(['accident', 'flood', 'fleet_issue']),
   "lat": zod.number(),
   "lon": zod.number(),
@@ -957,6 +1800,7 @@ export const GetIncidentResponse = zod.object({
   "report": zod.object({
   "id": zod.number(),
   "reporterId": zod.string().uuid(),
+  "tripId": zod.number().nullish(),
   "type": zod.enum(['accident', 'flood', 'fleet_issue']),
   "lat": zod.number(),
   "lon": zod.number(),
@@ -986,6 +1830,7 @@ export const UpdateIncidentResponse = zod.object({
   "report": zod.object({
   "id": zod.number(),
   "reporterId": zod.string().uuid(),
+  "tripId": zod.number().nullish(),
   "type": zod.enum(['accident', 'flood', 'fleet_issue']),
   "lat": zod.number(),
   "lon": zod.number(),
@@ -1069,6 +1914,7 @@ export const GetAllTripsResponse = zod.object({
   "id": zod.number(),
   "passengerId": zod.string().uuid(),
   "driverId": zod.string().uuid().nullish(),
+  "vehicleId": zod.string().uuid().nullish(),
   "pickupLat": zod.number(),
   "pickupLon": zod.number(),
   "pickupAddress": zod.string().nullish(),
@@ -1076,13 +1922,26 @@ export const GetAllTripsResponse = zod.object({
   "dropoffLon": zod.number(),
   "dropoffAddress": zod.string().nullish(),
   "passengerCount": zod.number().optional().describe('Seats requested for this booking (group booking).'),
+  "clientRequestId": zod.string().nullish(),
+  "pickupCode": zod.string().nullish().describe('Passenger-only pickup verification PIN.'),
   "driverRating": zod.number().nullish().describe('Rating (1-5) the passenger gave the driver for this trip, if any.'),
   "driverRatingComment": zod.string().nullish().describe('Free-text feedback the passenger left with their rating, if any.'),
-  "status": zod.enum(['requested', 'matched', 'in_progress', 'completed', 'cancelled']),
+  "driverRatingTags": zod.array(zod.string()).nullish(),
+  "status": zod.enum(['requested', 'matched', 'accepted', 'arrived', 'in_progress', 'completing', 'completed', 'cancelled']),
   "fareAmount": zod.number().nullish(),
+  "farePolicyId": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
+  "routeDurationSeconds": zod.number().nullish(),
+  "routePolyline": zod.string().nullish(),
+  "distanceSource": zod.enum(['google_routes', 'haversine_fallback']).nullish(),
   "cancelReason": zod.string().nullish(),
+  "cancelReasonCode": zod.string().nullish(),
+  "cancelDetails": zod.string().nullish(),
+  "cancelledBy": zod.string().uuid().nullish(),
   "matchedAt": zod.coerce.date().nullish(),
+  "offerExpiresAt": zod.coerce.date().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "arrivedAt": zod.coerce.date().nullish(),
   "startedAt": zod.coerce.date().nullish(),
   "completedAt": zod.coerce.date().nullish(),
   "cancelledAt": zod.coerce.date().nullish(),
@@ -1236,5 +2095,129 @@ export const UpdateSubscriptionResponse = zod.object({
   "createdAt": zod.coerce.date()
 })
 })
+
+
+/**
+ * @summary List IoT vehicles, trackers, and active assignments
+ */
+export const GetIotFleetResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Register a fleet vehicle
+ */
+export const createIotVehicleBodyPlateNumberMin = 3;
+export const createIotVehicleBodyPlateNumberMax = 30;
+
+export const createIotVehicleBodyLabelMin = 2;
+export const createIotVehicleBodyLabelMax = 100;
+
+export const createIotVehicleBodyVehicleTypeDefault = `e-jeepney`;
+export const createIotVehicleBodyCapacityDefault = 15;
+export const createIotVehicleBodyCapacityMax = 100;
+
+
+
+export const CreateIotVehicleBody = zod.object({
+  "plateNumber": zod.string().min(createIotVehicleBodyPlateNumberMin).max(createIotVehicleBodyPlateNumberMax),
+  "label": zod.string().min(createIotVehicleBodyLabelMin).max(createIotVehicleBodyLabelMax).optional(),
+  "vehicleType": zod.string().default(createIotVehicleBodyVehicleTypeDefault),
+  "capacity": zod.number().min(1).max(createIotVehicleBodyCapacityMax).default(createIotVehicleBodyCapacityDefault)
+})
+
+export const CreateIotVehicleResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * Returns the raw device token once. Store it immediately.
+ * @summary Provision or replace a vehicle GPS device
+ */
+export const provisionGpsDeviceBodyExternalIdMin = 4;
+export const provisionGpsDeviceBodyExternalIdMax = 64;
+
+export const provisionGpsDeviceBodyLabelMin = 2;
+export const provisionGpsDeviceBodyLabelMax = 100;
+
+export const provisionGpsDeviceBodyProtocolDefault = `https_json_v1`;
+
+export const ProvisionGpsDeviceBody = zod.object({
+  "vehicleId": zod.string().uuid(),
+  "externalId": zod.string().min(provisionGpsDeviceBodyExternalIdMin).max(provisionGpsDeviceBodyExternalIdMax).optional(),
+  "label": zod.string().min(provisionGpsDeviceBodyLabelMin).max(provisionGpsDeviceBodyLabelMax).optional(),
+  "protocol": zod.string().default(provisionGpsDeviceBodyProtocolDefault)
+})
+
+export const ProvisionGpsDeviceResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Assign an approved driver to a fleet vehicle
+ */
+export const AssignIotVehicleBody = zod.object({
+  "vehicleId": zod.string().uuid(),
+  "driverId": zod.string().uuid()
+})
+
+export const AssignIotVehicleResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Revoke a GPS device credential
+ */
+export const RevokeGpsDeviceParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const RevokeGpsDeviceResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * Use Authorization: Device <token> and the provisioned external ID.
+ * @summary Ingest one authenticated GPS observation
+ */
+export const IngestGpsLocationHeader = zod.object({
+  "X-Device-ID": zod.string(),
+  "Authorization": zod.string()
+})
+
+export const ingestGpsLocationBodyEventIdMin = 8;
+export const ingestGpsLocationBodyEventIdMax = 64;
+
+export const ingestGpsLocationBodyLatMin = -90;
+export const ingestGpsLocationBodyLatMax = 90;
+
+export const ingestGpsLocationBodyLonMin = -180;
+export const ingestGpsLocationBodyLonMax = 180;
+
+export const ingestGpsLocationBodyAccuracyMMin = 0;
+export const ingestGpsLocationBodyAccuracyMMax = 10000;
+
+export const ingestGpsLocationBodySpeedMpsMin = 0;
+export const ingestGpsLocationBodySpeedMpsMax = 100;
+
+export const ingestGpsLocationBodyHeadingDegreesMin = 0;
+export const ingestGpsLocationBodyHeadingDegreesMax = 360;
+
+export const ingestGpsLocationBodyBatteryPercentMin = 0;
+export const ingestGpsLocationBodyBatteryPercentMax = 100;
+
+export const ingestGpsLocationBodySignalDbmMin = -200;
+export const ingestGpsLocationBodySignalDbmMax = 0;
+
+
+
+export const IngestGpsLocationBody = zod.object({
+  "eventId": zod.string().min(ingestGpsLocationBodyEventIdMin).max(ingestGpsLocationBodyEventIdMax),
+  "capturedAt": zod.coerce.date(),
+  "lat": zod.number().min(ingestGpsLocationBodyLatMin).max(ingestGpsLocationBodyLatMax),
+  "lon": zod.number().min(ingestGpsLocationBodyLonMin).max(ingestGpsLocationBodyLonMax),
+  "accuracyM": zod.number().min(ingestGpsLocationBodyAccuracyMMin).max(ingestGpsLocationBodyAccuracyMMax).nullish(),
+  "speedMps": zod.number().min(ingestGpsLocationBodySpeedMpsMin).max(ingestGpsLocationBodySpeedMpsMax).nullish(),
+  "headingDegrees": zod.number().min(ingestGpsLocationBodyHeadingDegreesMin).max(ingestGpsLocationBodyHeadingDegreesMax).nullish(),
+  "batteryPercent": zod.number().min(ingestGpsLocationBodyBatteryPercentMin).max(ingestGpsLocationBodyBatteryPercentMax).nullish(),
+  "signalDbm": zod.number().min(ingestGpsLocationBodySignalDbmMin).max(ingestGpsLocationBodySignalDbmMax).nullish()
+})
+
+export const IngestGpsLocationResponse = zod.record(zod.string(), zod.unknown())
 
 

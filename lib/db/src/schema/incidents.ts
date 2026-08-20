@@ -6,10 +6,12 @@ import {
   doublePrecision,
   timestamp,
   index,
+  integer,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
+import { tripsTable } from "./trips";
 
 export const incidentReportsTable = pgTable(
   "incident_reports",
@@ -18,6 +20,7 @@ export const incidentReportsTable = pgTable(
     reporterId: uuid("reporter_id")
       .notNull()
       .references(() => usersTable.id),
+    tripId: integer("trip_id").references(() => tripsTable.id),
     type: text("type").notNull(), // accident | flood | fleet_issue
     lat: doublePrecision("lat").notNull(),
     lon: doublePrecision("lon").notNull(),
@@ -32,6 +35,7 @@ export const incidentReportsTable = pgTable(
   (table) => ({
     reporterIdx: index("incident_reports_reporter_id_idx").on(table.reporterId),
     createdIdx: index("incident_reports_created_at_idx").on(table.createdAt),
+    tripIdx: index("incident_reports_trip_id_idx").on(table.tripId),
   }),
 );
 

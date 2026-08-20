@@ -13,6 +13,18 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
+export function hasProvincialAdminAccess(role: string): boolean {
+  return role === "admin" || role === "superadmin";
+}
+
+export function canAccessAnyRole(actualRole: string | undefined, allowedRoles: string[]): boolean {
+  return (
+    actualRole != null &&
+    (allowedRoles.includes(actualRole) ||
+      (hasProvincialAdminAccess(actualRole) && allowedRoles.includes("admin")))
+  );
+}
+
 /**
  * Requires a valid access token issued by this API (see lib/tokens.ts).
  *
@@ -61,7 +73,12 @@ export async function requireAuth(
 export function requireRole(...roles: string[]) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const authReq = req as AuthenticatedRequest;
-    if (!authReq.user || !roles.includes(authReq.user.role)) {
+    const actualRole = authReq.user?.role;
+    // superadmin inherits provincial-admin permissions. The developer role is
+    // intentionally NOT inherited: it can access only endpoints that name it
+    // explicitly, chiefly the isolated GIS gateway.
+    const allowed = canAccessAnyRole(actualRole, roles);
+    if (!allowed) {
       res.status(403).json({ error: "Forbidden: insufficient permissions" });
       return;
     }

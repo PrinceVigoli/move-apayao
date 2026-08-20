@@ -1,15 +1,23 @@
 import {
   ArrowRight,
+  BarChart3,
   Check,
+  ChevronDown,
   CloudRain,
+  Download,
+  FileSpreadsheet,
   History,
+  Leaf,
   MapPin,
+  Navigation,
+  Radio,
+  ShieldCheck,
   Star,
   TriangleAlert,
   Users,
   type LucideIcon,
-} from 'lucide-react';
-import { useState } from 'react';
+} from "lucide-react";
+import { useState } from "react";
 import {
   coverage,
   drivers,
@@ -18,9 +26,12 @@ import {
   footer,
   links,
   stakeholders,
-} from '@/content/site';
-import { RouteStrip } from '@/components/RouteStrip';
-import { CoverageMap } from '@/components/CoverageMap';
+} from "@/content/site";
+import { BrandLockup } from "@/components/Brand";
+import { CoverageMap } from "@/components/CoverageMap";
+import { Reveal } from "@/components/Motion";
+import { RouteStrip } from "@/components/RouteStrip";
+import { useFeaturedLoop } from "@/lib/loops";
 
 const ICONS: Record<string, LucideIcon> = {
   MapPin,
@@ -31,36 +42,68 @@ const ICONS: Record<string, LucideIcon> = {
   Star,
 };
 
+const PARTNER_METRICS = [
+  { icon: Radio, value: "Live", label: "Fleet status" },
+  { icon: BarChart3, value: "Daily", label: "Service insights" },
+  { icon: FileSpreadsheet, value: "CSV", label: "Report exports" },
+  { icon: ShieldCheck, value: "Trip-linked", label: "Incident records" },
+];
+
 export function Coverage() {
+  const { data: featuredLoop, isLoading, error } = useFeaturedLoop();
+
   return (
-    <section id="coverage" className="border-y border-border bg-muted/40">
-      <div className="mx-auto grid max-w-6xl gap-12 px-6 py-20 md:grid-cols-2 md:py-28">
-        <div>
-          <p className="eyebrow text-primary-strong">{coverage.eyebrow}</p>
-          <h2 className="display mt-4 text-3xl sm:text-4xl">{coverage.title}</h2>
-          <p className="mt-5 text-[15px] leading-relaxed text-muted-foreground">
-            {coverage.body}
-          </p>
+    <section
+      id="coverage"
+      className="section-space overflow-hidden bg-muted/45"
+    >
+      <div className="mx-auto max-w-7xl px-5 sm:px-8">
+        <div className="grid gap-12 lg:grid-cols-[0.78fr_1.22fr] lg:items-end">
+          <Reveal>
+            <p className="eyebrow text-primary">{coverage.eyebrow}</p>
+            <h2 className="display mt-4 max-w-xl text-4xl sm:text-5xl">
+              Serving Pudtol today.{" "}
+              <span className="text-primary">Growing with Apayao.</span>
+            </h2>
+            <p className="mt-6 max-w-xl text-base leading-7 text-muted-foreground">
+              {coverage.body}
+            </p>
 
-          <dl className="mt-9 flex flex-wrap gap-x-10 gap-y-5">
-            {coverage.stats.map((s) => (
-              <div key={s.label}>
-                <dt className="eyebrow text-muted-foreground">{s.label}</dt>
-                <dd className="display mt-1 text-2xl">{s.value}</dd>
+            <dl className="coverage-stats mt-10 grid grid-cols-3 gap-3">
+              {coverage.stats.map((stat) => (
+                <div key={stat.label} className="stat-card">
+                  <dt>{stat.label}</dt>
+                  <dd>{stat.value}</dd>
+                </div>
+              ))}
+            </dl>
+
+            <p className="mt-8 flex gap-3 rounded-2xl border border-primary/15 bg-primary/5 p-4 text-sm leading-6 text-muted-foreground">
+              <Leaf size={19} className="mt-0.5 shrink-0 text-primary" />
+              {coverage.caveat}
+            </p>
+          </Reveal>
+
+          <Reveal delay={100} className="relative">
+            <div className="map-glow" aria-hidden="true" />
+            <div className="coverage-shell">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-5 py-4 sm:px-6">
+                <div>
+                  <p className="eyebrow text-primary">Live coverage</p>
+                  <h3 className="mt-1 text-xl font-bold">
+                    {isLoading ? "Loading active loop..." : featuredLoop?.route.name ?? "No active loop"}
+                  </h3>
+                </div>
+                <span className="live-badge">
+                  <span /> {error ? "Route unavailable" : featuredLoop ? "Published route" : "Not configured"}
+                </span>
               </div>
-            ))}
-          </dl>
-
-          <p className="mt-8 border-l-2 border-accent pl-4 text-sm leading-relaxed text-muted-foreground">
-            {coverage.caveat}
-          </p>
-        </div>
-
-        <div className="space-y-5">
-          <CoverageMap />
-          <div className="rounded-2xl border border-border bg-background p-6 md:p-8">
-            <RouteStrip tone="light" />
-          </div>
+              <CoverageMap loop={featuredLoop} />
+              <div className="bg-background px-5 py-5 sm:px-6">
+                <RouteStrip tone="light" loop={featuredLoop} />
+              </div>
+            </div>
+          </Reveal>
         </div>
       </div>
     </section>
@@ -69,162 +112,33 @@ export function Coverage() {
 
 export function Features() {
   return (
-    <section className="mx-auto max-w-6xl px-6 py-20 md:py-28">
-      <p className="eyebrow text-primary-strong">What the app does</p>
-      <h2 className="display mt-4 max-w-2xl text-3xl sm:text-4xl">
-        Built for the way people actually travel here.
-      </h2>
+    <section className="section-space bg-background">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8">
+        <Reveal className="max-w-3xl">
+          <p className="eyebrow text-primary">What the app does</p>
+          <h2 className="display mt-4 text-4xl sm:text-5xl">
+            Everything you need for a{" "}
+            <span className="text-primary">confident local ride.</span>
+          </h2>
+        </Reveal>
 
-      <div className="mt-12 grid gap-x-10 gap-y-9 sm:grid-cols-2 lg:grid-cols-3">
-        {features.map((f) => {
-          const Icon = ICONS[f.icon] ?? MapPin;
-          return (
-            <div
-              key={f.title}
-              className="group -m-3 rounded-xl p-3 transition-colors duration-200 hover:bg-muted/50"
-            >
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-transform duration-200 group-hover:scale-110">
-                <Icon size={19} />
-              </span>
-              <h3 className="mt-4 font-bold transition-colors duration-200 group-hover:text-primary-strong">
-                {f.title}
-              </h3>
-              <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-                {f.body}
-              </p>
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-export function Drivers() {
-  return (
-    <section id="drivers" className="bg-[hsl(var(--ink))]">
-      <div className="mx-auto grid max-w-6xl gap-12 px-6 py-20 md:grid-cols-2 md:items-center md:py-28">
-        <div>
-          <p className="eyebrow text-accent">{drivers.eyebrow}</p>
-          <h2 className="display mt-4 text-3xl text-white sm:text-4xl">{drivers.title}</h2>
-          <p className="mt-5 text-[15px] leading-relaxed text-ink-soft">{drivers.body}</p>
-
-          <div className="mt-9 flex flex-wrap items-center gap-3">
-            <a
-              href={links.driverAndroid}
-              className="group inline-flex items-center gap-2 rounded-lg bg-accent px-6 py-3.5 font-semibold text-accent-foreground transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]"
-            >
-              {drivers.cta}
-              <ArrowRight
-                size={18}
-                className="transition-transform group-hover:translate-x-0.5"
-              />
-            </a>
-          </div>
-          <p className="mt-4 text-xs text-ink-soft">{drivers.note}</p>
-        </div>
-
-        <ul className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-7">
-          {drivers.points.map((point) => (
-            <li key={point} className="flex gap-3">
-              <Check size={18} className="mt-0.5 shrink-0 text-accent" />
-              <span className="text-[15px] leading-relaxed text-ink-soft">{point}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
-  );
-}
-
-export function Stakeholders() {
-  return (
-    <section id="partners" className="mx-auto max-w-6xl px-6 py-20 md:py-28">
-      <div className="max-w-2xl">
-        <p className="eyebrow text-primary-strong">{stakeholders.eyebrow}</p>
-        <h2 className="display mt-4 text-3xl sm:text-4xl">{stakeholders.title}</h2>
-        <p className="mt-5 text-[15px] leading-relaxed text-muted-foreground">
-          {stakeholders.body}
-        </p>
-      </div>
-
-      <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2">
-        {stakeholders.items.map((item) => (
-          <div
-            key={item.title}
-            className="group bg-background p-7 transition-colors duration-200 hover:bg-muted/30"
-          >
-            <h3 className="font-bold transition-colors duration-200 group-hover:text-primary-strong">
-              {item.title}
-            </h3>
-            <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-              {item.body}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      <a
-        href={links.dashboard}
-        className="group mt-9 inline-flex items-center gap-2 font-semibold text-primary transition-opacity duration-150 hover:opacity-80 active:opacity-60"
-      >
-        {stakeholders.cta}
-        <ArrowRight
-          size={17}
-          className="transition-transform group-hover:translate-x-0.5"
-        />
-      </a>
-    </section>
-  );
-}
-
-export function Faq() {
-  const [open, setOpen] = useState<number | null>(0);
-  return (
-    <section id="faq" className="border-t border-border bg-muted/40">
-      <div className="mx-auto max-w-3xl px-6 py-20 md:py-28">
-        <p className="eyebrow text-primary-strong">Questions</p>
-        <h2 className="display mt-4 text-3xl sm:text-4xl">Before you ride.</h2>
-
-        <div className="mt-10 divide-y divide-border border-y border-border">
-          {faqs.map((faq, i) => {
-            const isOpen = open === i;
-            const panelId = `faq-panel-${i}`;
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {features.map((feature, index) => {
+            const Icon = ICONS[feature.icon] ?? MapPin;
             return (
-              <div key={faq.q}>
-                <h3>
-                  <button
-                    type="button"
-                    onClick={() => setOpen(isOpen ? null : i)}
-                    aria-expanded={isOpen}
-                    aria-controls={panelId}
-                    className="flex w-full items-center justify-between gap-6 py-5 text-left transition-colors duration-150 hover:bg-foreground/[0.03]"
-                  >
-                    <span className="font-semibold">{faq.q}</span>
-                    <span
-                      aria-hidden="true"
-                      className={`shrink-0 font-mono text-lg text-primary-strong transition-transform duration-200 ${
-                        isOpen ? 'rotate-45' : ''
-                      }`}
-                    >
-                      +
-                    </span>
-                  </button>
-                </h3>
-                {/* Grid-rows trick animates height without measuring it in JS —
-                    a plain conditional render here would just snap open/closed. */}
-                <div
-                  id={panelId}
-                  className="grid overflow-hidden transition-[grid-template-rows] duration-300 ease-out"
-                  style={{ gridTemplateRows: isOpen ? '1fr' : '0fr' }}
-                >
-                  <div className="min-h-0 overflow-hidden">
-                    <p className="-mt-1 pb-6 pr-10 text-[15px] leading-relaxed text-muted-foreground">
-                      {faq.a}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <Reveal key={feature.title} delay={(index % 3) * 80}>
+                <article className="feature-card group">
+                  <span className="feature-icon">
+                    <Icon size={21} />
+                  </span>
+                  <span className="feature-index">0{index + 1}</span>
+                  <h3 className="mt-9 text-lg font-bold">{feature.title}</h3>
+                  <p className="mt-3 text-[15px] leading-7 text-muted-foreground">
+                    {feature.body}
+                  </p>
+                  <span className="feature-line" aria-hidden="true" />
+                </article>
+              </Reveal>
             );
           })}
         </div>
@@ -233,61 +147,249 @@ export function Faq() {
   );
 }
 
+export function Drivers() {
+  return (
+    <section id="drivers" className="section-space bg-background pt-0">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8">
+        <Reveal>
+          <div className="driver-panel">
+            <img
+              src="/images/move-apayao-driver.webp"
+              alt="A MOVE Apayao e-trike driver standing beside his vehicle on a mountain road"
+              className="driver-image"
+              loading="lazy"
+            />
+            <div className="driver-wash" aria-hidden="true" />
+            <div
+              className="topo-pattern topo-pattern-dark"
+              aria-hidden="true"
+            />
+
+            <div className="driver-content relative z-10 max-w-2xl px-6 py-14 sm:px-12 sm:py-20 lg:px-16 lg:py-24">
+              <p className="eyebrow text-accent">{drivers.eyebrow}</p>
+              <h2 className="display mt-4 text-4xl text-white sm:text-5xl">
+                Built for drivers.{" "}
+                <span className="text-accent">
+                  Designed for mountain journeys.
+                </span>
+              </h2>
+              <p className="mt-6 max-w-xl text-base leading-7 text-white/68">
+                {drivers.body}
+              </p>
+
+              <ul className="mt-8 grid gap-3 sm:grid-cols-2">
+                {drivers.points.map((point) => (
+                  <li key={point} className="driver-point">
+                    <span>
+                      <Check size={13} strokeWidth={3} />
+                    </span>
+                    {point}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="driver-actions mt-9 flex flex-wrap items-center gap-4">
+                <a href={links.driverAndroid} className="button button-accent">
+                  {drivers.cta}
+                  <ArrowRight size={17} />
+                </a>
+                <p className="max-w-[210px] text-xs leading-5 text-white/55">
+                  {drivers.note}
+                </p>
+              </div>
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+export function Stakeholders() {
+  return (
+    <section
+      id="partners"
+      className="section-space overflow-hidden bg-foreground text-white"
+    >
+      <div className="mx-auto max-w-7xl px-5 sm:px-8">
+        <div className="grid gap-12 lg:grid-cols-[0.82fr_1.18fr] lg:gap-20">
+          <Reveal>
+            <p className="eyebrow text-accent">{stakeholders.eyebrow}</p>
+            <h2 className="display mt-4 text-4xl sm:text-5xl">
+              {stakeholders.title}
+            </h2>
+            <p className="mt-6 max-w-xl text-base leading-7 text-white/65">
+              {stakeholders.body}
+            </p>
+            {links.dashboard !== "#" && (
+              <a href={links.dashboard} className="button button-light mt-9">
+                {stakeholders.cta}
+                <ArrowRight size={17} />
+              </a>
+            )}
+          </Reveal>
+
+          <div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {PARTNER_METRICS.map((metric, index) => (
+                <Reveal key={metric.label} delay={index * 70}>
+                  <div className="partner-metric">
+                    <metric.icon size={18} />
+                    <strong>{metric.value}</strong>
+                    <span>{metric.label}</span>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+
+            <div className="mt-4 grid gap-px overflow-hidden rounded-3xl border border-white/10 bg-white/10 sm:grid-cols-2">
+              {stakeholders.items.map((item, index) => (
+                <Reveal key={item.title} delay={(index % 2) * 70}>
+                  <article className="partner-card">
+                    <span>0{index + 1}</span>
+                    <h3>{item.title}</h3>
+                    <p>{item.body}</p>
+                  </article>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function Faq() {
+  const [open, setOpen] = useState<number | null>(0);
+
+  return (
+    <section id="faq" className="section-space bg-muted/45">
+      <div className="mx-auto grid max-w-7xl gap-12 px-5 sm:px-8 lg:grid-cols-[0.7fr_1.3fr]">
+        <Reveal>
+          <p className="eyebrow text-primary">Questions</p>
+          <h2 className="display mt-4 text-4xl sm:text-5xl">
+            Before you ride.
+          </h2>
+          <p className="mt-5 max-w-sm leading-7 text-muted-foreground">
+            Straight answers about fares, coverage, data, and joining the MOVE
+            Apayao driver community.
+          </p>
+          <div className="mt-8 flex items-center gap-3 text-sm font-semibold text-primary">
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-primary/10">
+              <Navigation size={18} />
+            </span>
+            Local support for every journey
+          </div>
+        </Reveal>
+
+        <Reveal delay={100}>
+          <div className="faq-list">
+            {faqs.map((faq, index) => {
+              const isOpen = open === index;
+              const panelId = `faq-panel-${index}`;
+              return (
+                <article
+                  key={faq.q}
+                  className={`faq-item ${isOpen ? "is-open" : ""}`}
+                >
+                  <h3>
+                    <button
+                      type="button"
+                      onClick={() => setOpen(isOpen ? null : index)}
+                      aria-expanded={isOpen}
+                      aria-controls={panelId}
+                    >
+                      <span>{faq.q}</span>
+                      <ChevronDown size={18} />
+                    </button>
+                  </h3>
+                  <div
+                    id={panelId}
+                    className="faq-answer-grid"
+                    style={{ gridTemplateRows: isOpen ? "1fr" : "0fr" }}
+                  >
+                    <div>
+                      <p>{faq.a}</p>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
 export function Footer() {
   return (
-    <footer className="bg-[hsl(var(--ink))] text-ink-soft">
-      <div className="mx-auto max-w-6xl px-6 py-16">
-        <div className="grid gap-10 md:grid-cols-3">
-          <div>
-            <div className="flex items-baseline gap-2 text-white">
-              <span className="display text-xl">MOVE</span>
-              <span className="eyebrow text-accent">Apayao</span>
+    <footer className="bg-background">
+      <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8">
+        <Reveal>
+          <div className="download-banner">
+            <div>
+              <p className="eyebrow text-accent">Ready when you are</p>
+              <h2 className="display mt-3 text-3xl text-white sm:text-4xl">
+                Move through Apayao with confidence.
+              </h2>
             </div>
-            <p className="mt-4 max-w-xs text-sm leading-relaxed">{footer.support}</p>
+            <div className="download-actions flex flex-wrap gap-3">
+              <a href={links.passengerAndroid} className="button button-accent">
+                <Download size={17} /> Passenger app
+              </a>
+              <a
+                href={links.driverAndroid}
+                className="button button-dark-outline"
+              >
+                Driver app <ArrowRight size={17} />
+              </a>
+            </div>
+          </div>
+        </Reveal>
+
+        <div className="grid gap-10 py-14 md:grid-cols-[1.4fr_0.8fr_0.8fr]">
+          <div>
+            <BrandLockup />
+            <p className="mt-5 max-w-sm text-sm leading-6 text-muted-foreground">
+              {footer.support}
+            </p>
           </div>
 
           <div>
-            <p className="eyebrow text-white">Get the apps</p>
-            <ul className="mt-3 text-sm">
+            <p className="eyebrow text-foreground">Explore</p>
+            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
               <li>
-                <a href={links.passengerAndroid} className="inline-block py-1.5 hover:text-white">
-                  Passenger app
-                </a>
+                <a href="#how">How it works</a>
               </li>
               <li>
-                <a href={links.driverAndroid} className="inline-block py-1.5 hover:text-white">
-                  Driver app
-                </a>
+                <a href="#coverage">Coverage</a>
               </li>
               <li>
-                <a href={links.dashboard} className="inline-block py-1.5 hover:text-white">
-                  Admin dashboard
-                </a>
+                <a href="#drivers">Drive with us</a>
+              </li>
+              <li>
+                <a href="#partners">For the LGU</a>
               </li>
             </ul>
           </div>
 
           <div>
-            <p className="eyebrow text-white">Contact</p>
-            <ul className="mt-3 text-sm">
+            <p className="eyebrow text-foreground">Contact</p>
+            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
               <li>{footer.org}</li>
-              <li>
-                <a href={links.email} className="inline-block py-1.5 hover:text-white">
-                  {footer.contactLabel}
-                </a>
-              </li>
-              <li>
-                <a href={links.phone} className="inline-block py-1.5 hover:text-white">
-                  {footer.phoneLabel}
-                </a>
-              </li>
+              {footer.contactLabel && <li><a href={links.email}>{footer.contactLabel}</a></li>}
+              {footer.phoneLabel && <li><a href={links.phone}>{footer.phoneLabel}</a></li>}
             </ul>
           </div>
         </div>
 
-        <div className="mt-14 flex flex-col gap-2 border-t border-white/10 pt-7 text-xs sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 border-t border-border pt-7 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>{footer.province}</p>
-          <p>© {new Date().getFullYear()} {footer.org}</p>
+          <p>
+            © {new Date().getFullYear()} {footer.org}. All rights reserved.
+          </p>
         </div>
       </div>
     </footer>

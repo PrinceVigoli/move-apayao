@@ -38,7 +38,8 @@ export function parseDateRange(
   const start = query.startDate ? new Date(String(query.startDate)) : defaultStart;
 
   const validEnd = Number.isNaN(end.getTime()) ? new Date() : end;
-  const validStart = Number.isNaN(start.getTime()) ? defaultStart : start;
+  const parsedStart = Number.isNaN(start.getTime()) ? defaultStart : start;
+  const validStart = parsedStart > validEnd ? defaultStart : parsedStart;
 
   const maxSpanMs = maxDays * 86_400_000;
   const clampedStart =

@@ -1,8 +1,11 @@
-import { and, eq, lt, gte, inArray } from "drizzle-orm";
+import { and, eq, lt, gte, or, isNull } from "drizzle-orm";
 import { db, tripsTable } from "@workspace/db";
 import { matchDriverForTrip } from "./matching";
 import { publishTripUpdate } from "./redis";
 import { logger } from "./logger";
+import { markDriverAvailable, markDriverUnavailable } from "./driver-availability";
+import { sendPushToUser } from "./push";
+import { getAssignedVehicleId } from "./vehicles";
 
 /**
  * Background sweep that rescues trips stuck in `requested`.
@@ -28,8 +31,9 @@ import { logger } from "./logger";
  * the second writer would violate the index and we treat that as "driver
  * taken, release the claim by leaving the trip requested for the next pass".
  */
-const SWEEP_INTERVAL_MS = 15_000;
+const SWEEP_INTERVAL_MS = 5_000;
 const REQUEST_TTL_MS = 5 * 60 * 1000; // give up after 5 minutes of searching
+const OFFER_TTL_MS = 30_000;
 const MATCH_RADIUS_KM = 10;
 
 let timer: NodeJS.Timeout | null = null;
@@ -40,6 +44,104 @@ async function sweepOnce(): Promise<void> {
   running = true;
   try {
     const cutoff = new Date(Date.now() - REQUEST_TTL_MS);
+    const now = new Date();
+
+    // --- 0. Reassign ride offers a driver did not answer -------------------
+    const expiredOffers = await db
+      .select()
+      .from(tripsTable)
+      .where(
+        and(
+          eq(tripsTable.status, "matched"),
+          or(
+            lt(tripsTable.offerExpiresAt, now),
+            and(
+              isNull(tripsTable.offerExpiresAt),
+              lt(tripsTable.matchedAt, new Date(Date.now() - OFFER_TTL_MS)),
+            ),
+          ),
+        ),
+      )
+      .limit(50);
+
+    for (const trip of expiredOffers) {
+      const previousDriverId = trip.driverId;
+      if (!previousDriverId) continue;
+      try {
+        // Atomically release the offer first. If acceptance won the race,
+        // this returns no row and the busy driver must stay out of the pool.
+        const [releasedOffer] = await db
+          .update(tripsTable)
+          .set({
+            status: "requested",
+            driverId: null,
+            vehicleId: null,
+            matchedAt: null,
+            offerExpiresAt: null,
+          })
+          .where(
+            and(
+              eq(tripsTable.id, trip.id),
+              eq(tripsTable.status, "matched"),
+              eq(tripsTable.driverId, previousDriverId),
+            ),
+          )
+          .returning();
+        if (!releasedOffer) continue;
+
+        await markDriverAvailable(previousDriverId);
+        const next = await matchDriverForTrip(
+          trip.pickupLat,
+          trip.pickupLon,
+          trip.passengerCount,
+          MATCH_RADIUS_KM,
+          previousDriverId,
+        );
+        if (!next) {
+          await publishTripUpdate(trip.id, {
+            event: "offer_expired",
+            trip: releasedOffer,
+            previousDriverId,
+          }).catch(() => {});
+          continue;
+        }
+        let updated: typeof releasedOffer | undefined;
+        const nextVehicleId = await getAssignedVehicleId(next.driverId);
+        try {
+          [updated] = await db
+            .update(tripsTable)
+            .set({
+              status: "matched",
+              driverId: next.driverId,
+              vehicleId: nextVehicleId,
+              matchedAt: now,
+              offerExpiresAt: new Date(Date.now() + OFFER_TTL_MS),
+            })
+            .where(and(eq(tripsTable.id, trip.id), eq(tripsTable.status, "requested")))
+            .returning();
+        } catch (err) {
+          await markDriverAvailable(next.driverId);
+          throw err;
+        }
+        if (!updated) {
+          await markDriverAvailable(next.driverId);
+          continue;
+        }
+        await markDriverUnavailable(next.driverId);
+        void sendPushToUser(next.driverId, {
+            title: "New ride request",
+            body: `${trip.pickupAddress ?? "Pickup"} → ${trip.dropoffAddress ?? "Destination"}`,
+            data: { type: "trip_offer", tripId: trip.id },
+        });
+        await publishTripUpdate(trip.id, {
+          event: "offer_expired",
+          trip: updated,
+          previousDriverId,
+        }).catch(() => {});
+      } catch (err) {
+        logger.warn({ err, tripId: trip.id }, "Expired offer reassignment failed");
+      }
+    }
 
     // --- 1. Retry matching for fresh requested trips -----------------------
     const pending = await db
@@ -58,21 +160,41 @@ async function sweepOnce(): Promise<void> {
         );
         if (!match) continue;
 
-        const [updated] = await db
-          .update(tripsTable)
-          .set({ driverId: match.driverId, status: "matched", matchedAt: new Date() })
-          .where(and(eq(tripsTable.id, trip.id), eq(tripsTable.status, "requested")))
-          .returning();
+        let updated;
+        const vehicleId = await getAssignedVehicleId(match.driverId);
+        try {
+          [updated] = await db
+            .update(tripsTable)
+            .set({
+              driverId: match.driverId,
+              vehicleId,
+              status: "matched",
+              matchedAt: new Date(),
+              offerExpiresAt: new Date(Date.now() + OFFER_TTL_MS),
+            })
+            .where(and(eq(tripsTable.id, trip.id), eq(tripsTable.status, "requested")))
+            .returning();
+        } catch (err) {
+          // The Redis claim removed this driver from the pool. Return them if
+          // the database write loses a race; markDriverAvailable performs a
+          // fresh eligibility/active-trip check before re-adding them.
+          await markDriverAvailable(match.driverId);
+          throw err;
+        }
 
         if (updated) {
+          await markDriverUnavailable(match.driverId);
           logger.info({ tripId: trip.id, driverId: match.driverId }, "Sweeper matched stuck trip");
           await publishTripUpdate(trip.id, { event: "matched", trip: updated, driverId: match.driverId }).catch(() => {});
+          void sendPushToUser(match.driverId, {
+            title: "New ride request",
+            body: `${trip.pickupAddress ?? "Pickup"} → ${trip.dropoffAddress ?? "Destination"}`,
+            data: { type: "trip_offer", tripId: trip.id },
+          });
+        } else {
+          await markDriverAvailable(match.driverId);
         }
       } catch (err) {
-        // A unique-index violation here means the claimed driver got an
-        // active trip between our claim and this write (rare race). The geo
-        // claim already removed them from the pool, so just log and move on;
-        // this trip stays `requested` for the next pass.
         logger.warn({ err, tripId: trip.id }, "Sweeper rematch attempt failed");
       }
     }
@@ -83,6 +205,7 @@ async function sweepOnce(): Promise<void> {
       .set({
         status: "cancelled",
         cancelReason: "no_driver_available",
+        cancelReasonCode: "no_driver_available",
         cancelledAt: new Date(),
       })
       .where(and(eq(tripsTable.status, "requested"), lt(tripsTable.createdAt, cutoff)))

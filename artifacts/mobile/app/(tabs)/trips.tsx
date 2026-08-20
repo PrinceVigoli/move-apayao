@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -9,32 +9,34 @@ import {
   ActivityIndicator,
   Linking,
   Keyboard,
-} from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useColors } from '@/hooks/useColors';
-import { Button } from '@/components/ui/Button';
-import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import * as Location from 'expo-location';
+} from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useColors } from "@/hooks/useColors";
+import { Button } from "@/components/ui/Button";
+import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import * as Location from "expo-location";
 import {
   useGetNearbyDrivers,
   useCreateTrip,
   getListTripsQueryKey,
-} from '@workspace/api-client-react';
-import { useQueryClient } from '@tanstack/react-query';
-import { useLocation } from '@/hooks/useLocation';
-import { RouteMap, type NearbyDriverPin } from '@/components/RouteMap';
+  previewTripFare,
+  type TripFarePreviewResponse,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "@/hooks/useLocation";
+import { RouteMap, type NearbyDriverPin } from "@/components/RouteMap";
 import {
   searchPlaces,
   getPlaceDetails,
   newPlacesSessionToken,
   type PlacePrediction,
-} from '@/lib/places';
-import * as Haptics from 'expo-haptics';
+} from "@/lib/places";
+import * as Haptics from "expo-haptics";
 
 type LatLng = { latitude: number; longitude: number };
-type SelectMode = 'pickup' | 'dropoff';
+type SelectMode = "pickup" | "dropoff";
 
 // Reverse-geocodes a coordinate into a short human-readable label using the
 // free OS geocoder. Only used for taps on UNLABELED map spots — POI taps
@@ -51,7 +53,7 @@ async function labelForCoord(coord: LatLng): Promise<string> {
         (p) => p && p.trim().length > 0,
       );
       const deduped = parts.filter((p, i) => p !== parts[i - 1]);
-      if (deduped.length > 0) return deduped.slice(0, 3).join(', ');
+      if (deduped.length > 0) return deduped.slice(0, 3).join(", ");
     }
   } catch {
     /* fall through to coordinates */
@@ -65,17 +67,26 @@ export default function BookRideScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { lat, lon, isFallback, loading: locLoading, permission, refresh } = useLocation();
+  const {
+    lat,
+    lon,
+    isFallback,
+    loading: locLoading,
+    permission,
+    refresh,
+  } = useLocation();
 
   const [pickupCoord, setPickupCoord] = useState<LatLng | null>(null);
   const [dropoffCoord, setDropoffCoord] = useState<LatLng | null>(null);
-  const [pickupLabel, setPickupLabel] = useState('');
-  const [dropoffLabel, setDropoffLabel] = useState('');
+  const [pickupLabel, setPickupLabel] = useState("");
+  const [dropoffLabel, setDropoffLabel] = useState("");
   // Which point the next map tap sets. Never null — the map should always
   // respond to a tap. Defaults to dropoff (the thing people adjust most).
-  const [selectMode, setSelectMode] = useState<SelectMode>('dropoff');
+  const [selectMode, setSelectMode] = useState<SelectMode>("dropoff");
   const [geocoding, setGeocoding] = useState(false);
   const [passengerCount, setPassengerCount] = useState(1);
+  const [farePreview, setFarePreview] = useState<TripFarePreviewResponse | null>(null);
+  const [farePreviewing, setFarePreviewing] = useState(false);
   // Collapse the booking sheet to a slim peek bar so the map is actually
   // tappable on small screens (Grab-style).
   const [sheetCollapsed, setSheetCollapsed] = useState(false);
@@ -85,6 +96,7 @@ export default function BookRideScreen() {
   const [searching, setSearching] = useState(false);
   const [searchUnavailable, setSearchUnavailable] = useState(false);
   const sessionTokenRef = useRef<string>(newPlacesSessionToken());
+  const bookingRequestIdRef = useRef<string | null>(null);
 
   // Seed pickup from the first real GPS fix (unless already set manually).
   useEffect(() => {
@@ -96,7 +108,7 @@ export default function BookRideScreen() {
 
   const { data: nearbyData, isLoading: nearbyLoading } = useGetNearbyDrivers(
     { lat, lon, radius: 5 },
-    { query: { queryKey: ['nearby-drivers', lat, lon] } },
+    { query: { queryKey: ["nearby-drivers", lat, lon] } },
   );
   const createTrip = useCreateTrip();
 
@@ -106,7 +118,9 @@ export default function BookRideScreen() {
       id: d.userId,
       latitude: d.currentLat as number,
       longitude: d.currentLon as number,
-      label: d.fullName ? `${d.fullName} • ${d.vehicleType}` : 'Available e-trike',
+      label: d.fullName
+        ? `${d.fullName} • ${d.vehicleType}`
+        : "Available e-trike",
     }));
 
   const availableCount = nearbyData?.drivers?.length ?? 0;
@@ -117,24 +131,24 @@ export default function BookRideScreen() {
       Keyboard.dismiss();
       setPredictions([]);
       setSearchField(null);
-      if (mode === 'pickup') {
+      if (mode === "pickup") {
         setPickupCoord(coord);
-        setPickupLabel(presetLabel ?? 'Locating…');
+        setPickupLabel(presetLabel ?? "Locating…");
       } else {
         setDropoffCoord(coord);
-        setDropoffLabel(presetLabel ?? 'Locating…');
+        setDropoffLabel(presetLabel ?? "Locating…");
       }
       if (!presetLabel) {
         setGeocoding(true);
         const label = await labelForCoord(coord);
-        if (mode === 'pickup') setPickupLabel(label);
+        if (mode === "pickup") setPickupLabel(label);
         else setDropoffLabel(label);
         setGeocoding(false);
       }
       // After a pickup tap, switch back to dropoff (the common next step);
       // after a dropoff tap, STAY on dropoff so repeat taps keep adjusting it
       // instead of being silently ignored.
-      setSelectMode('dropoff');
+      setSelectMode("dropoff");
     },
     [],
   );
@@ -150,7 +164,7 @@ export default function BookRideScreen() {
 
   // Debounced text search with availability feedback.
   const runSearch = useCallback((field: SelectMode, text: string) => {
-    if (field === 'pickup') setPickupLabel(text);
+    if (field === "pickup") setPickupLabel(text);
     else setDropoffLabel(text);
     setSearchField(field);
     setSearchUnavailable(false);
@@ -163,7 +177,7 @@ export default function BookRideScreen() {
 
   useEffect(() => {
     if (!searchField) return;
-    const text = searchField === 'pickup' ? pickupLabel : dropoffLabel;
+    const text = searchField === "pickup" ? pickupLabel : dropoffLabel;
     if (text.trim().length < 2) {
       setPredictions([]);
       setSearching(false);
@@ -185,11 +199,17 @@ export default function BookRideScreen() {
       setSearchField(null);
       Keyboard.dismiss();
       setGeocoding(true);
-      const details = await getPlaceDetails(pred.placeId, sessionTokenRef.current);
+      const details = await getPlaceDetails(
+        pred.placeId,
+        sessionTokenRef.current,
+      );
       sessionTokenRef.current = newPlacesSessionToken();
       setGeocoding(false);
       if (!details) {
-        Alert.alert('Could not locate that place', 'Please tap the map to set this point instead.');
+        Alert.alert(
+          "Could not locate that place",
+          "Please tap the map to set this point instead.",
+        );
         return;
       }
       await applyPoint(
@@ -203,15 +223,23 @@ export default function BookRideScreen() {
 
   const handleBook = () => {
     if (!pickupCoord || !pickupLabel.trim()) {
-      Alert.alert('Set pickup', 'Tap the map (or search) to set your pickup point.');
+      Alert.alert(
+        "Set pickup",
+        "Tap the map (or search) to set your pickup point.",
+      );
       return;
     }
     if (!dropoffCoord || !dropoffLabel.trim()) {
-      Alert.alert('Set destination', 'Tap the map (or search) to set where you want to go.');
+      Alert.alert(
+        "Set destination",
+        "Tap the map (or search) to set where you want to go.",
+      );
       return;
     }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
+    bookingRequestIdRef.current ??=
+      `booking-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     createTrip.mutate(
       {
         data: {
@@ -222,35 +250,80 @@ export default function BookRideScreen() {
           dropoffLat: dropoffCoord.latitude,
           dropoffLon: dropoffCoord.longitude,
           passengerCount,
+          clientRequestId: bookingRequestIdRef.current,
         },
       },
       {
         onSuccess: (res) => {
           queryClient.invalidateQueries({ queryKey: getListTripsQueryKey() });
           setDropoffCoord(null);
-          setDropoffLabel('');
+          setDropoffLabel("");
           setPassengerCount(1);
-          setSelectMode('dropoff');
+          setSelectMode("dropoff");
+          bookingRequestIdRef.current = null;
           router.push(`/trip/${res.trip.id}`);
         },
-        onError: () => {
-          Alert.alert('Booking Failed', 'Unable to book a ride right now.');
+        onError: (error: any) => {
+          const activeTripId = error?.response?.data?.activeTripId;
+          if (activeTripId) {
+            Alert.alert("Active booking", "You already have a ride in progress.", [
+              { text: "Open trip", onPress: () => router.push(`/trip/${activeTripId}`) },
+            ]);
+            return;
+          }
+          Alert.alert(
+            "Booking failed",
+            error?.response?.data?.error ?? "Unable to book a ride right now.",
+          );
         },
       },
     );
   };
 
   const bothSet = !!pickupCoord && !!dropoffCoord;
-  const permissionDenied = permission === 'denied';
+  const routeKey = `${pickupCoord?.latitude ?? ""},${pickupCoord?.longitude ?? ""}|${dropoffCoord?.latitude ?? ""},${dropoffCoord?.longitude ?? ""}|${passengerCount}`;
+  useEffect(() => {
+    bookingRequestIdRef.current = null;
+    if (!pickupCoord || !dropoffCoord) {
+      setFarePreview(null);
+      return;
+    }
+    setFarePreview(null);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      setFarePreviewing(true);
+      previewTripFare(
+        {
+          pickupLat: pickupCoord.latitude,
+          pickupLon: pickupCoord.longitude,
+          dropoffLat: dropoffCoord.latitude,
+          dropoffLon: dropoffCoord.longitude,
+          passengerCount,
+        },
+        { signal: controller.signal },
+      )
+        .then(setFarePreview)
+        .catch(() => setFarePreview(null))
+        .finally(() => setFarePreviewing(false));
+    }, 400);
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
+    // routeKey represents every input that changes the preview.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeKey]);
+  const estimatedFare = farePreview?.fareAmount ?? null;
+  const permissionDenied = permission === "denied";
 
   const clearPoint = (mode: SelectMode) => {
     Haptics.selectionAsync();
-    if (mode === 'pickup') {
+    if (mode === "pickup") {
       setPickupCoord(null);
-      setPickupLabel('');
+      setPickupLabel("");
     } else {
       setDropoffCoord(null);
-      setDropoffLabel('');
+      setDropoffLabel("");
     }
     setSelectMode(mode);
     setSheetCollapsed(false);
@@ -261,12 +334,13 @@ export default function BookRideScreen() {
       <RouteMap
         pickup={pickupCoord ?? undefined}
         dropoff={dropoffCoord ?? undefined}
+        routePolyline={farePreview?.route.encodedPolyline}
         userLocation={{ latitude: lat, longitude: lon }}
         userLocationIsFallback={isFallback}
         nearbyDrivers={bothSet ? undefined : driverPins}
         onMapPress={handleMapPress}
-        onPickupDragEnd={(c) => void applyPoint('pickup', c)}
-        onDropoffDragEnd={(c) => void applyPoint('dropoff', c)}
+        onPickupDragEnd={(c) => void applyPoint("pickup", c)}
+        onDropoffDragEnd={(c) => void applyPoint("dropoff", c)}
         interactive
         style={StyleSheet.absoluteFill}
       />
@@ -275,7 +349,7 @@ export default function BookRideScreen() {
       <View style={[styles.topBar, { top: insets.top + 12 }]}>
         <Pressable
           style={[styles.iconBtn, { backgroundColor: colors.card }]}
-          onPress={() => router.push('/history')}
+          onPress={() => router.push("/history")}
         >
           <Feather name="clock" size={20} color={colors.foreground} />
         </Pressable>
@@ -285,9 +359,19 @@ export default function BookRideScreen() {
             <ActivityIndicator size="small" color={colors.primary} />
           ) : (
             <>
-              <View style={[styles.countDot, { backgroundColor: availableCount > 0 ? colors.success : colors.mutedForeground }]} />
+              <View
+                style={[
+                  styles.countDot,
+                  {
+                    backgroundColor:
+                      availableCount > 0
+                        ? colors.success
+                        : colors.mutedForeground,
+                  },
+                ]}
+              />
               <Text style={[styles.countText, { color: colors.foreground }]}>
-                {availableCount} e-trike{availableCount === 1 ? '' : 's'} nearby
+                {availableCount} e-trike{availableCount === 1 ? "" : "s"} nearby
               </Text>
             </>
           )}
@@ -295,21 +379,36 @@ export default function BookRideScreen() {
       </View>
 
       {/* Tap-target hint */}
-      <View style={[styles.tapHint, { top: insets.top + 64, backgroundColor: colors.primary }]}>
+      <View
+        style={[
+          styles.tapHint,
+          { top: insets.top + 64, backgroundColor: colors.primary },
+        ]}
+      >
         <Feather name="map-pin" size={14} color={colors.primaryForeground} />
         <Text style={[styles.tapHintText, { color: colors.primaryForeground }]}>
-          Tap the map or a place name to set your {selectMode === 'pickup' ? 'pickup' : 'destination'}
+          Tap the map or a place name to set your{" "}
+          {selectMode === "pickup" ? "pickup" : "destination"}
         </Text>
       </View>
 
       {/* Location permission banner */}
       {permissionDenied && (
-        <View style={[styles.permBanner, { top: insets.top + 108, backgroundColor: colors.card, borderColor: colors.destructive }]}>
+        <View
+          style={[
+            styles.permBanner,
+            {
+              top: insets.top + 108,
+              backgroundColor: colors.card,
+              borderColor: colors.destructive,
+            },
+          ]}
+        >
           <Feather name="alert-triangle" size={15} color={colors.destructive} />
           <Text style={[styles.permText, { color: colors.foreground }]}>
-            Location is off — tap the map to set pickup manually, or{' '}
+            Location is off — tap the map to set pickup manually, or{" "}
             <Text
-              style={{ color: colors.primary, fontFamily: 'Inter_600SemiBold' }}
+              style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}
               onPress={() => Linking.openSettings().then(() => refresh())}
             >
               open Settings
@@ -319,9 +418,16 @@ export default function BookRideScreen() {
       )}
 
       {locLoading && !permissionDenied && (
-        <View style={[styles.locating, { top: insets.top + 108, backgroundColor: colors.card }]}>
+        <View
+          style={[
+            styles.locating,
+            { top: insets.top + 108, backgroundColor: colors.card },
+          ]}
+        >
           <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={[styles.locatingText, { color: colors.mutedForeground }]}>
+          <Text
+            style={[styles.locatingText, { color: colors.mutedForeground }]}
+          >
             Finding your location…
           </Text>
         </View>
@@ -333,7 +439,12 @@ export default function BookRideScreen() {
         style={styles.sheetWrap}
         keyboardVerticalOffset={0}
       >
-        <View style={[styles.sheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 90 }]}>
+        <View
+          style={[
+            styles.sheet,
+            { backgroundColor: colors.card, paddingBottom: insets.bottom + 90 },
+          ]}
+        >
           <Pressable
             onPress={() => {
               Haptics.selectionAsync();
@@ -343,17 +454,19 @@ export default function BookRideScreen() {
             style={styles.grabberHit}
             hitSlop={10}
           >
-            <View style={[styles.grabber, { backgroundColor: colors.border }]} />
+            <View
+              style={[styles.grabber, { backgroundColor: colors.border }]}
+            />
             <View style={styles.sheetHeaderRow}>
               <Text style={[styles.sheetTitle, { color: colors.foreground }]}>
                 {sheetCollapsed
                   ? dropoffLabel
                     ? `To: ${dropoffLabel}`
-                    : 'Where to?'
-                  : 'Where to?'}
+                    : "Where to?"
+                  : "Where to?"}
               </Text>
               <Feather
-                name={sheetCollapsed ? 'chevron-up' : 'chevron-down'}
+                name={sheetCollapsed ? "chevron-up" : "chevron-down"}
                 size={20}
                 color={colors.mutedForeground}
               />
@@ -362,11 +475,27 @@ export default function BookRideScreen() {
 
           {!sheetCollapsed && (
             <>
+              <View
+                style={[styles.pilotNotice, { backgroundColor: colors.secondary }]}
+              >
+                <Feather name="navigation" size={15} color={colors.primaryStrong} />
+                <Text
+                  style={[styles.pilotNoticeText, { color: colors.primaryStrong }]}
+                >
+                  Pilot: direct point-to-point rides within the Pudtol–Luna service area.
+                </Text>
+              </View>
               <View style={styles.inputWrapper}>
                 <View style={styles.dotLine}>
-                  <View style={[styles.dot, { backgroundColor: colors.success }]} />
-                  <View style={[styles.line, { backgroundColor: colors.border }]} />
-                  <View style={[styles.square, { backgroundColor: colors.primary }]} />
+                  <View
+                    style={[styles.dot, { backgroundColor: colors.success }]}
+                  />
+                  <View
+                    style={[styles.line, { backgroundColor: colors.border }]}
+                  />
+                  <View
+                    style={[styles.square, { backgroundColor: colors.primary }]}
+                  />
                 </View>
                 <View style={styles.inputs}>
                   {/* Pickup row */}
@@ -375,7 +504,7 @@ export default function BookRideScreen() {
                       styles.fieldRow,
                       {
                         borderColor:
-                          selectMode === 'pickup' || searchField === 'pickup'
+                          selectMode === "pickup" || searchField === "pickup"
                             ? colors.primary
                             : colors.border,
                         backgroundColor: colors.background,
@@ -387,21 +516,32 @@ export default function BookRideScreen() {
                       placeholder="Search or tap map for pickup"
                       placeholderTextColor={colors.mutedForeground}
                       value={pickupLabel}
-                      onChangeText={(t) => runSearch('pickup', t)}
+                      onChangeText={(t) => runSearch("pickup", t)}
                       onFocus={() => {
-                        setSearchField('pickup');
-                        setSelectMode('pickup');
+                        setSearchField("pickup");
+                        setSelectMode("pickup");
                       }}
                     />
                     {pickupCoord ? (
-                      <Pressable onPress={() => clearPoint('pickup')} hitSlop={8}>
-                        <Feather name="x-circle" size={16} color={colors.mutedForeground} />
+                      <Pressable
+                        onPress={() => clearPoint("pickup")}
+                        hitSlop={8}
+                      >
+                        <Feather
+                          name="x-circle"
+                          size={16}
+                          color={colors.mutedForeground}
+                        />
                       </Pressable>
                     ) : (
                       <Feather
                         name="crosshair"
                         size={16}
-                        color={selectMode === 'pickup' ? colors.success : colors.mutedForeground}
+                        color={
+                          selectMode === "pickup"
+                            ? colors.success
+                            : colors.mutedForeground
+                        }
                       />
                     )}
                   </View>
@@ -413,7 +553,7 @@ export default function BookRideScreen() {
                       {
                         marginTop: 10,
                         borderColor:
-                          selectMode === 'dropoff' || searchField === 'dropoff'
+                          selectMode === "dropoff" || searchField === "dropoff"
                             ? colors.primary
                             : colors.border,
                         backgroundColor: colors.background,
@@ -425,23 +565,34 @@ export default function BookRideScreen() {
                       placeholder="Search or tap map for destination"
                       placeholderTextColor={colors.mutedForeground}
                       value={dropoffLabel}
-                      onChangeText={(t) => runSearch('dropoff', t)}
+                      onChangeText={(t) => runSearch("dropoff", t)}
                       onFocus={() => {
-                        setSearchField('dropoff');
-                        setSelectMode('dropoff');
+                        setSearchField("dropoff");
+                        setSelectMode("dropoff");
                       }}
                     />
-                    {geocoding || (searching && searchField === 'dropoff') ? (
+                    {geocoding || (searching && searchField === "dropoff") ? (
                       <ActivityIndicator size="small" color={colors.primary} />
                     ) : dropoffCoord ? (
-                      <Pressable onPress={() => clearPoint('dropoff')} hitSlop={8}>
-                        <Feather name="x-circle" size={16} color={colors.mutedForeground} />
+                      <Pressable
+                        onPress={() => clearPoint("dropoff")}
+                        hitSlop={8}
+                      >
+                        <Feather
+                          name="x-circle"
+                          size={16}
+                          color={colors.mutedForeground}
+                        />
                       </Pressable>
                     ) : (
                       <Feather
                         name="map-pin"
                         size={16}
-                        color={selectMode === 'dropoff' ? colors.primary : colors.mutedForeground}
+                        color={
+                          selectMode === "dropoff"
+                            ? colors.primary
+                            : colors.mutedForeground
+                        }
                       />
                     )}
                   </View>
@@ -449,70 +600,253 @@ export default function BookRideScreen() {
               </View>
 
               {/* Search results / availability feedback */}
-              {searchField && (predictions.length > 0 || (!searching && searchUnavailable)) && (
-                <View style={[styles.predictions, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                  {predictions.map((p) => (
-                    <Pressable
-                      key={p.placeId}
-                      onPress={() => pickPrediction(searchField, p)}
-                      style={styles.predictionRow}
-                    >
-                      <Feather name="map-pin" size={15} color={colors.mutedForeground} style={{ marginRight: 10 }} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.predPrimary, { color: colors.foreground }]} numberOfLines={1}>
-                          {p.primary}
-                        </Text>
-                        {!!p.secondary && (
-                          <Text style={[styles.predSecondary, { color: colors.mutedForeground }]} numberOfLines={1}>
-                            {p.secondary}
+              {searchField &&
+                (predictions.length > 0 ||
+                  (!searching && searchUnavailable)) && (
+                  <View
+                    style={[
+                      styles.predictions,
+                      {
+                        backgroundColor: colors.background,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
+                    {predictions.map((p) => (
+                      <Pressable
+                        key={p.placeId}
+                        onPress={() => pickPrediction(searchField, p)}
+                        style={styles.predictionRow}
+                      >
+                        <Feather
+                          name="map-pin"
+                          size={15}
+                          color={colors.mutedForeground}
+                          style={{ marginRight: 10 }}
+                        />
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={[
+                              styles.predPrimary,
+                              { color: colors.foreground },
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {p.primary}
                           </Text>
-                        )}
+                          {!!p.secondary && (
+                            <Text
+                              style={[
+                                styles.predSecondary,
+                                { color: colors.mutedForeground },
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {p.secondary}
+                            </Text>
+                          )}
+                        </View>
+                      </Pressable>
+                    ))}
+                    {predictions.length === 0 && searchUnavailable && (
+                      <View style={styles.predictionRow}>
+                        <Feather
+                          name="wifi-off"
+                          size={15}
+                          color={colors.mutedForeground}
+                          style={{ marginRight: 10 }}
+                        />
+                        <Text
+                          style={[
+                            styles.predSecondary,
+                            { color: colors.mutedForeground, flex: 1 },
+                          ]}
+                        >
+                          Search is unavailable right now — tap your destination
+                          on the map instead.
+                        </Text>
                       </View>
-                    </Pressable>
-                  ))}
-                  {predictions.length === 0 && searchUnavailable && (
-                    <View style={styles.predictionRow}>
-                      <Feather name="wifi-off" size={15} color={colors.mutedForeground} style={{ marginRight: 10 }} />
-                      <Text style={[styles.predSecondary, { color: colors.mutedForeground, flex: 1 }]}>
-                        Search is unavailable right now — tap your destination on the map instead.
-                      </Text>
-                    </View>
-                  )}
+                    )}
+                  </View>
+                )}
+
+              {bothSet && (
+                <View
+                  style={[
+                    styles.vehicleCard,
+                    {
+                      borderColor: colors.primary,
+                      backgroundColor: colors.background,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.vehicleIcon,
+                      { backgroundColor: colors.secondary },
+                    ]}
+                  >
+                    <Feather name="truck" size={25} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[styles.vehicleName, { color: colors.foreground }]}
+                    >
+                      E-Trike
+                    </Text>
+                    <Text
+                      style={[
+                        styles.vehicleSub,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      Eco-friendly local ride
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.selected,
+                      { backgroundColor: colors.primary },
+                    ]}
+                  >
+                    <Feather name="check" size={14} color="#fff" />
+                  </View>
                 </View>
               )}
 
               <View style={styles.seatRow}>
                 <View style={styles.seatLabelGroup}>
-                  <Feather name="users" size={16} color={colors.mutedForeground} />
-                  <Text style={[styles.seatLabel, { color: colors.foreground }]}>
-                    {passengerCount} {passengerCount === 1 ? 'passenger' : 'passengers'}
+                  <Feather
+                    name="users"
+                    size={16}
+                    color={colors.mutedForeground}
+                  />
+                  <Text
+                    style={[styles.seatLabel, { color: colors.foreground }]}
+                  >
+                    {passengerCount}{" "}
+                    {passengerCount === 1 ? "passenger" : "passengers"}
                   </Text>
                 </View>
                 <View style={styles.seatStepper}>
                   <Pressable
                     onPress={() => setPassengerCount((c) => Math.max(1, c - 1))}
                     disabled={passengerCount <= 1}
-                    style={[styles.seatBtn, { borderColor: colors.border, opacity: passengerCount <= 1 ? 0.4 : 1 }]}
+                    style={[
+                      styles.seatBtn,
+                      {
+                        borderColor: colors.border,
+                        opacity: passengerCount <= 1 ? 0.4 : 1,
+                      },
+                    ]}
                   >
                     <Feather name="minus" size={18} color={colors.foreground} />
                   </Pressable>
-                  <Text style={[styles.seatCount, { color: colors.foreground }]}>{passengerCount}</Text>
+                  <Text
+                    style={[styles.seatCount, { color: colors.foreground }]}
+                  >
+                    {passengerCount}
+                  </Text>
                   <Pressable
-                    onPress={() => setPassengerCount((c) => Math.min(16, c + 1))}
-                    disabled={passengerCount >= 16}
-                    style={[styles.seatBtn, { borderColor: colors.border, opacity: passengerCount >= 16 ? 0.4 : 1 }]}
+                    onPress={() =>
+                      setPassengerCount((c) => Math.min(15, c + 1))
+                    }
+                    disabled={passengerCount >= 15}
+                    style={[
+                      styles.seatBtn,
+                      {
+                        borderColor: colors.border,
+                        opacity: passengerCount >= 15 ? 0.4 : 1,
+                      },
+                    ]}
                   >
                     <Feather name="plus" size={18} color={colors.foreground} />
                   </Pressable>
                 </View>
               </View>
 
+              {bothSet && (
+                <>
+                  <View style={styles.estimateRow}>
+                    <Text
+                      style={[
+                        styles.estimateLabel,
+                        { color: colors.foreground },
+                      ]}
+                    >
+                      Fare estimate
+                    </Text>
+                    <Text
+                      style={[
+                        styles.estimateValue,
+                        { color: colors.foreground },
+                      ]}
+                    >
+                      {farePreviewing
+                        ? "Calculating..."
+                        : estimatedFare != null
+                          ? `₱${estimatedFare}`
+                          : "Route unavailable"}
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.safetyCard,
+                      { backgroundColor: colors.secondary },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.safetyIcon,
+                        { backgroundColor: colors.primary },
+                      ]}
+                    >
+                      <Feather name="shield" size={17} color="#fff" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={[
+                          styles.safetyTitle,
+                          { color: colors.primaryStrong },
+                        ]}
+                      >
+                        Your safety matters
+                      </Text>
+                      <Text
+                        style={[
+                          styles.safetySub,
+                          { color: colors.mutedForeground },
+                        ]}
+                      >
+                        Verified drivers · Live trip tracking · Emergency
+                        support
+                      </Text>
+                    </View>
+                    <Feather
+                      name="chevron-right"
+                      size={18}
+                      color={colors.primary}
+                    />
+                  </View>
+                </>
+              )}
+
               <Button
-                title="Request E-Trike"
+                title={
+                  estimatedFare != null
+                    ? `Book a ride  ·  ₱${estimatedFare}`
+                    : "Select your route"
+                }
                 onPress={handleBook}
-                loading={createTrip.isPending}
-                disabled={!bothSet}
-                icon={<Feather name="navigation" size={18} color={colors.primaryForeground} />}
+                loading={createTrip.isPending || farePreviewing}
+                disabled={!bothSet || estimatedFare == null}
+                icon={
+                  <Feather
+                    name="navigation"
+                    size={18}
+                    color={colors.primaryForeground}
+                  />
+                }
                 style={{ marginTop: 14 }}
               />
             </>
@@ -526,147 +860,228 @@ export default function BookRideScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   topBar: {
-    position: 'absolute',
+    position: "absolute",
     left: 16,
     right: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   iconBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.2,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
   countPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     paddingHorizontal: 14,
     height: 44,
     borderRadius: 22,
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.2,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
   countDot: { width: 8, height: 8, borderRadius: 4 },
-  countText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  countText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   tapHint: {
-    position: 'absolute',
-    alignSelf: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
+    position: "absolute",
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     paddingHorizontal: 16,
     height: 38,
     borderRadius: 19,
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.2,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
-  tapHintText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  tapHintText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   permBanner: {
-    position: 'absolute',
+    position: "absolute",
     left: 16,
     right: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     padding: 10,
     borderRadius: 10,
     borderWidth: 1,
     elevation: 3,
   },
-  permText: { fontSize: 12.5, fontFamily: 'Inter_500Medium', flex: 1, lineHeight: 17 },
+  permText: {
+    fontSize: 12.5,
+    fontFamily: "Inter_500Medium",
+    flex: 1,
+    lineHeight: 17,
+  },
   locating: {
-    position: 'absolute',
-    alignSelf: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
+    position: "absolute",
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     paddingHorizontal: 14,
     height: 36,
     borderRadius: 18,
     elevation: 3,
   },
-  locatingText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
-  sheetWrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  locatingText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  sheetWrap: { position: "absolute", left: 0, right: 0, bottom: 0 },
   sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingHorizontal: 20,
     paddingTop: 10,
     elevation: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.15,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: -4 },
   },
-  grabberHit: { alignItems: 'stretch' },
-  grabber: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 10 },
+  grabberHit: { alignItems: "stretch" },
+  grabber: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 10,
+  },
   sheetHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 12,
   },
-  sheetTitle: { fontSize: 22, fontFamily: 'Inter_700Bold', flex: 1 },
-  inputWrapper: { flexDirection: 'row', marginTop: 4 },
-  dotLine: { alignItems: 'center', marginRight: 12, marginTop: 18 },
+  sheetTitle: { fontSize: 22, fontFamily: "Inter_700Bold", flex: 1 },
+  pilotNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginBottom: 10,
+  },
+  pilotNoticeText: {
+    flex: 1,
+    fontSize: 11,
+    lineHeight: 15,
+    fontFamily: "Inter_600SemiBold",
+  },
+  inputWrapper: { flexDirection: "row", marginTop: 4 },
+  dotLine: { alignItems: "center", marginRight: 12, marginTop: 18 },
   dot: { width: 12, height: 12, borderRadius: 6 },
   line: { width: 2, flex: 1, marginVertical: 4, minHeight: 22 },
   square: { width: 12, height: 12, borderRadius: 2 },
   inputs: { flex: 1 },
   fieldRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     height: 48,
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 14,
     paddingHorizontal: 14,
   },
-  fieldInput: { flex: 1, fontFamily: 'Inter_400Regular', fontSize: 16 },
+  fieldInput: { flex: 1, fontFamily: "Inter_400Regular", fontSize: 16 },
   predictions: {
     marginTop: 8,
     borderWidth: 1,
     borderRadius: 10,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   predictionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 12,
     paddingHorizontal: 12,
   },
-  predPrimary: { fontSize: 15, fontFamily: 'Inter_500Medium' },
-  predSecondary: { fontSize: 13, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  predPrimary: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  predSecondary: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 1 },
   seatRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: 16,
   },
-  seatLabelGroup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  seatLabel: { fontSize: 15, fontFamily: 'Inter_500Medium' },
-  seatStepper: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  seatLabelGroup: { flexDirection: "row", alignItems: "center", gap: 8 },
+  seatLabel: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  seatStepper: { flexDirection: "row", alignItems: "center", gap: 12 },
   seatBtn: {
     width: 34,
     height: 34,
     borderRadius: 17,
     borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  seatCount: { fontSize: 17, fontFamily: 'Inter_700Bold', minWidth: 20, textAlign: 'center' },
+  seatCount: {
+    fontSize: 17,
+    fontFamily: "Inter_700Bold",
+    minWidth: 20,
+    textAlign: "center",
+  },
+  vehicleCard: {
+    marginTop: 15,
+    borderWidth: 1.5,
+    borderRadius: 17,
+    padding: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  vehicleIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  vehicleName: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  vehicleSub: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 3 },
+  selected: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  estimateRow: {
+    marginTop: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  estimateLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  estimateValue: { fontSize: 23, fontFamily: "Inter_700Bold" },
+  safetyCard: {
+    borderRadius: 15,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 10,
+  },
+  safetyIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  safetyTitle: { fontSize: 12, fontFamily: "Inter_700Bold" },
+  safetySub: { fontSize: 9, fontFamily: "Inter_400Regular", marginTop: 2 },
 });

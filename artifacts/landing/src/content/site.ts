@@ -1,14 +1,12 @@
 
 export const links = {
-
   passengerAndroid: 'https://expo.dev/accounts/moveapayao/projects/mobile',
   passengerIos: 'https://expo.dev/accounts/moveapayao/projects/mobile',
   driverAndroid: 'https://expo.dev/accounts/moveapayao/projects/driver',
-  // TODO: point at the deployed admin dashboard URL.
-  dashboard: '#',
-  facebook: 'https://www.facebook.com/',
-  email: 'mailto:lgu.pudtol@example.gov.ph',
-  phone: 'tel:+639089249750',
+  dashboard: import.meta.env.VITE_DASHBOARD_URL || '#',
+  facebook: import.meta.env.VITE_FACEBOOK_URL || '#',
+  email: import.meta.env.VITE_SUPPORT_EMAIL ? `mailto:${import.meta.env.VITE_SUPPORT_EMAIL}` : '#',
+  phone: import.meta.env.VITE_SUPPORT_PHONE ? `tel:${import.meta.env.VITE_SUPPORT_PHONE}` : '#',
 };
 
 export const storesAreLive = false; // flip to true once App Store / Play listings exist
@@ -50,44 +48,14 @@ export const steps = [
 /* Coverage                                                            */
 /* ------------------------------------------------------------------ */
 
-export const routeStrip = {
-  code: 'LOOP 01',
-  name: 'Poblacion Loop',
-  status: 'Pilot',
-  stops: ['Poblacion', 'Cabatacan', 'Emilia', 'Swan', 'Doña Loreta'],
-};
-
-/**
- * Coordinates for the same stops, used by the coverage map.
- *
- * Keep this list in the SAME ORDER as routeStrip.stops above — the map draws
- * the connecting line in array order, and the first and last entries are
- * rendered as route termini.
- *
- * Like the stop names, these are approximate placeholders. Replace with real
- * coordinates from the `loop_stops` table before publishing.
- */
-export const loopGeometry = {
-  center: [18.2705, 121.3646] as [number, number],
-  zoom: 12,
-  stops: [
-    { name: 'Poblacion', lat: 18.2705, lon: 121.3646 },
-    { name: 'Cabatacan', lat: 18.2832, lon: 121.3521 },
-    { name: 'Emilia', lat: 18.2951, lon: 121.3702 },
-    { name: 'Swan', lat: 18.2788, lon: 121.3889 },
-    { name: 'Doña Loreta', lat: 18.2604, lon: 121.3795 },
-  ],
-};
-
 export const coverage = {
   eyebrow: 'Where we run',
   title: 'One loop today. More as the fleet grows.',
   body: 'MOVE Apayao is starting small and on purpose. The pilot runs a single loop through Pudtol so we can prove the service works — arrival times, driver availability, fare reporting — before adding routes.',
-  // TODO: replace with real figures from the fleet before publishing.
   stats: [
-    { value: '1', label: 'Active loop' },
-    { value: 'Pudtol', label: 'Service area' },
-    { value: 'Daily', label: 'Operating schedule' },
+    { value: 'Pudtol', label: 'Pilot service area' },
+    { value: 'Cash', label: 'Fare collection' },
+    { value: 'Live', label: 'GPS trip tracking' },
   ],
   caveat:
     'Coverage is expanding. If your barangay is not on the loop yet, tell us — requests help the LGU decide which route comes next.',
@@ -206,6 +174,6 @@ export const footer = {
   province: 'Province of Apayao · Cordillera Administrative Region',
   support:
     'A Project of the Department of Science and Technology.',
-  contactLabel: 'dost@email.com',
-  phoneLabel: '09123456789',
+  contactLabel: import.meta.env.VITE_SUPPORT_EMAIL || '',
+  phoneLabel: import.meta.env.VITE_SUPPORT_PHONE || '',
 };

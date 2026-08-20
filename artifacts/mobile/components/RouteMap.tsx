@@ -1,8 +1,14 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, Platform, Pressable } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
-import { useColors } from '@/hooks/useColors';
-import { Feather } from '@expo/vector-icons';
+import React, { useEffect, useRef, useState } from "react";
+import { StyleSheet, View, Platform, Pressable } from "react-native";
+import MapView, {
+  Marker,
+  Polyline,
+  PROVIDER_GOOGLE,
+  type Region,
+} from "react-native-maps";
+import { useColors } from "@/hooks/useColors";
+import { Feather } from "@expo/vector-icons";
+import { decodeRoutePolyline } from "@workspace/api-client-react";
 
 type LatLng = { latitude: number; longitude: number };
 
@@ -21,6 +27,8 @@ interface RouteMapProps {
   /** Trip mode: draws a pickup->dropoff route line. */
   pickup?: LatLng;
   dropoff?: LatLng;
+  /** Road geometry returned by the server-side Google Routes calculation. */
+  routePolyline?: string | null;
   /** Assigned driver being tracked (single moving pin). */
   driver?: LatLng | null;
   /** Nearby-available-drivers mode: multiple pins, no route line. */
@@ -77,7 +85,11 @@ function regionFor(points: LatLng[], fallback?: LatLng): Region {
 }
 
 function userRegion(u: LatLng): Region {
-  return { ...u, latitudeDelta: USER_ZOOM_DELTA, longitudeDelta: USER_ZOOM_DELTA };
+  return {
+    ...u,
+    latitudeDelta: USER_ZOOM_DELTA,
+    longitudeDelta: USER_ZOOM_DELTA,
+  };
 }
 
 /**
@@ -100,6 +112,7 @@ function userRegion(u: LatLng): Region {
 export function RouteMap({
   pickup,
   dropoff,
+  routePolyline,
   driver,
   nearbyDrivers,
   userLocation,
@@ -116,17 +129,26 @@ export function RouteMap({
   const colors = useColors();
   const mapRef = useRef<MapView | null>(null);
   const hasAutoCenteredRef = useRef(false);
-  const lastFramedRef = useRef<string>('');
+  const lastFramedRef = useRef<string>("");
   const [mapReady, setMapReady] = useState(false);
 
   const isRouteMode = !!(pickup && dropoff);
+  const routeCoordinates =
+    routePolyline && isRouteMode
+      ? decodeRoutePolyline(routePolyline)
+      : isRouteMode
+        ? [pickup!, dropoff!]
+        : [];
 
   const framePoints: LatLng[] = [
     ...(pickup ? [pickup] : []),
     ...(dropoff ? [dropoff] : []),
     ...(driver ? [driver] : []),
     ...(userLocation ? [userLocation] : []),
-    ...((nearbyDrivers ?? []).map((d) => ({ latitude: d.latitude, longitude: d.longitude }))),
+    ...(nearbyDrivers ?? []).map((d) => ({
+      latitude: d.latitude,
+      longitude: d.longitude,
+    })),
   ];
 
   const initialRegion = regionFor(
@@ -137,7 +159,11 @@ export function RouteMap({
   // Keep the tracked driver in view as they move (trip tracking screen).
   useEffect(() => {
     if (!followDriver || !driver || !mapRef.current || !mapReady) return;
-    const pts = [driver, ...(pickup ? [pickup] : []), ...(dropoff ? [dropoff] : [])];
+    const pts = [
+      driver,
+      ...(pickup ? [pickup] : []),
+      ...(dropoff ? [dropoff] : []),
+    ];
     mapRef.current.animateToRegion(regionFor(pts), 600);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [driver?.latitude, driver?.longitude, followDriver, mapReady]);
@@ -154,7 +180,13 @@ export function RouteMap({
     mapRef.current.animateToRegion(userRegion(userLocation), 500);
     hasAutoCenteredRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLocation?.latitude, userLocation?.longitude, userLocationIsFallback, isRouteMode, mapReady]);
+  }, [
+    userLocation?.latitude,
+    userLocation?.longitude,
+    userLocationIsFallback,
+    isRouteMode,
+    mapReady,
+  ]);
 
   const handleRecenter = () => {
     if (!userLocation || !mapRef.current) return;
@@ -168,8 +200,8 @@ export function RouteMap({
   // once per change and never fights the user's own panning.
   useEffect(() => {
     if (!mapRef.current || !mapReady || followDriver) return;
-    const key = `${pickup?.latitude ?? ''},${pickup?.longitude ?? ''}|${dropoff?.latitude ?? ''},${dropoff?.longitude ?? ''}`;
-    if (key === lastFramedRef.current || key === '|,') return;
+    const key = `${pickup?.latitude ?? ""},${pickup?.longitude ?? ""}|${dropoff?.latitude ?? ""},${dropoff?.longitude ?? ""}`;
+    if (key === lastFramedRef.current || key === "|,") return;
     if (!pickup && !dropoff) return;
     lastFramedRef.current = key;
     if (pickup && dropoff) {
@@ -178,10 +210,18 @@ export function RouteMap({
       mapRef.current.animateToRegion(userRegion((dropoff ?? pickup)!), 500);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pickup?.latitude, pickup?.longitude, dropoff?.latitude, dropoff?.longitude, mapReady, followDriver]);
+  }, [
+    pickup?.latitude,
+    pickup?.longitude,
+    dropoff?.latitude,
+    dropoff?.longitude,
+    mapReady,
+    followDriver,
+  ]);
 
   const shouldShowRecenter =
-    showRecenterButton ?? (!!userLocation && !userLocationIsFallback && !isRouteMode);
+    showRecenterButton ??
+    (!!userLocation && !userLocationIsFallback && !isRouteMode);
 
   return (
     <View style={[styles.wrap, { backgroundColor: colors.muted }, style]}>
@@ -192,16 +232,14 @@ export function RouteMap({
         initialRegion={initialRegion}
         onMapReady={() => setMapReady(true)}
         onPress={
-          onMapPress
-            ? (e) => onMapPress(e.nativeEvent.coordinate)
-            : undefined
+          onMapPress ? (e) => onMapPress(e.nativeEvent.coordinate) : undefined
         }
         onPoiClick={
           onMapPress
             ? (e) =>
                 onMapPress(
                   e.nativeEvent.coordinate,
-                  e.nativeEvent.name?.replace(/\n/g, ', '),
+                  e.nativeEvent.name?.replace(/\n/g, ", "),
                 )
             : undefined
         }
@@ -215,10 +253,9 @@ export function RouteMap({
       >
         {isRouteMode && (
           <Polyline
-            coordinates={[pickup!, dropoff!]}
+            coordinates={routeCoordinates}
             strokeColor={colors.primary}
             strokeWidth={4}
-            lineDashPattern={[1]}
           />
         )}
 
@@ -235,7 +272,11 @@ export function RouteMap({
             }
           >
             <View style={[styles.pin, { backgroundColor: colors.success }]}>
-              <Feather name="navigation" size={14} color={colors.successForeground} />
+              <Feather
+                name="navigation"
+                size={14}
+                color={colors.successForeground}
+              />
             </View>
           </Marker>
         )}
@@ -259,9 +300,16 @@ export function RouteMap({
         )}
 
         {driver && (
-          <Marker coordinate={driver} title="Driver" anchor={{ x: 0.5, y: 0.5 }} flat>
+          <Marker
+            coordinate={driver}
+            title="Driver"
+            anchor={{ x: 0.5, y: 0.5 }}
+            flat
+          >
             <View style={styles.driverPin}>
-              <View style={[styles.driverInner, { backgroundColor: colors.accent }]}>
+              <View
+                style={[styles.driverInner, { backgroundColor: colors.accent }]}
+              >
                 <Feather name="truck" size={14} color="#fff" />
               </View>
             </View>
@@ -272,14 +320,23 @@ export function RouteMap({
           <Marker
             key={d.id}
             coordinate={{ latitude: d.latitude, longitude: d.longitude }}
-            title={d.label ?? 'Available e-trike'}
+            title={d.label ?? "Available e-trike"}
             anchor={{ x: 0.5, y: 0.5 }}
             flat
             onPress={() => onDriverPress?.(d.id)}
           >
             <View style={styles.etrikePin}>
-              <View style={[styles.etrikeInner, { backgroundColor: colors.primary }]}>
-                <Feather name="truck" size={13} color={colors.primaryForeground} />
+              <View
+                style={[
+                  styles.etrikeInner,
+                  { backgroundColor: colors.primary },
+                ]}
+              >
+                <Feather
+                  name="truck"
+                  size={13}
+                  color={colors.primaryForeground}
+                />
               </View>
             </View>
           </Marker>
@@ -301,58 +358,58 @@ export function RouteMap({
 
 const styles = StyleSheet.create({
   wrap: {
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   pin: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: "#fff",
     ...Platform.select({
       android: { elevation: 4 },
       default: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOpacity: 0.25,
         shadowRadius: 3,
         shadowOffset: { width: 0, height: 2 },
       },
     }),
   },
-  driverPin: { alignItems: 'center', justifyContent: 'center' },
+  driverPin: { alignItems: "center", justifyContent: "center" },
   driverInner: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 3,
-    borderColor: '#fff',
+    borderColor: "#fff",
     ...Platform.select({
       android: { elevation: 6 },
       default: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOpacity: 0.3,
         shadowRadius: 4,
         shadowOffset: { width: 0, height: 2 },
       },
     }),
   },
-  etrikePin: { alignItems: 'center', justifyContent: 'center' },
+  etrikePin: { alignItems: "center", justifyContent: "center" },
   etrikeInner: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: "#fff",
     ...Platform.select({
       android: { elevation: 4 },
       default: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOpacity: 0.25,
         shadowRadius: 3,
         shadowOffset: { width: 0, height: 2 },
@@ -360,16 +417,16 @@ const styles = StyleSheet.create({
     }),
   },
   recenterBtn: {
-    position: 'absolute',
+    position: "absolute",
     right: 16,
     bottom: 16,
     width: 44,
     height: 44,
     borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.2,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },

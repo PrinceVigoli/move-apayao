@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, View, StyleSheet, ViewStyle } from 'react-native';
-import { useColors } from '@/hooks/useColors';
+import React, { useEffect, useRef } from "react";
+import { Animated, View, StyleSheet, ViewStyle } from "react-native";
+import { useColors } from "@/hooks/useColors";
 
 interface SkeletonProps {
   style?: ViewStyle;
@@ -23,7 +23,7 @@ export function Skeleton({ style }: SkeletonProps) {
           duration: 800,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     ).start();
   }, [animatedValue]);
 
@@ -44,6 +44,6 @@ export function Skeleton({ style }: SkeletonProps) {
 
 const styles = StyleSheet.create({
   skeleton: {
-    overflow: 'hidden',
+    overflow: "hidden",
   },
 });

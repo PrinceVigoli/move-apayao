@@ -1,15 +1,18 @@
 import { Router, type IRouter } from "express";
 import { eq, desc } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { db } from "@workspace/db";
 import { auditLogsTable, usersTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { parsePagination } from "../lib/http";
 
 const router: IRouter = Router();
+const actorUsers = alias(usersTable, "audit_actor");
+const targetUsers = alias(usersTable, "audit_target");
 
 /**
  * GET /api/audit-logs
- * Admin-only. Sensitive/financial admin actions (wallet top-ups, refunds),
+ * Admin-only. Security-sensitive and financial administrative actions,
  * newest first.
  */
 router.get(
@@ -27,11 +30,14 @@ router.get(
         metadata: auditLogsTable.metadata,
         createdAt: auditLogsTable.createdAt,
         actorId: auditLogsTable.actorUserId,
-        actorEmail: usersTable.email,
+        actorEmail: actorUsers.email,
         targetUserId: auditLogsTable.targetUserId,
+        targetEmail: targetUsers.email,
+        targetName: targetUsers.fullName,
       })
       .from(auditLogsTable)
-      .leftJoin(usersTable, eq(auditLogsTable.actorUserId, usersTable.id))
+      .leftJoin(actorUsers, eq(auditLogsTable.actorUserId, actorUsers.id))
+      .leftJoin(targetUsers, eq(auditLogsTable.targetUserId, targetUsers.id))
       .orderBy(desc(auditLogsTable.createdAt))
       .limit(limit)
       .offset(offset);

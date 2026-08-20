@@ -1,0 +1,68 @@
+diff --git a/dist/types/icns.js b/dist/types/icns.js
+index f2bfafef3723cb423b110304815e56e3f97f81e0..1932cf12a210fed42815ced5ff03cf02570bb52e 100644
+--- a/dist/types/icns.js
++++ b/dist/types/icns.js
+@@ -78,9 +78,15 @@ exports.ICNS = {
+     validate: (input) => (0, utils_1.toUTF8String)(input, 0, 4) === 'icns',
+     calculate(input) {
+         const inputLength = input.length;
++        if (inputLength < SIZE_HEADER)
++            throw new TypeError('Invalid ICNS header');
+         const fileLength = (0, utils_1.readUInt32BE)(input, FILE_LENGTH_OFFSET);
++        if (!Number.isFinite(fileLength) || fileLength < SIZE_HEADER || fileLength > inputLength)
++            throw new TypeError('Invalid ICNS file length');
+         let imageOffset = SIZE_HEADER;
+         let imageHeader = readImageHeader(input, imageOffset);
++        if (!Number.isFinite(imageHeader[1]) || imageHeader[1] < SIZE_HEADER)
++            throw new TypeError('Invalid ICNS entry length');
+         let imageSize = getImageSize(imageHeader[0]);
+         imageOffset += imageHeader[1];
+         if (imageOffset === fileLength)
+@@ -92,6 +98,8 @@ exports.ICNS = {
+         };
+         while (imageOffset < fileLength && imageOffset < inputLength) {
+             imageHeader = readImageHeader(input, imageOffset);
++            if (!Number.isFinite(imageHeader[1]) || imageHeader[1] < SIZE_HEADER || imageOffset + imageHeader[1] > fileLength)
++                throw new TypeError('Invalid ICNS entry length');
+             imageSize = getImageSize(imageHeader[0]);
+             imageOffset += imageHeader[1];
+             result.images.push(imageSize);
+diff --git a/dist/types/jxl.js b/dist/types/jxl.js
+index f557b0aea7e679d2cb84d9915e957dd2254eba97..1cb50a0bd271ccc92062668935ad0d93a26e45d4 100644
+--- a/dist/types/jxl.js
++++ b/dist/types/jxl.js
+@@ -23,6 +23,8 @@ function extractPartialStreams(input) {
+         const jxlpBox = (0, utils_1.findBox)(input, 'jxlp', offset);
+         if (!jxlpBox)
+             break;
++        if (jxlpBox.size < 12 || jxlpBox.offset + jxlpBox.size <= offset)
++            throw new TypeError('Invalid JXL partial stream box');
+         partialStreams.push(input.slice(jxlpBox.offset + 12, jxlpBox.offset + jxlpBox.size));
+         offset = jxlpBox.offset + jxlpBox.size;
+     }
+diff --git a/dist/types/utils.js b/dist/types/utils.js
+index 5224bbafe87551ac415cb3de234820ccc0ff6e2c..6835442b0b171b90025378b89138df1bc5633132 100644
+--- a/dist/types/utils.js
++++ b/dist/types/utils.js
+@@ -52,6 +52,10 @@ function readBox(input, offset) {
+     if (input.length - offset < 4)
+         return;
+     const boxSize = (0, exports.readUInt32BE)(input, offset);
++    // ISO BMFF boxes need at least an eight-byte size/type header. Rejecting
++    // zero/undersized boxes guarantees all callers make forward progress.
++    if (!Number.isFinite(boxSize) || boxSize < 8)
++        return;
+     if (input.length - offset < boxSize)
+         return;
+     return {
+@@ -67,9 +71,7 @@ function findBox(input, boxName, offset) {
+             break;
+         if (box.name === boxName)
+             return box;
+-        // Fix the infinite loop by ensuring offset always increases
+-        // If box.size is 0, advance by at least 8 bytes (the size of the box header)
+-        offset += box.size > 0 ? box.size : 8;
++        offset += box.size;
+     }
+ }
+ exports.findBox = findBox;

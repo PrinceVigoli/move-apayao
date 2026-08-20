@@ -26,7 +26,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { CreditCard, PlusCircle, Calendar as CalendarIcon, CheckCircle2, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import type { Subscription } from "@workspace/api-client-react"
 
 export default function Subscriptions() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -35,33 +34,20 @@ export default function Subscriptions() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const { toast } = useToast()
 
-  const { data: usersData } = useListUsers(
+  const { data: usersData, isError: isUsersError } = useListUsers(
     { limit: 100, offset: 0 },
     { query: { queryKey: ["list-users", 100, 0] } }
   )
 
-  const { data: subsData, isLoading, refetch } = useListSubscriptions(
+  const { data: subsData, isLoading, isError: isSubsError, refetch } = useListSubscriptions(
     { limit: 50, offset: 0 },
     { query: { queryKey: ["list-subscriptions", 50, 0] } }
   )
 
   const createMutation = useCreateSubscription()
 
-  // Mock data
-  const mockSubs = [
-    { id: 1, userId: "u1", plan: "premium_monthly", status: "active", startsAt: new Date(Date.now() - 864000000).toISOString(), expiresAt: new Date(Date.now() + 1728000000).toISOString(), createdAt: new Date(Date.now() - 864000000).toISOString() },
-    { id: 2, userId: "u2", plan: "basic_weekly", status: "expired", startsAt: new Date(Date.now() - 1728000000).toISOString(), expiresAt: new Date(Date.now() - 86400000).toISOString(), createdAt: new Date(Date.now() - 1728000000).toISOString() },
-    { id: 3, userId: "u3", plan: "premium_yearly", status: "active", startsAt: new Date(Date.now() - 4000000000).toISOString(), expiresAt: new Date(Date.now() + 27000000000).toISOString(), createdAt: new Date(Date.now() - 4000000000).toISOString() },
-  ] as Subscription[]
-
-  const mockUsers = [
-    { id: "u1", fullName: "System Admin" },
-    { id: "u2", fullName: "Maria Clara" },
-    { id: "u3", fullName: "Jose Rizal" },
-  ]
-
-  const subs = subsData?.subscriptions || mockSubs
-  const users = usersData?.users || mockUsers
+  const subs = subsData?.subscriptions ?? []
+  const users = usersData?.users ?? []
 
   const enrichedSubs = subs.map(s => {
     const user = users.find(u => u.id === s.userId)
@@ -188,6 +174,11 @@ export default function Subscriptions() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
+          {(isSubsError || isUsersError) && (
+            <div className="border-b bg-destructive/5 px-6 py-3 text-sm text-destructive">
+              Subscription data could not be loaded. Check the API connection and try again.
+            </div>
+          )}
           <Table>
             <TableHeader className="bg-muted/30">
               <TableRow>

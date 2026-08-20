@@ -1,5 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from '@/lib/api-config';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
+import { API_BASE_URL } from "@/lib/api-config";
 
 /**
  * Session storage and token refresh for the app.
@@ -16,9 +18,10 @@ import { API_BASE_URL } from '@/lib/api-config';
  * out for what is really just normal app startup.
  */
 
-const ACCESS_KEY = 'moveapayao.accessToken';
-const REFRESH_KEY = 'moveapayao.refreshToken';
-const EXPIRY_KEY = 'moveapayao.expiresAt';
+const ACCESS_KEY = "moveapayao.accessToken";
+const REFRESH_KEY = "moveapayao.refreshToken";
+const EXPIRY_KEY = "moveapayao.expiresAt";
+const PUSH_TOKEN_KEY = "moveapayao.passengerPushToken";
 
 // Refresh a little early so a request never leaves with a token that expires
 // while it is in flight.
@@ -59,18 +62,20 @@ export function onSessionChange(l: Listener): () => void {
 }
 
 function base(): string {
-  return API_BASE_URL.replace(/\/+$/, '');
+  return API_BASE_URL.replace(/\/+$/, "");
 }
 
 export async function loadStoredSession(): Promise<boolean> {
-  const [[, a], [, r], [, e]] = await AsyncStorage.multiGet([
-    ACCESS_KEY,
-    REFRESH_KEY,
-    EXPIRY_KEY,
-  ]);
-  accessToken = a;
-  refreshToken = r;
-  expiresAt = e ? Number(e) : 0;
+  const legacy = await AsyncStorage.getItem(REFRESH_KEY);
+  refreshToken =
+    Platform.OS === "web" ? legacy : await SecureStore.getItemAsync(REFRESH_KEY);
+  if (!refreshToken && legacy && Platform.OS !== "web") {
+    refreshToken = legacy;
+    await SecureStore.setItemAsync(REFRESH_KEY, legacy);
+  }
+  accessToken = null;
+  expiresAt = 0;
+  await AsyncStorage.multiRemove([ACCESS_KEY, EXPIRY_KEY, ...(Platform.OS === "web" ? [] : [REFRESH_KEY])]);
   return !!refreshToken;
 }
 
@@ -78,11 +83,8 @@ export async function persistSession(s: SessionPayload): Promise<void> {
   accessToken = s.accessToken;
   refreshToken = s.refreshToken;
   expiresAt = Date.now() + s.expiresIn * 1000;
-  await AsyncStorage.multiSet([
-    [ACCESS_KEY, accessToken],
-    [REFRESH_KEY, refreshToken],
-    [EXPIRY_KEY, String(expiresAt)],
-  ]);
+  if (Platform.OS === "web") await AsyncStorage.setItem(REFRESH_KEY, refreshToken);
+  else await SecureStore.setItemAsync(REFRESH_KEY, refreshToken);
   notify();
 }
 
@@ -91,6 +93,7 @@ export async function clearSession(): Promise<void> {
   refreshToken = null;
   expiresAt = 0;
   await AsyncStorage.multiRemove([ACCESS_KEY, REFRESH_KEY, EXPIRY_KEY]);
+  if (Platform.OS !== "web") await SecureStore.deleteItemAsync(REFRESH_KEY);
   notify();
 }
 
@@ -102,8 +105,8 @@ async function doRefresh(): Promise<string | null> {
   if (!refreshToken) return null;
   try {
     const resp = await fetch(`${base()}/api/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken }),
     });
     if (!resp.ok) {
@@ -145,22 +148,30 @@ export async function getAccessToken(): Promise<string | null> {
 
 async function authPost<T>(path: string, body: unknown): Promise<T> {
   const resp = await fetch(`${base()}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) {
-    throw new Error((data as { error?: string }).error ?? 'Something went wrong');
+    throw new Error(
+      (data as { error?: string }).error ?? "Something went wrong",
+    );
   }
   return data as T;
 }
 
-export async function signIn(identifier: string, password: string): Promise<AuthUser> {
-  const data = await authPost<SessionPayload & { user: AuthUser }>('/api/auth/login', {
-    identifier,
-    password,
-  });
+export async function signIn(
+  identifier: string,
+  password: string,
+): Promise<AuthUser> {
+  const data = await authPost<SessionPayload & { user: AuthUser }>(
+    "/api/auth/login",
+    {
+      identifier,
+      password,
+    },
+  );
   await persistSession(data);
   return data.user;
 }
@@ -170,16 +181,18 @@ export interface SignUpDetails {
   password: string;
   fullName: string;
   phone?: string;
-  role: 'passenger' | 'driver';
+  role: "passenger" | "driver_applicant";
   vehicleType?: string;
   licenseNumber?: string;
   plateNumber?: string;
   vehicleColor?: string;
+  acceptedTerms: true;
+  termsVersion?: string;
 }
 
 export async function signUp(details: SignUpDetails): Promise<AuthUser> {
   const data = await authPost<SessionPayload & { user: AuthUser }>(
-    '/api/auth/register',
+    "/api/auth/register",
     details,
   );
   await persistSession(data);
@@ -188,18 +201,31 @@ export async function signUp(details: SignUpDetails): Promise<AuthUser> {
 
 export async function signOut(): Promise<void> {
   const token = refreshToken;
+  const authToken = await getAccessToken();
+  const pushToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
+  if (authToken && pushToken) {
+    await fetch(`${base()}/api/notifications/device`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+      body: JSON.stringify({ token: pushToken }),
+    }).catch(() => undefined);
+  }
+  await AsyncStorage.removeItem(PUSH_TOKEN_KEY);
   await clearSession();
   if (token) {
     // Best effort — the local session is already gone either way.
     fetch(`${base()}/api/auth/logout`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken: token }),
     }).catch(() => {});
   }
 }
 
 export async function requestPasswordReset(email: string): Promise<string> {
-  const data = await authPost<{ message: string }>('/api/auth/forgot-password', { email });
+  const data = await authPost<{ message: string }>(
+    "/api/auth/forgot-password",
+    { email },
+  );
   return data.message;
 }

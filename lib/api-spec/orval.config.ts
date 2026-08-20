@@ -1,9 +1,4 @@
 import { defineConfig, InputTransformerFn } from "orval";
-import path from "path";
-
-const root = path.resolve(__dirname, "..", "..");
-const apiClientReactSrc = path.resolve(root, "lib", "api-client-react", "src");
-const apiZodSrc = path.resolve(root, "lib", "api-zod", "src");
 
 // Our exports make assumptions about the title of the API being "Api" (i.e. generated output is `api.ts`).
 const titleTransformer: InputTransformerFn = (config) => {
@@ -22,7 +17,7 @@ export default defineConfig({
       },
     },
     output: {
-      workspace: apiClientReactSrc,
+      workspace: "../api-client-react/src",
       target: "generated",
       client: "react-query",
       mode: "split",
@@ -34,7 +29,7 @@ export default defineConfig({
           includeHttpResponseReturnType: false,
         },
         mutator: {
-          path: path.resolve(apiClientReactSrc, "custom-fetch.ts"),
+          path: "custom-fetch.ts",
           name: "customFetch",
         },
       },
@@ -48,7 +43,7 @@ export default defineConfig({
       },
     },
     output: {
-      workspace: apiZodSrc,
+      workspace: "../api-zod/src",
       client: "zod",
       target: "generated",
       mode: "split",

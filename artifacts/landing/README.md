@@ -41,9 +41,12 @@ No component edits needed for wording changes.
 
 ## Before going public — checklist
 
-- [ ] **Replace the placeholder route.** `routeStrip.stops` and `loopGeometry.stops`
-      in `site.ts` are invented stand-ins. Use the real loop from the `loops` /
-      `loop_stops` tables. Keep both lists in the same order.
+- [ ] **Publish the real loop in the dashboard.** The landing route map and
+      stop strip now read the active route and ordered stops from `/api/loops`;
+      placeholder geometry is no longer rendered.
+- [ ] Set `VITE_GOOGLE_MAPS_BROWSER_API_KEY` to a Maps JavaScript API key
+      restricted to the landing site's HTTP referrers. Set `VITE_API_URL` when
+      the public API is hosted on a different origin.
 - [ ] **Fill the `TODO`s in `site.ts`** — app store links, dashboard URL, fleet
       figures, LGU contact email and phone.
 - [ ] **Set the real domain** in three places: `<link rel="canonical">` and the

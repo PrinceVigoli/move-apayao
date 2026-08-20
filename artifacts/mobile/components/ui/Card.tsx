@@ -1,11 +1,11 @@
-import React from 'react';
-import { View, StyleSheet, ViewProps, useColorScheme } from 'react-native';
-import { useColors } from '@/hooks/useColors';
+import React from "react";
+import { View, StyleSheet, ViewProps, useColorScheme } from "react-native";
+import { useColors } from "@/hooks/useColors";
 
 interface CardProps extends ViewProps {
   children: React.ReactNode;
   /** `flat` drops the shadow — use inside an already-elevated sheet. */
-  elevation?: 'raised' | 'flat';
+  elevation?: "raised" | "flat";
 }
 
 /**
@@ -17,9 +17,14 @@ interface CardProps extends ViewProps {
  * invisible, so separation comes from the border instead — this is why the
  * two schemes are handled differently rather than sharing one style.
  */
-export function Card({ children, style, elevation = 'raised', ...props }: CardProps) {
+export function Card({
+  children,
+  style,
+  elevation = "raised",
+  ...props
+}: CardProps) {
   const colors = useColors();
-  const isDark = useColorScheme() === 'dark';
+  const isDark = useColorScheme() === "dark";
 
   return (
     <View
@@ -31,7 +36,7 @@ export function Card({ children, style, elevation = 'raised', ...props }: CardPr
           borderRadius: colors.radius + 2,
           borderWidth: isDark ? 1 : StyleSheet.hairlineWidth,
         },
-        !isDark && elevation === 'raised' && styles.raised,
+        !isDark && elevation === "raised" && styles.raised,
         style,
       ]}
       {...props}
@@ -44,11 +49,11 @@ export function Card({ children, style, elevation = 'raised', ...props }: CardPr
 const styles = StyleSheet.create({
   card: {
     padding: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   raised: {
     elevation: 2,
-    shadowColor: '#0f291d',
+    shadowColor: "#0f291d",
     shadowOpacity: 0.07,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 3 },

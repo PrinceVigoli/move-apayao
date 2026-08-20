@@ -10,16 +10,16 @@
  * token as theft and would end the session.
  */
 
-const ACCESS_KEY = "moveapayao.admin.accessToken"
 const REFRESH_KEY = "moveapayao.admin.refreshToken"
 const EXPIRY_KEY = "moveapayao.admin.expiresAt"
+const USER_KEY = "moveapayao.admin.user"
 const EXPIRY_SKEW_MS = 60_000
 
 export interface AdminUser {
   id: string
   email: string
   fullName?: string | null
-  role: string
+  role: "admin" | "superadmin" | "developer"
 }
 
 interface SessionPayload {
@@ -34,24 +34,40 @@ let refreshToken: string | null = localStorage.getItem(REFRESH_KEY)
 let expiresAt = Number(localStorage.getItem(EXPIRY_KEY) ?? 0)
 let refreshPromise: Promise<string | null> | null = null
 
-accessToken = localStorage.getItem(ACCESS_KEY)
+const API_BASE_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "")
+
+function apiUrl(path: string): string {
+  return `${API_BASE_URL}${path}`
+}
 
 function persist(s: SessionPayload) {
   accessToken = s.accessToken
   refreshToken = s.refreshToken
   expiresAt = Date.now() + s.expiresIn * 1000
-  localStorage.setItem(ACCESS_KEY, accessToken)
   localStorage.setItem(REFRESH_KEY, refreshToken)
   localStorage.setItem(EXPIRY_KEY, String(expiresAt))
+  if (s.user) localStorage.setItem(USER_KEY, JSON.stringify(s.user))
+}
+
+export function getStoredUser(): AdminUser | null {
+  try {
+    const value = localStorage.getItem(USER_KEY)
+    return value ? (JSON.parse(value) as AdminUser) : null
+  } catch {
+    return null
+  }
 }
 
 export function clearSession() {
   accessToken = null
   refreshToken = null
   expiresAt = 0
-  localStorage.removeItem(ACCESS_KEY)
+  // Remove access tokens written by older dashboard versions. Access tokens
+  // are intentionally memory-only so an XSS has a much smaller replay window.
+  localStorage.removeItem("moveapayao.admin.accessToken")
   localStorage.removeItem(REFRESH_KEY)
   localStorage.removeItem(EXPIRY_KEY)
+  localStorage.removeItem(USER_KEY)
 }
 
 export function hasSession(): boolean {
@@ -61,7 +77,7 @@ export function hasSession(): boolean {
 async function doRefresh(): Promise<string | null> {
   if (!refreshToken) return null
   try {
-    const resp = await fetch("/api/auth/refresh", {
+    const resp = await fetch(apiUrl("/api/auth/refresh"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken }),
@@ -94,7 +110,7 @@ export async function signIn(
   password: string,
 ): Promise<{ user: AdminUser | null; error: string | null }> {
   try {
-    const resp = await fetch("/api/auth/login", {
+    const resp = await fetch(apiUrl("/api/auth/login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ identifier, password }),
@@ -106,7 +122,7 @@ export async function signIn(
     const payload = data as SessionPayload & { user: AdminUser }
     // The dashboard is an operations tool — a passenger or driver signing in
     // here would see an empty, confusing UI, so reject anyone who isn't staff.
-    if (payload.user.role !== "admin") {
+    if (!["admin", "superadmin", "developer"].includes(payload.user.role)) {
       return { user: null, error: "This account does not have dashboard access" }
     }
     persist(payload)
@@ -120,7 +136,7 @@ export async function signOut(): Promise<void> {
   const token = refreshToken
   clearSession()
   if (token) {
-    fetch("/api/auth/logout", {
+    fetch(apiUrl("/api/auth/logout"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken: token }),
