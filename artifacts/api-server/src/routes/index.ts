@@ -16,6 +16,7 @@ import gisRouter from "./gis";
 import notificationsRouter from "./notifications";
 import farePolicyRouter from "./fare-policy";
 import iotRouter from "./iot";
+import docsRouter from "./docs";
 
 const router = Router();
 
@@ -36,6 +37,7 @@ router.use(gisRouter);
 router.use(notificationsRouter);
 router.use(farePolicyRouter);
 router.use(iotRouter);
+router.use(docsRouter);
 
 
 export default router;

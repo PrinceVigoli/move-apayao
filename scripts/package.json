@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "admin:set-password": "tsx ./src/set-admin-password.ts",
+    "user:set-password": "tsx ./src/set-user-password.ts",
     "staff:set-role": "tsx ./src/set-staff-role.ts",
     "hello": "tsx ./src/hello.ts",
     "seed:driver": "tsx ./src/seed-driver.ts",

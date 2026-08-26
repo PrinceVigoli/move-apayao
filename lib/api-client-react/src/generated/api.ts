@@ -44,6 +44,7 @@ import type {
   DriverProfileResponse,
   DrivingRouteResponse,
   EarningsResponse,
+  ErrorResponse,
   FarePolicyResponse,
   ForgotPasswordBody,
   GenerateGisCandidatesBody,
@@ -63,6 +64,7 @@ import type {
   HealthStatus,
   IncidentResponse,
   IngestGpsLocation202,
+  InternalRunbooksResponse,
   ListIncidentsParams,
   ListIncidentsResponse,
   ListLoopRoutesResponse,
@@ -290,6 +292,84 @@ export function useLivenessCheck<TData = Awaited<ReturnType<typeof livenessCheck
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getLivenessCheckQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListInternalRunbooksUrl = () => {
+
+
+
+
+  return `/api/docs/internal/runbooks`
+}
+
+/**
+ * Runbook content is returned only to active developer or superadmin accounts and must not be cached.
+ * @summary Read protected operational runbooks
+ */
+export const listInternalRunbooks = async ( options?: RequestInit): Promise<InternalRunbooksResponse> => {
+
+  return customFetch<InternalRunbooksResponse>(getListInternalRunbooksUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListInternalRunbooksQueryKey = () => {
+    return [
+    `/api/docs/internal/runbooks`
+    ] as const;
+    }
+
+
+export const getListInternalRunbooksQueryOptions = <TData = Awaited<ReturnType<typeof listInternalRunbooks>>, TError = ErrorType<UnauthorizedResponse | ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listInternalRunbooks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListInternalRunbooksQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listInternalRunbooks>>> = ({ signal }) => listInternalRunbooks({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listInternalRunbooks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListInternalRunbooksQueryResult = NonNullable<Awaited<ReturnType<typeof listInternalRunbooks>>>
+export type ListInternalRunbooksQueryError = ErrorType<UnauthorizedResponse | ErrorResponse>
+
+
+/**
+ * @summary Read protected operational runbooks
+ */
+
+export function useListInternalRunbooks<TData = Awaited<ReturnType<typeof listInternalRunbooks>>, TError = ErrorType<UnauthorizedResponse | ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listInternalRunbooks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListInternalRunbooksQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

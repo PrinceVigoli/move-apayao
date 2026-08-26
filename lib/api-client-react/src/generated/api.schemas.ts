@@ -28,6 +28,20 @@ export interface OkResponse {
   ok: boolean;
 }
 
+export interface InternalRunbook {
+  id: string;
+  title: string;
+  purpose: string;
+  steps: string[];
+  escalation: string;
+}
+
+export interface InternalRunbooksResponse {
+  version: string;
+  updatedAt: string;
+  runbooks: InternalRunbook[];
+}
+
 export type UserRole = typeof UserRole[keyof typeof UserRole];
 
 

@@ -1,0 +1,62 @@
+name: Publish documentation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "artifacts/documentation/**"
+      - "lib/api-spec/openapi.yaml"
+      - ".github/workflows/documentation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: documentation-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.17.0
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck documentation
+        run: pnpm --filter @workspace/documentation run typecheck
+      - name: Build documentation
+        run: pnpm --filter @workspace/documentation run build
+        env:
+          VITE_API_URL: ${{ vars.DOCUMENTATION_API_URL }}
+          VITE_PRODUCT_URL: ${{ vars.PRODUCT_URL }}
+          DOCS_PUBLIC_URL: ${{ vars.DOCUMENTATION_PUBLIC_URL }}
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload documentation artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: artifacts/documentation/dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy documentation
+        id: deployment
+        uses: actions/deploy-pages@v4

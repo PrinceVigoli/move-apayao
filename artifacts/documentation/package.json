@@ -1,0 +1,26 @@
+{
+  "name": "@workspace/documentation",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate:api": "node ./scripts/generate-openapi.mjs",
+    "predev": "pnpm run generate:api",
+    "dev": "vite --host 0.0.0.0",
+    "build": "pnpm run generate:api && vite build && node ./scripts/generate-static-routes.mjs",
+    "serve": "vite preview --host 0.0.0.0",
+    "pretypecheck": "pnpm run generate:api",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "lucide-react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "vite": "catalog:",
+    "yaml": "^2.9.0"
+  }
+}

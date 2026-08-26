@@ -32,6 +32,8 @@ tags:
     description: Privileged internal GIS Intelligence gateway
   - name: iot
     description: Developer/superadmin fleet GPS provisioning and device telemetry
+  - name: docs
+    description: Developer/superadmin internal operational documentation
 
 paths:
   /healthz:
@@ -65,6 +67,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /docs/internal/runbooks:
+    get:
+      operationId: listInternalRunbooks
+      tags: [docs]
+      summary: Read protected operational runbooks
+      description: Runbook content is returned only to active developer or superadmin accounts and must not be cached.
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Protected runbook collection
+          headers:
+            Cache-Control:
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalRunbooksResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Developer or superadmin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   # ── Auth ────────────────────────────────────────────────────────────────────
 
@@ -1637,6 +1665,29 @@ components:
         ok:
           type: boolean
       required: [ok]
+
+    InternalRunbook:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        purpose: { type: string }
+        steps:
+          type: array
+          items: { type: string }
+        escalation: { type: string }
+      required: [id, title, purpose, steps, escalation]
+
+    InternalRunbooksResponse:
+      type: object
+      properties:
+        version: { type: string }
+        updatedAt: { type: string, format: date }
+        runbooks:
+          type: array
+          items:
+            $ref: "#/components/schemas/InternalRunbook"
+      required: [version, updatedAt, runbooks]
 
     # ── Users / Auth ─────────────────────────────────────────────────────────
 

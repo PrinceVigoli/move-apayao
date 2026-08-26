@@ -19,6 +19,7 @@ This is a pnpm workspace.
 | `artifacts/driver` | Driver app (Expo / React Native) |
 | `artifacts/dashboard` | Admin dashboard (React + Vite) |
 | `artifacts/landing` | Public marketing site (React + Vite, static) |
+| `artifacts/documentation` | Public implementation and operations documentation (React + Vite, static) |
 | `lib/db` | Drizzle schema and database client — source of truth for all tables |
 | `lib/api-spec` | OpenAPI spec + Orval codegen config — source of truth for API contracts |
 | `lib/api-client-react` | Generated typed React Query hooks (do not hand-edit) |
@@ -52,6 +53,7 @@ Each app runs independently:
 pnpm --filter @workspace/dashboard run dev    # admin dashboard
 pnpm --filter @workspace/gis-service run dev  # private GIS service
 pnpm --filter @workspace/landing  run dev     # public site
+pnpm --filter @workspace/documentation run dev # documentation portal
 pnpm --filter @workspace/mobile   run dev     # passenger app (Expo)
 pnpm --filter @workspace/driver   run dev     # driver app (Expo)
 ```

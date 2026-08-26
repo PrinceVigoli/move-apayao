@@ -27,6 +27,23 @@ export const LivenessCheckResponse = zod.object({
 
 
 /**
+ * Runbook content is returned only to active developer or superadmin accounts and must not be cached.
+ * @summary Read protected operational runbooks
+ */
+export const ListInternalRunbooksResponse = zod.object({
+  "version": zod.string(),
+  "updatedAt": zod.coerce.date(),
+  "runbooks": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "purpose": zod.string(),
+  "steps": zod.array(zod.string()),
+  "escalation": zod.string()
+}))
+})
+
+
+/**
  * @summary Create an account and sign in
  */
 export const registerUserBodyPasswordMin = 8;

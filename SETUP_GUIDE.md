@@ -23,6 +23,7 @@ it wasn't part of the product and nothing else depended on it):
 | `artifacts/mobile` | Passenger app (Expo / React Native) | Built via Expo/EAS, not hosted on a server |
 | `artifacts/driver` | Driver app (Expo / React Native) | Built via Expo/EAS, not hosted on a server |
 | `artifacts/landing` | Public landing site (Vite + React) | Static site once built |
+| `artifacts/documentation` | Public implementation and operations documentation (Vite + React) | Static site once built |
 | `lib/` | Shared DB schema, OpenAPI spec, generated API client/types | Used by the pieces above, not deployed on its own |
 
 For the full system you host the API server, private GIS service, and two static websites.
@@ -159,6 +160,13 @@ pnpm --filter @workspace/dashboard run dev
 ```
 Open [http://localhost:5173](http://localhost:5173).
 
+**Documentation portal:**
+```bash
+pnpm --filter @workspace/documentation run dev
+```
+Open [http://localhost:5176](http://localhost:5176). The portal intentionally
+contains no credentials, private tokens, or personal operational data.
+
 To grant GIS access, first register the account normally, then run one of these locally:
 
 ```bash
@@ -169,6 +177,15 @@ pnpm staff:set-role -- --email=developer@example.com --role=developer
 Provincial admins remain `admin`; their navigation and API permissions exclude GIS.
 The GIS **Analyze 30-day routes** action creates review-only drafts only when a corridor
 has at least three valid runs from two drivers; it never publishes routes automatically.
+
+To securely set or recover the password of an existing local account when SMTP
+delivery is not configured, run the interactive command below. The password is
+entered twice with terminal echo hidden; existing sessions and reset links are
+revoked after the update.
+
+```powershell
+pnpm.cmd user:set-password -- --email=user@example.com
+```
 
 **Mobile app:**
 ```bash
@@ -344,17 +361,41 @@ Since authentication now runs against your own database, whichever Postgres you 
 
 This component can usually run on App Platform's **free static-site tier**.
 
-### 4.6 Redis on DigitalOcean
+### 4.6 Deploy the documentation portal (App Platform, static site)
+
+1. Add another **Static Site** component from the same repository.
+2. Keep the source directory at the repository root so pnpm can resolve the workspace.
+3. Build command: `pnpm install --frozen-lockfile && pnpm --filter @workspace/documentation run build`
+4. Output directory: `artifacts/documentation/dist`
+5. Set `VITE_PRODUCT_URL` to the public landing-page URL.
+6. Set `VITE_API_URL`, `VITE_PRODUCT_URL`, and `DOCS_PUBLIC_URL` to their public HTTPS origins.
+7. Add the documentation origin to the API's comma-separated `CORS_ALLOWED_ORIGINS` value.
+8. Attach a domain you own, such as `documentation.moveapayao.gov.ph`, to this component.
+   DigitalOcean will show the exact DNS record to add at your DNS provider and will issue TLS
+   automatically after the record resolves.
+
+The build emits clean paths such as `/deployment`, a `404.html` fallback, and a
+Netlify/Cloudflare-style `_redirects` rule. If your provider has a **catch-all document**
+setting, choose `index.html`. Replace the example domain with your actual registered
+domain; creating the app does not register a domain or change DNS by itself.
+
+Alternatively, the included `.github/workflows/documentation.yml` automatically
+builds and deploys approved documentation changes from `main` to GitHub Pages. In
+GitHub, select **Settings > Pages > Source: GitHub Actions**, configure the custom
+domain, and add repository variables `DOCUMENTATION_API_URL`, `PRODUCT_URL`, and
+`DOCUMENTATION_PUBLIC_URL`. GitHub manages TLS after DNS validation.
+
+### 4.7 Redis on DigitalOcean
 
 Redis/Valkey is required for production dispatch, live location, streaming,
 and cross-instance rate limiting. Use a managed service and set `REDIS_URL`;
 the readiness endpoint intentionally stays degraded when it is absent.
 
-### 4.7 The mobile app
+### 4.8 The mobile app
 
 Nothing to deploy to DigitalOcean here. Point `EXPO_PUBLIC_API_URL` at your deployed API server's HTTPS URL, then build/distribute the app through Expo Application Services (EAS) — that's a separate, free-to-start account at [expo.dev](https://expo.dev/), not part of this DigitalOcean setup.
 
-### 4.8 Droplet alternative (if/when you want it)
+### 4.9 Droplet alternative (if/when you want it)
 
 If you later move the API server to a Droplet instead of App Platform:
 1. Create a Droplet (Ubuntu, Basic plan is enough to start).
