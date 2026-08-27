@@ -13,6 +13,8 @@ non-progressing ICNS/JXL entries. Regression probes confirmed those malformed
 inputs terminate with errors. `pnpm audit --prod` will continue to report the
 version number because registry auditing cannot detect local source patches.
 
+The probe is automated in CI and can be run locally with `pnpm security:test`.
+
 When an Expo-compatible patched release is available:
 
 1. Upgrade Expo/Metro (or override `image-size`) to the patched release.

@@ -56,7 +56,8 @@ export function TrustMark() {
       <span className="grid h-8 w-8 place-items-center rounded-full bg-primary/10 text-primary">
         <Leaf size={15} />
       </span>
-      Locally built for Apayao first and will expand to the rest of the Philippines in the future.
+      Locally built for Apayao first and will expand to the rest of the
+      Philippines in the future.
     </span>
   );
 }

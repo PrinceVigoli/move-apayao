@@ -1180,6 +1180,233 @@ footer li a:hover {
   color: hsl(var(--primary));
 }
 
+/* Contact */
+.contact-panel {
+  display: grid;
+  gap: 2.5rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 2rem;
+  background:
+    radial-gradient(
+      circle at 95% 0%,
+      hsl(var(--accent) / 0.18),
+      transparent 32%
+    ),
+    hsl(var(--muted) / 0.48);
+  padding: clamp(1.5rem, 5vw, 3.5rem);
+}
+
+.contact-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.contact-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.25rem 0.85rem;
+  min-width: 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: 1.15rem;
+  background: hsl(var(--background));
+  padding: 1rem;
+  color: hsl(var(--foreground));
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease;
+}
+
+a.contact-card:hover {
+  transform: translateY(-2px);
+  border-color: hsl(var(--primary) / 0.45);
+}
+
+.contact-card > span {
+  display: grid;
+  grid-row: 1 / span 2;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 0.85rem;
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+}
+
+.contact-card small {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.7rem;
+}
+
+.contact-card strong {
+  overflow-wrap: anywhere;
+  font-size: 0.85rem;
+}
+
+/* Legal pages */
+.legal-page {
+  min-height: 100vh;
+  background: hsl(var(--muted) / 0.32);
+}
+
+.legal-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--background) / 0.95);
+  backdrop-filter: blur(18px);
+}
+
+.legal-hero {
+  border-bottom: 1px solid hsl(var(--border));
+  background:
+    radial-gradient(
+      circle at 80% 10%,
+      hsl(var(--accent) / 0.22),
+      transparent 27%
+    ),
+    hsl(var(--background));
+}
+
+.legal-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid hsl(var(--primary) / 0.2);
+  border-radius: 999px;
+  background: hsl(var(--primary) / 0.06);
+  padding: 0.6rem 0.9rem;
+  color: hsl(var(--primary));
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.legal-sidebar {
+  display: flex;
+  height: fit-content;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.legal-sidebar a {
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.83rem;
+  font-weight: 650;
+}
+
+.legal-sidebar a:hover,
+.legal-sidebar a.is-active {
+  background: hsl(var(--primary) / 0.09);
+  color: hsl(var(--primary));
+}
+
+.legal-card {
+  min-width: 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: 1.5rem;
+  background: hsl(var(--background));
+  padding: clamp(1.25rem, 4vw, 2.6rem);
+  box-shadow: 0 20px 55px hsl(var(--foreground) / 0.055);
+}
+
+.legal-lead {
+  border-left: 4px solid hsl(var(--accent));
+  padding-left: 1rem;
+  color: hsl(var(--foreground));
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.75;
+}
+
+.legal-section {
+  padding-block: 2rem;
+}
+
+.legal-section + .legal-section {
+  border-top: 1px solid hsl(var(--border));
+}
+
+.legal-section h2 {
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+.legal-section p,
+.legal-section li {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.93rem;
+  line-height: 1.8;
+}
+
+.legal-section p + p,
+.legal-section ul + p {
+  margin-top: 0.85rem;
+}
+
+.legal-section ul {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.legal-section a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: hsl(var(--primary));
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.legal-contact {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 1.25rem;
+  border: 1px solid hsl(var(--primary) / 0.18);
+  border-radius: 1rem;
+  background: hsl(var(--primary) / 0.055);
+  padding: 1rem;
+}
+
+.legal-contact > strong {
+  color: hsl(var(--foreground));
+}
+
+.legal-contact p,
+.legal-contact a {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+@media (min-width: 768px) {
+  .contact-panel {
+    grid-template-columns: 0.85fr 1.15fr;
+    align-items: center;
+  }
+
+  .contact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .contact-card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1024px) {
+  .legal-sidebar {
+    position: sticky;
+    top: 96px;
+  }
+}
+
 /* Scroll reveal */
 .reveal {
   opacity: 0;

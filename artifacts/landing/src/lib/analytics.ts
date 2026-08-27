@@ -16,11 +16,11 @@ export function initAnalytics(): void {
   const domain = import.meta.env.VITE_ANALYTICS_DOMAIN;
   const src = import.meta.env.VITE_ANALYTICS_SRC;
   if (!domain || !src) return;
-  if (document.querySelector('script[data-domain]')) return;
+  if (document.querySelector("script[data-domain]")) return;
 
-  const el = document.createElement('script');
+  const el = document.createElement("script");
   el.defer = true;
-  el.setAttribute('data-domain', domain);
+  el.setAttribute("data-domain", domain);
   el.src = src;
   document.head.appendChild(el);
 }

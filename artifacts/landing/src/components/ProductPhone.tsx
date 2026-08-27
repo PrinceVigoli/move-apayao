@@ -38,7 +38,10 @@ function projectRoute(path: GeoPoint[], stops: GeoPoint[]) {
   const north = Math.max(...normalized.map((point) => point.north));
   const spanX = Math.max(east - west, 0.00001);
   const spanY = Math.max(north - south, 0.00001);
-  const scale = Math.min((width - padding * 2) / spanX, (height - padding * 2) / spanY);
+  const scale = Math.min(
+    (width - padding * 2) / spanX,
+    (height - padding * 2) / spanY,
+  );
   const offsetX = (width - spanX * scale) / 2;
   const offsetY = (height - spanY * scale) / 2;
   const project = (point: GeoPoint): ScreenPoint => ({
@@ -60,12 +63,19 @@ export function ProductPhone() {
     const decoded = loop?.route.routePolyline
       ? decodeGooglePolyline(loop.route.routePolyline)
       : orderedStops;
-    return projectRoute(decoded.length >= 2 ? decoded : fallbackStops, orderedStops);
+    return projectRoute(
+      decoded.length >= 2 ? decoded : fallbackStops,
+      orderedStops,
+    );
   }, [loop]);
   const routePath = route.points
-    .map((point, index) => `${index === 0 ? "M" : "L"}${point.x.toFixed(1)} ${point.y.toFixed(1)}`)
+    .map(
+      (point, index) =>
+        `${index === 0 ? "M" : "L"}${point.x.toFixed(1)} ${point.y.toFixed(1)}`,
+    )
     .join(" ");
-  const vehicle = route.points[Math.max(0, Math.floor(route.points.length * 0.32))]!;
+  const vehicle =
+    route.points[Math.max(0, Math.floor(route.points.length * 0.32))]!;
 
   return (
     <div
@@ -87,8 +97,25 @@ export function ProductPhone() {
         <span className="phone-map-label phone-map-label-pudtol">PUDTOL</span>
         <span className="phone-map-label phone-map-label-luna">LUNA</span>
         <svg viewBox="0 0 240 232" preserveAspectRatio="xMidYMid meet">
-          <path d={routePath} fill="none" stroke="#fff" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
-          <path d={routePath} fill="none" stroke="#1B5E3A" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" pathLength="400" className="phone-route" />
+          <path
+            d={routePath}
+            fill="none"
+            stroke="#fff"
+            strokeWidth="10"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.9"
+          />
+          <path
+            d={routePath}
+            fill="none"
+            stroke="#1B5E3A"
+            strokeWidth="6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            pathLength="400"
+            className="phone-route"
+          />
           {route.stops.slice(0, -1).map((stop, index) => (
             <circle
               key={`${stop.lat}-${stop.lng}-${index}`}
@@ -100,39 +127,72 @@ export function ProductPhone() {
               strokeWidth="3"
             />
           ))}
-          <circle cx={vehicle.x} cy={vehicle.y} r="14" fill="#1B5E3A" stroke="#fff" strokeWidth="4" />
-          <path d={`M${vehicle.x - 5} ${vehicle.y + 4}L${vehicle.x + 7} ${vehicle.y - 7}L${vehicle.x + 3} ${vehicle.y + 7}L${vehicle.x - 1} ${vehicle.y + 2}Z`} fill="#fff" />
+          <circle
+            cx={vehicle.x}
+            cy={vehicle.y}
+            r="14"
+            fill="#1B5E3A"
+            stroke="#fff"
+            strokeWidth="4"
+          />
+          <path
+            d={`M${vehicle.x - 5} ${vehicle.y + 4}L${vehicle.x + 7} ${vehicle.y - 7}L${vehicle.x + 3} ${vehicle.y + 7}L${vehicle.x - 1} ${vehicle.y + 2}Z`}
+            fill="#fff"
+          />
         </svg>
-        <span className="phone-map-caption">Pudtol–Payanan Provincial Loop</span>
+        <span className="phone-map-caption">
+          Pudtol–Payanan Provincial Loop
+        </span>
       </div>
 
       <div className="phone-driver">
         <div className="phone-avatar">JD</div>
         <div>
           <strong>Juan Dela Cruz</strong>
-          <span><ShieldCheck size={9} /> Verified · <Star size={9} fill="currentColor" /> 4.9 · Red E-Trike</span>
+          <span>
+            <ShieldCheck size={9} /> Verified ·{" "}
+            <Star size={9} fill="currentColor" /> 4.9 · Red E-Trike
+          </span>
         </div>
         <span className="phone-plate">APY-1001</span>
       </div>
 
       <div className="phone-progress" aria-hidden="true">
-        <span className="done"><Check size={10} /></span><i /><span className="active" /><i /><span />
+        <span className="done">
+          <Check size={10} />
+        </span>
+        <i />
+        <span className="active" />
+        <i />
+        <span />
       </div>
       <div className="phone-progress-labels" aria-hidden="true">
-        <span>Confirmed</span><span>Arriving</span><span>Drop-off</span>
+        <span>Confirmed</span>
+        <span>Arriving</span>
+        <span>Drop-off</span>
       </div>
 
       <div className="phone-route-card">
-        <span className="start" /><strong>Poblacion, Pudtol</strong>
-        <span className="end" /><strong>Via Payanan · Capitol · ASC · Tumog</strong>
+        <span className="start" />
+        <strong>Poblacion, Pudtol</strong>
+        <span className="end" />
+        <strong>Via Payanan · Capitol · ASC · Tumog</strong>
       </div>
 
       <div className="phone-actions" aria-hidden="true">
-        <span><Phone size={11} /> Call</span>
-        <span><MessageCircle size={11} /> Message</span>
-        <span className="danger"><AlertTriangle size={11} /> Emergency</span>
+        <span>
+          <Phone size={11} /> Call
+        </span>
+        <span>
+          <MessageCircle size={11} /> Message
+        </span>
+        <span className="danger">
+          <AlertTriangle size={11} /> Emergency
+        </span>
       </div>
-      <div className="phone-connection"><i /> Vehicle GPS · live</div>
+      <div className="phone-connection">
+        <i /> Vehicle GPS · live
+      </div>
     </div>
   );
 }

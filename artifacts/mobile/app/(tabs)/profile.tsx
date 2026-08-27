@@ -20,6 +20,7 @@ import {
   useGetMySubscription,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { openLegalDocument, openSupportEmail } from "@/lib/legal";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -165,7 +166,49 @@ export default function ProfileScreen() {
               style={{ marginLeft: "auto" }}
             />
           </Pressable>
-          <View style={styles.settingRow}>
+          <Pressable
+            style={[
+              styles.settingRow,
+              { borderBottomColor: colors.border, borderBottomWidth: 1 },
+            ]}
+            onPress={() => openLegalDocument("terms")}
+          >
+            <Feather name="file-text" size={20} color={colors.foreground} />
+            <Text style={[styles.settingText, { color: colors.foreground }]}>
+              Terms of Service
+            </Text>
+            <Feather
+              name="external-link"
+              size={18}
+              color={colors.mutedForeground}
+              style={{ marginLeft: "auto" }}
+            />
+          </Pressable>
+          <Pressable
+            style={[
+              styles.settingRow,
+              { borderBottomColor: colors.border, borderBottomWidth: 1 },
+            ]}
+            onPress={() => openLegalDocument("privacy")}
+          >
+            <Feather name="lock" size={20} color={colors.foreground} />
+            <Text style={[styles.settingText, { color: colors.foreground }]}>
+              Privacy Notice
+            </Text>
+            <Feather
+              name="external-link"
+              size={18}
+              color={colors.mutedForeground}
+              style={{ marginLeft: "auto" }}
+            />
+          </Pressable>
+          <Pressable
+            style={[
+              styles.settingRow,
+              { borderBottomColor: colors.border, borderBottomWidth: 1 },
+            ]}
+            onPress={() => openSupportEmail()}
+          >
             <Feather name="help-circle" size={20} color={colors.foreground} />
             <Text style={[styles.settingText, { color: colors.foreground }]}>
               Help & Support
@@ -176,7 +219,7 @@ export default function ProfileScreen() {
               color={colors.mutedForeground}
               style={{ marginLeft: "auto" }}
             />
-          </View>
+          </Pressable>
           <Pressable
             style={styles.settingRow}
             onPress={() => router.push("/report" as never)}

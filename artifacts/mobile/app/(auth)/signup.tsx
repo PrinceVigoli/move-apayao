@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Pressable,
-  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -17,6 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { PremiumField } from "@/components/PremiumField";
 import { BrandHero } from "@/components/BrandHero";
 import { useAuth } from "@/contexts/AuthContext";
+import { LEGAL_VERSION, openLegalDocument } from "@/lib/legal";
 
 export default function SignupScreen() {
   const insets = useSafeAreaInsets();
@@ -46,7 +46,7 @@ export default function SignupScreen() {
         phone: phone.trim() || undefined,
         password,
         acceptedTerms: true,
-        termsVersion: "2026-08-19",
+        termsVersion: LEGAL_VERSION,
       });
     } catch (err: any) {
       setError(err?.message ?? "Could not create your account.");
@@ -166,13 +166,13 @@ export default function SignupScreen() {
           onPress={submit}
           style={{ marginTop: 18 }}
         />
-        <Pressable
-          onPress={() => setAcceptedTerms((value) => !value)}
-          style={styles.termsRow}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: acceptedTerms }}
-        >
-          <View
+        <View style={styles.termsRow}>
+          <Pressable
+            onPress={() => setAcceptedTerms((value) => !value)}
+            accessibilityRole="checkbox"
+            accessibilityLabel="Accept the Terms and Privacy Policy"
+            accessibilityState={{ checked: acceptedTerms }}
+            hitSlop={8}
             style={[
               styles.checkbox,
               {
@@ -182,25 +182,25 @@ export default function SignupScreen() {
             ]}
           >
             {acceptedTerms && <Feather name="check" size={14} color="#fff" />}
-          </View>
+          </Pressable>
           <Text style={[styles.terms, { color: colors.mutedForeground }]}>
             I accept the{" "}
             <Text
               style={{ color: colors.primaryStrong }}
-              onPress={() => Linking.openURL("https://moveapayao.gov.ph/terms")}
+              onPress={() => openLegalDocument("terms")}
             >
               Terms
             </Text>{" "}
             and{" "}
             <Text
               style={{ color: colors.primaryStrong }}
-              onPress={() => Linking.openURL("https://moveapayao.gov.ph/privacy")}
+              onPress={() => openLegalDocument("privacy")}
             >
               Privacy Policy
             </Text>
             .
           </Text>
-        </Pressable>
+        </View>
         <View style={styles.footer}>
           <Text style={{ color: colors.mutedForeground }}>
             Already have an account?{" "}
@@ -273,7 +273,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingHorizontal: 20,
   },
-  termsRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginTop: 14 },
+  termsRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    marginTop: 14,
+  },
   checkbox: {
     width: 22,
     height: 22,

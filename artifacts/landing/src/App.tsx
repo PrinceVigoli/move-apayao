@@ -5,14 +5,20 @@ import {
   Drivers,
   Stakeholders,
   Faq,
+  Contact,
   Footer,
 } from "@/components/Body";
 import { ResetPassword } from "@/components/ResetPassword";
+import { PrivacyPage, TermsPage } from "@/components/LegalPage";
 
 export default function App() {
-  if (window.location.pathname.replace(/\/+$/, "") === "/reset-password") {
+  const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
+
+  if (pathname === "/reset-password") {
     return <ResetPassword />;
   }
+  if (pathname === "/terms") return <TermsPage />;
+  if (pathname === "/privacy") return <PrivacyPage />;
 
   return (
     <>
@@ -31,6 +37,7 @@ export default function App() {
         <Drivers />
         <Stakeholders />
         <Faq />
+        <Contact />
       </main>
       <Footer />
     </>

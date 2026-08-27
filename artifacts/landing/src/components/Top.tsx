@@ -23,6 +23,7 @@ const NAV = [
   { href: "#drivers", label: "For drivers" },
   { href: "#partners", label: "For the LGU" },
   { href: "#faq", label: "FAQ" },
+  { href: "#contact", label: "Contact" },
 ];
 
 const STEP_ICONS = [Smartphone, MapPin, CarFront, Star];

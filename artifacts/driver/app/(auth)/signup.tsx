@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { PremiumField } from "@/components/PremiumField";
 import { BrandHero } from "@/components/BrandHero";
 import { useAuth } from "@/contexts/AuthContext";
+import { LEGAL_VERSION, openLegalDocument } from "@/lib/legal";
 
 const VEHICLES = [
   { value: "e-trike", label: "E-Trike", seats: 4 },
@@ -67,7 +68,7 @@ export default function DriverSignupScreen() {
         vehicleColor: vehicleColor.trim() || undefined,
         licenseNumber: licenseNumber.trim(),
         acceptedTerms: true,
-        termsVersion: "2026-08-19",
+        termsVersion: LEGAL_VERSION,
       });
       setInfo("Application pending");
     } catch (err: any) {
@@ -205,27 +206,47 @@ export default function DriverSignupScreen() {
                 secure
               />
             </View>
-            <Pressable
-              onPress={() => setAcceptedTerms((value) => !value)}
-              style={styles.consentRow}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: acceptedTerms }}
-            >
-              <View
+            <View style={styles.consentRow}>
+              <Pressable
+                onPress={() => setAcceptedTerms((value) => !value)}
+                accessibilityRole="checkbox"
+                accessibilityLabel="Accept the driver Terms and Privacy Policy"
+                accessibilityState={{ checked: acceptedTerms }}
+                hitSlop={8}
                 style={[
                   styles.consentBox,
                   {
                     borderColor: acceptedTerms ? colors.accent : colors.border,
-                    backgroundColor: acceptedTerms ? colors.accent : "transparent",
+                    backgroundColor: acceptedTerms
+                      ? colors.accent
+                      : "transparent",
                   },
                 ]}
               >
-                {acceptedTerms && <Feather name="check" size={13} color="#fff" />}
-              </View>
-              <Text style={[styles.consentText, { color: colors.mutedForeground }]}>
-                I accept the driver Terms of Service and Privacy Policy.
+                {acceptedTerms && (
+                  <Feather name="check" size={13} color="#fff" />
+                )}
+              </Pressable>
+              <Text
+                style={[styles.consentText, { color: colors.mutedForeground }]}
+              >
+                I accept the driver{" "}
+                <Text
+                  style={{ color: colors.accent }}
+                  onPress={() => openLegalDocument("terms")}
+                >
+                  Terms of Service
+                </Text>{" "}
+                and{" "}
+                <Text
+                  style={{ color: colors.accent }}
+                  onPress={() => openLegalDocument("privacy")}
+                >
+                  Privacy Policy
+                </Text>
+                .
               </Text>
-            </Pressable>
+            </View>
             <Button
               title="Continue"
               size="lg"
@@ -424,7 +445,12 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     marginTop: 3,
   },
-  consentRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 14 },
+  consentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 14,
+  },
   consentBox: {
     width: 22,
     height: 22,
@@ -433,7 +459,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  consentText: { flex: 1, fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 17 },
+  consentText: {
+    flex: 1,
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    lineHeight: 17,
+  },
   error: { borderWidth: 1, borderRadius: 14, padding: 12, marginTop: 14 },
   successCard: {
     borderWidth: 1,

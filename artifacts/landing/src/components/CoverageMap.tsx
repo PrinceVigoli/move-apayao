@@ -7,10 +7,7 @@ import {
   useMap,
 } from "@vis.gl/react-google-maps";
 import { KeyRound, MapPinned } from "lucide-react";
-import {
-  decodeGooglePolyline,
-  type FeaturedLoop,
-} from "@/lib/loops";
+import { decodeGooglePolyline, type FeaturedLoop } from "@/lib/loops";
 
 const browserMapsKey = import.meta.env.VITE_GOOGLE_MAPS_BROWSER_API_KEY?.trim();
 
@@ -22,18 +19,25 @@ function stopMarkerIcon(index: number, total: number) {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
-function FitGoogleRoute({ path }: { path: Array<{ lat: number; lng: number }> }) {
+function FitGoogleRoute({
+  path,
+}: {
+  path: Array<{ lat: number; lng: number }>;
+}) {
   const map = useMap();
   useEffect(() => {
     if (!map || path.length === 0) return;
     const latitudes = path.map((point) => point.lat);
     const longitudes = path.map((point) => point.lng);
-    map.fitBounds({
-      north: Math.max(...latitudes),
-      south: Math.min(...latitudes),
-      east: Math.max(...longitudes),
-      west: Math.min(...longitudes),
-    }, 42);
+    map.fitBounds(
+      {
+        north: Math.max(...latitudes),
+        south: Math.min(...latitudes),
+        east: Math.max(...longitudes),
+        west: Math.min(...longitudes),
+      },
+      42,
+    );
   }, [map, path]);
   return null;
 }
@@ -63,7 +67,8 @@ export function CoverageMap({ loop }: { loop: FeaturedLoop | null }) {
   if (!loop || stops.length < 2) {
     return (
       <div className="flex h-[390px] items-center justify-center bg-muted px-6 text-center text-sm text-muted-foreground">
-        No published loop geometry is available yet. Add the real ordered stops in the admin dashboard.
+        No published loop geometry is available yet. Add the real ordered stops
+        in the admin dashboard.
       </div>
     );
   }
@@ -112,9 +117,16 @@ export function CoverageMap({ loop }: { loop: FeaturedLoop | null }) {
         <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
           <MapPinned className="h-6 w-6" />
         </span>
-        <h3 className="mt-4 text-lg font-bold">Detailed Google map awaiting key</h3>
-        <p className="mt-2 text-sm text-muted-foreground">Add the restricted Maps JavaScript API browser key and restart the landing page. Leaflet is no longer used.</p>
-        <code className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-muted px-3 py-2 text-[11px]"><KeyRound className="h-3.5 w-3.5" /> VITE_GOOGLE_MAPS_BROWSER_API_KEY</code>
+        <h3 className="mt-4 text-lg font-bold">
+          Detailed Google map awaiting key
+        </h3>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Add the restricted Maps JavaScript API browser key and restart the
+          landing page. Leaflet is no longer used.
+        </p>
+        <code className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-muted px-3 py-2 text-[11px]">
+          <KeyRound className="h-3.5 w-3.5" /> VITE_GOOGLE_MAPS_BROWSER_API_KEY
+        </code>
       </div>
     </div>
   );

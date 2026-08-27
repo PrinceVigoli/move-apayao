@@ -1,6 +1,8 @@
-# MOVE Apayao — public landing site
+# MOVE Apayao public site
 
-Static marketing/info site. No auth, no API calls, no backend.
+Public marketing, route-coverage, contact, password-reset, Terms of Service, and
+Privacy Notice site. The active route map reads the public API; legal and contact
+pages remain available if the API is temporarily offline.
 
 ## Develop
 
@@ -8,75 +10,54 @@ Static marketing/info site. No auth, no API calls, no backend.
 pnpm --filter @workspace/landing run dev
 ```
 
-## Build
+## Build and deploy
+
+For local testing:
 
 ```bash
 pnpm --filter @workspace/landing run build
 ```
 
-Output is plain static files in `artifacts/landing/dist/` — upload the *contents*
-to any static host. No environment variables are required.
-
-Deploying to a sub-path instead of a domain root:
+For a real deployment, copy `.env.example` to `.env.production`, complete every
+required value, and run:
 
 ```bash
-BASE_PATH=/move/ pnpm --filter @workspace/landing run build
+pnpm --filter @workspace/landing run build:production
 ```
 
-## Deploying to Hostinger
+The production command validates the permanent domain, public dashboard,
+support/privacy contacts, and Maps key before creating `dist/`. Both commands
+produce a plain static site in `artifacts/landing/dist/`.
 
-1. Run the build above.
-2. In hPanel → File Manager, open `public_html` (or the subdomain's folder).
-3. Upload everything **inside** `dist/` — not the `dist` folder itself.
-4. Confirm `index.html`, `favicon.svg`, `og-image.png`, `robots.txt` and
-   `sitemap.xml` are all at the web root.
+When deploying to a sub-path instead of a domain root, set `BASE_PATH=/move/`.
+Upload everything inside `dist/`, not the directory itself. The included
+`.htaccess` sends `/terms`, `/privacy`, and `/reset-password` to the single-page
+entry point on Apache/Hostinger. On another host, configure the same fallback to
+`/index.html`.
 
-## Editing content
+Canonical, Open Graph, robots, and sitemap origins are generated from
+`VITE_SITE_URL` during the build.
 
-All copy, links, figures and route data live in one file:
+## Public-launch checklist
 
-    src/content/site.ts
+- [ ] Publish the real loop and its ordered stops in the dashboard. The public
+      map never invents fallback geometry.
+- [ ] Complete `.env.production`, including the permanent site/dashboard URLs,
+      restricted Maps browser key, service support email, and approved DPO or
+      privacy-contact email. `build:production` rejects missing values.
+- [ ] Have the operator's DPO or legal adviser approve the Terms and Privacy
+      Notice. Confirm the named personal information controller, retention
+      schedule, processors/data-sharing agreements, and privacy request process.
+- [ ] Add preview-build or store URLs. Keep `VITE_STORES_LIVE=false` during the
+      pilot; switch it only when both Android listings are public.
+- [ ] Keep public wording aligned with actual behavior. The current pilot uses
+      cash; it does not claim QR/NFC payment or wallet top-up.
+- [ ] Test `/`, `/terms`, `/privacy`, and `/reset-password` by opening each URL
+      directly after deployment, then verify the Facebook/Messenger link preview.
 
-No component edits needed for wording changes.
+## Content and optional features
 
-## Before going public — checklist
-
-- [ ] **Publish the real loop in the dashboard.** The landing route map and
-      stop strip now read the active route and ordered stops from `/api/loops`;
-      placeholder geometry is no longer rendered.
-- [ ] Set `VITE_GOOGLE_MAPS_BROWSER_API_KEY` to a Maps JavaScript API key
-      restricted to the landing site's HTTP referrers. Set `VITE_API_URL` when
-      the public API is hosted on a different origin.
-- [ ] **Fill the `TODO`s in `site.ts`** — app store links, dashboard URL, fleet
-      figures, LGU contact email and phone.
-- [ ] **Set the real domain** in three places: `<link rel="canonical">` and the
-      `og:`/`twitter:` URLs in `index.html`, the `Sitemap:` line in
-      `public/robots.txt`, and `<loc>` in `public/sitemap.xml`.
-- [ ] **Check the honesty rule.** The page must not claim QR/NFC tap-to-pay or
-      wallet top-up are available — those are switched off pending hardware
-      procurement. Fares are cash.
-- [ ] Verify the link preview with the Facebook Sharing Debugger — Messenger and
-      Facebook are how this link will actually spread locally.
-
-## Optional: analytics
-
-Disabled unless both are set in `artifacts/landing/.env`:
-
-```
-VITE_ANALYTICS_DOMAIN=your-domain
-VITE_ANALYTICS_SRC=https://plausible.io/js/script.js
-```
-
-Plausible is cookieless and collects no personal data, so it needs no consent
-banner — relevant for a government site under the Data Privacy Act. With either
-variable unset, no script loads and no requests are made.
-
-## Optional: Ilokano
-
-The language toggle is built but **hidden**, because the Ilokano strings in
-`src/content/i18n.ts` were drafted without native-speaker review. On a public
-LGU site, awkward translation is worse than showing English.
-
-To enable: have a native speaker correct every string in `ilocanoDraft`, then set
-`ILOCANO_READY = true`. Missing strings fall back to English automatically, so a
-partial translation degrades cleanly.
+Public copy and configuration defaults live in `src/content/site.ts`. Analytics
+remains disabled unless both `VITE_ANALYTICS_DOMAIN` and `VITE_ANALYTICS_SRC` are
+set. The Ilokano toggle remains hidden until every public string has been reviewed
+by a native speaker.

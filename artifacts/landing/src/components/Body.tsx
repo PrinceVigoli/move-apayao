@@ -1,13 +1,16 @@
 import {
   ArrowRight,
   BarChart3,
+  Building2,
   Check,
   ChevronDown,
   CloudRain,
   Download,
+  ExternalLink,
   FileSpreadsheet,
   History,
   Leaf,
+  Mail,
   MapPin,
   Navigation,
   Radio,
@@ -15,6 +18,7 @@ import {
   Star,
   TriangleAlert,
   Users,
+  Phone,
   type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";
@@ -25,6 +29,8 @@ import {
   features,
   footer,
   links,
+  publicContact,
+  storesAreLive,
   stakeholders,
 } from "@/content/site";
 import { BrandLockup } from "@/components/Brand";
@@ -91,11 +97,18 @@ export function Coverage() {
                 <div>
                   <p className="eyebrow text-primary">Live coverage</p>
                   <h3 className="mt-1 text-xl font-bold">
-                    {isLoading ? "Loading active loop..." : featuredLoop?.route.name ?? "No active loop"}
+                    {isLoading
+                      ? "Loading active loop..."
+                      : (featuredLoop?.route.name ?? "No active loop")}
                   </h3>
                 </div>
                 <span className="live-badge">
-                  <span /> {error ? "Route unavailable" : featuredLoop ? "Published route" : "Not configured"}
+                  <span />{" "}
+                  {error
+                    ? "Route unavailable"
+                    : featuredLoop
+                      ? "Published route"
+                      : "Not configured"}
                 </span>
               </div>
               <CoverageMap loop={featuredLoop} />
@@ -221,7 +234,7 @@ export function Stakeholders() {
             <p className="mt-6 max-w-xl text-base leading-7 text-white/65">
               {stakeholders.body}
             </p>
-            {links.dashboard !== "#" && (
+            {links.dashboard && (
               <a href={links.dashboard} className="button button-light mt-9">
                 {stakeholders.cta}
                 <ArrowRight size={17} />
@@ -323,12 +336,74 @@ export function Faq() {
   );
 }
 
+export function Contact() {
+  return (
+    <section id="contact" className="section-space bg-background">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8">
+        <Reveal>
+          <div className="contact-panel">
+            <div>
+              <p className="eyebrow text-primary">Contact and support</p>
+              <h2 className="display mt-4 max-w-xl text-4xl sm:text-5xl">
+                A local team behind every trip.
+              </h2>
+              <p className="mt-5 max-w-xl leading-7 text-muted-foreground">
+                Ask about pilot access, driver applications, bookings,
+                incidents, or your personal data. Never send a password or
+                one-time code by email.
+              </p>
+            </div>
+            <div className="contact-grid">
+              <a href={links.email} className="contact-card">
+                <span>
+                  <Mail size={20} />
+                </span>
+                <small>Service support</small>
+                <strong>{publicContact.supportEmail}</strong>
+              </a>
+              {links.phone ? (
+                <a href={links.phone} className="contact-card">
+                  <span>
+                    <Phone size={20} />
+                  </span>
+                  <small>Phone</small>
+                  <strong>{publicContact.phone}</strong>
+                </a>
+              ) : (
+                <div className="contact-card">
+                  <span>
+                    <Building2 size={20} />
+                  </span>
+                  <small>Visit</small>
+                  <strong>{publicContact.address}</strong>
+                </div>
+              )}
+              <a
+                href={links.officialWebsite}
+                target="_blank"
+                rel="noreferrer"
+                className="contact-card"
+              >
+                <span>
+                  <ExternalLink size={20} />
+                </span>
+                <small>Official LGU website</small>
+                <strong>lgupudtol.ph</strong>
+              </a>
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
 export function Footer() {
   return (
     <footer className="bg-background">
       <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8">
         <Reveal>
-          <div className="download-banner">
+          <div id="download" className="download-banner">
             <div>
               <p className="eyebrow text-accent">Ready when you are</p>
               <h2 className="display mt-3 text-3xl text-white sm:text-4xl">
@@ -337,19 +412,21 @@ export function Footer() {
             </div>
             <div className="download-actions flex flex-wrap gap-3">
               <a href={links.passengerAndroid} className="button button-accent">
-                <Download size={17} /> Passenger app
+                <Download size={17} />{" "}
+                {storesAreLive ? "Passenger app" : "Passenger pilot access"}
               </a>
               <a
                 href={links.driverAndroid}
                 className="button button-dark-outline"
               >
-                Driver app <ArrowRight size={17} />
+                {storesAreLive ? "Driver app" : "Driver pilot access"}{" "}
+                <ArrowRight size={17} />
               </a>
             </div>
           </div>
         </Reveal>
 
-        <div className="grid gap-10 py-14 md:grid-cols-[1.4fr_0.8fr_0.8fr]">
+        <div className="grid gap-10 py-14 md:grid-cols-[1.25fr_0.75fr_0.75fr_0.75fr]">
           <div>
             <BrandLockup />
             <p className="mt-5 max-w-sm text-sm leading-6 text-muted-foreground">
@@ -379,8 +456,33 @@ export function Footer() {
             <p className="eyebrow text-foreground">Contact</p>
             <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
               <li>{footer.org}</li>
-              {footer.contactLabel && <li><a href={links.email}>{footer.contactLabel}</a></li>}
-              {footer.phoneLabel && <li><a href={links.phone}>{footer.phoneLabel}</a></li>}
+              {footer.contactLabel && (
+                <li>
+                  <a href={links.email}>{footer.contactLabel}</a>
+                </li>
+              )}
+              {footer.phoneLabel && (
+                <li>
+                  <a href={links.phone}>{footer.phoneLabel}</a>
+                </li>
+              )}
+            </ul>
+          </div>
+
+          <div>
+            <p className="eyebrow text-foreground">Legal</p>
+            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+              <li>
+                <a href="/terms">Terms of Service</a>
+              </li>
+              <li>
+                <a href="/privacy">Privacy Notice</a>
+              </li>
+              {links.documentation && (
+                <li>
+                  <a href={links.documentation}>Documentation</a>
+                </li>
+              )}
             </ul>
           </div>
         </div>

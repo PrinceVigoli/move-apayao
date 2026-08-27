@@ -86,7 +86,7 @@ export const RegisterBody = z
     acceptedTerms: z.literal(true, {
       message: "You must accept the Terms and Privacy Policy",
     }),
-    termsVersion: z.string().trim().min(1).max(40).default("2026-08-19"),
+    termsVersion: z.string().trim().min(1).max(40).default("2026-08-27"),
   })
   .superRefine((body, ctx) => {
     if (body.role !== "driver_applicant") return;

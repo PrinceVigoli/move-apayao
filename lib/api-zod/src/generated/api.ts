@@ -48,7 +48,7 @@ export const ListInternalRunbooksResponse = zod.object({
  */
 export const registerUserBodyPasswordMin = 8;
 
-export const registerUserBodyTermsVersionDefault = `2026-08-19`;
+export const registerUserBodyTermsVersionDefault = `2026-08-27`;
 
 export const RegisterUserBody = zod.object({
   "email": zod.string().email(),
@@ -2236,5 +2236,4 @@ export const IngestGpsLocationBody = zod.object({
 })
 
 export const IngestGpsLocationResponse = zod.record(zod.string(), zod.unknown())
-
 

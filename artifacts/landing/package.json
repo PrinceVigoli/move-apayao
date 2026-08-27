@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
+    "build": "vite build && node scripts/generate-static-routes.mjs",
+    "build:production": "node scripts/validate-production.mjs && vite build --mode production && node scripts/generate-static-routes.mjs",
     "serve": "vite preview --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

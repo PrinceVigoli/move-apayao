@@ -29,7 +29,8 @@ let featuredLoopPromise: Promise<FeaturedLoop | null> | null = null;
 
 async function loadFeaturedLoop(): Promise<FeaturedLoop | null> {
   const listResponse = await fetch(`${API_BASE}/api/loops`);
-  if (!listResponse.ok) throw new Error(`Loop list failed (${listResponse.status})`);
+  if (!listResponse.ok)
+    throw new Error(`Loop list failed (${listResponse.status})`);
   const list = (await listResponse.json()) as { routes?: PublicLoopRoute[] };
   const first = list.routes?.[0];
   if (!first) return null;
@@ -37,7 +38,8 @@ async function loadFeaturedLoop(): Promise<FeaturedLoop | null> {
   // Published loops store their road geometry. Do not recompute Google Routes
   // on every public page load; this keeps the landing page to one map load.
   const detailResponse = await fetch(`${API_BASE}/api/loops/${first.id}`);
-  if (!detailResponse.ok) throw new Error(`Loop detail failed (${detailResponse.status})`);
+  if (!detailResponse.ok)
+    throw new Error(`Loop detail failed (${detailResponse.status})`);
   return (await detailResponse.json()) as FeaturedLoop;
 }
 
@@ -54,7 +56,10 @@ export function useFeaturedLoop() {
         if (!cancelled) setData(loop);
       })
       .catch((reason: unknown) => {
-        if (!cancelled) setError(reason instanceof Error ? reason : new Error("Loop unavailable"));
+        if (!cancelled)
+          setError(
+            reason instanceof Error ? reason : new Error("Loop unavailable"),
+          );
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -67,7 +72,9 @@ export function useFeaturedLoop() {
   return { data, isLoading, error };
 }
 
-export function decodeGooglePolyline(encoded: string): Array<{ lat: number; lng: number }> {
+export function decodeGooglePolyline(
+  encoded: string,
+): Array<{ lat: number; lng: number }> {
   const path: Array<{ lat: number; lng: number }> = [];
   let index = 0;
   let latitude = 0;

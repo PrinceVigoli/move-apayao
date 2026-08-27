@@ -17,6 +17,7 @@ import { useGetProfile } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDriverStatus } from "@/contexts/DriverStatusContext";
 import { useRouter } from "expo-router";
+import { openLegalDocument, openSupportEmail } from "@/lib/legal";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -150,8 +151,14 @@ export default function ProfileScreen() {
           style={[styles.manageRow, { borderColor: colors.border }]}
         >
           <Feather name="shield" size={18} color={colors.primaryStrong} />
-          <Text style={[styles.manageText, { color: colors.foreground }]}>Account & security</Text>
-          <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          <Text style={[styles.manageText, { color: colors.foreground }]}>
+            Account & security
+          </Text>
+          <Feather
+            name="chevron-right"
+            size={18}
+            color={colors.mutedForeground}
+          />
         </Pressable>
 
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -166,6 +173,58 @@ export default function ProfileScreen() {
             label="License"
             value={dp?.licenseNumber || "—"}
           />
+        </Card>
+
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+          Legal & support
+        </Text>
+        <Card style={styles.legalCard}>
+          <Pressable
+            onPress={() => openLegalDocument("terms")}
+            style={[styles.legalRow, { borderBottomColor: colors.border }]}
+          >
+            <Feather name="file-text" size={18} color={colors.primaryStrong} />
+            <Text style={[styles.manageText, { color: colors.foreground }]}>
+              Terms of Service
+            </Text>
+            <Feather
+              name="external-link"
+              size={17}
+              color={colors.mutedForeground}
+            />
+          </Pressable>
+          <Pressable
+            onPress={() => openLegalDocument("privacy")}
+            style={[styles.legalRow, { borderBottomColor: colors.border }]}
+          >
+            <Feather name="lock" size={18} color={colors.primaryStrong} />
+            <Text style={[styles.manageText, { color: colors.foreground }]}>
+              Privacy Notice
+            </Text>
+            <Feather
+              name="external-link"
+              size={17}
+              color={colors.mutedForeground}
+            />
+          </Pressable>
+          <Pressable
+            onPress={() => openSupportEmail()}
+            style={styles.legalRowLast}
+          >
+            <Feather
+              name="help-circle"
+              size={18}
+              color={colors.primaryStrong}
+            />
+            <Text style={[styles.manageText, { color: colors.foreground }]}>
+              Help & support
+            </Text>
+            <Feather
+              name="external-link"
+              size={17}
+              color={colors.mutedForeground}
+            />
+          </Pressable>
         </Card>
 
         <Button
@@ -238,4 +297,20 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   manageText: { flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  legalCard: { padding: 0, marginBottom: 20 },
+  legalRow: {
+    minHeight: 52,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderBottomWidth: 1,
+  },
+  legalRowLast: {
+    minHeight: 52,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
 });

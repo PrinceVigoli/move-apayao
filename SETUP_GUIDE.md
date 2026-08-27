@@ -15,21 +15,22 @@ It's a **pnpm monorepo** with several independently runnable apps, plus shared c
 design sandbox, `artifacts/mockup-sandbox`, has been removed from this build —
 it wasn't part of the product and nothing else depended on it):
 
-| Piece | What it is | Where it runs |
-|---|---|---|
-| `artifacts/api-server` | Express 5 API, talks to Postgres (Drizzle ORM); handles authentication itself | Node process, port 5000 |
-| `artifacts/gis-service` | Private GPS/PostGIS intelligence service | Node process, loopback port 5100 |
-| `artifacts/dashboard` | Admin web dashboard (Vite + React) | Static site once built |
-| `artifacts/mobile` | Passenger app (Expo / React Native) | Built via Expo/EAS, not hosted on a server |
-| `artifacts/driver` | Driver app (Expo / React Native) | Built via Expo/EAS, not hosted on a server |
-| `artifacts/landing` | Public landing site (Vite + React) | Static site once built |
-| `artifacts/documentation` | Public implementation and operations documentation (Vite + React) | Static site once built |
-| `lib/` | Shared DB schema, OpenAPI spec, generated API client/types | Used by the pieces above, not deployed on its own |
+| Piece                     | What it is                                                                    | Where it runs                                     |
+| ------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------- |
+| `artifacts/api-server`    | Express 5 API, talks to Postgres (Drizzle ORM); handles authentication itself | Node process, port 5000                           |
+| `artifacts/gis-service`   | Private GPS/PostGIS intelligence service                                      | Node process, loopback port 5100                  |
+| `artifacts/dashboard`     | Admin web dashboard (Vite + React)                                            | Static site once built                            |
+| `artifacts/mobile`        | Passenger app (Expo / React Native)                                           | Built via Expo/EAS, not hosted on a server        |
+| `artifacts/driver`        | Driver app (Expo / React Native)                                              | Built via Expo/EAS, not hosted on a server        |
+| `artifacts/landing`       | Public landing site (Vite + React)                                            | Static site once built                            |
+| `artifacts/documentation` | Public implementation and operations documentation (Vite + React)             | Static site once built                            |
+| `lib/`                    | Shared DB schema, OpenAPI spec, generated API client/types                    | Used by the pieces above, not deployed on its own |
 
 For the full system you host the API server, private GIS service, and two static websites.
 The mobile apps are distributed through Expo/App Store/Play Store.
 
 Data layer:
+
 - **Postgres + PostGIS** — the actual database plus spatial GPS and route data
 - **Authentication** — handled by the API server against your own Postgres. There is no third-party auth service to sign up for.
 - **Redis** — required for matching, live location, streaming, and shared rate limits
@@ -40,18 +41,19 @@ Data layer:
 
 You already have **GitHub** for source control. Here's what else you need:
 
-| Need | Why | You have it? |
-|---|---|---|
-| GitHub account | Hosts the repo, connects to DigitalOcean for auto-deploy | ✅ |
-| **DigitalOcean account** | Hosting | Need to create |
-| Docker Desktop | Runs Postgres/Redis locally without installing them on your machine | Need to install |
-| VS Code | Editor, terminal, debugging | Need to install (if not already) |
-| Node.js 22+ (repo targets 24) | Runs the actual app code | Need to install |
-| pnpm | Package manager this repo uses | Need to install |
+| Need                          | Why                                                                 | You have it?                     |
+| ----------------------------- | ------------------------------------------------------------------- | -------------------------------- |
+| GitHub account                | Hosts the repo, connects to DigitalOcean for auto-deploy            | ✅                               |
+| **DigitalOcean account**      | Hosting                                                             | Need to create                   |
+| Docker Desktop                | Runs Postgres/Redis locally without installing them on your machine | Need to install                  |
+| VS Code                       | Editor, terminal, debugging                                         | Need to install (if not already) |
+| Node.js 22+ (repo targets 24) | Runs the actual app code                                            | Need to install                  |
+| pnpm                          | Package manager this repo uses                                      | Need to install                  |
 
 Install links: [Docker Desktop](https://www.docker.com/products/docker-desktop/), [VS Code](https://code.visualstudio.com/), [Node.js](https://nodejs.org/) (get 24.x to match the repo).
 
 Once Node is installed, get pnpm:
+
 ```bash
 npm install -g pnpm
 ```
@@ -73,6 +75,7 @@ pnpm install
 ```
 
 If pnpm blocks a native build script the first time, run:
+
 ```bash
 pnpm approve-builds esbuild
 ```
@@ -86,6 +89,7 @@ docker compose up -d
 ```
 
 This starts:
+
 - Postgres on `localhost:5432` (db `move_apayao`, user `postgres`; password defaults to
   `postgres` locally and can be changed by setting `POSTGRES_PASSWORD` before `docker compose up`)
 - Redis on `localhost:6379`
@@ -104,6 +108,7 @@ cp artifacts/api-server/.env.example artifacts/api-server/.env.local
 ```
 
 Edit `artifacts/api-server/.env.local`:
+
 - `DATABASE_URL=postgres://postgres:postgres@localhost:5432/move_apayao` (matches the Docker Postgres above)
 - `JWT_SECRET` — any random string of 32+ characters. Generate one with:
   `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`
@@ -140,30 +145,38 @@ pnpm --filter @workspace/db run migrate
 Each of these runs in its own VS Code terminal tab:
 
 **API server:**
+
 ```bash
 pnpm --filter @workspace/api-server run dev
 ```
+
 Check it: `curl http://localhost:5000/api/healthz` returns `{"status":"ok",...}`
 only when Postgres, Redis, Google Routes configuration, and the configured GIS
 service are ready. `/api/livez` checks the Node process only.
 
 **Private GIS service:**
+
 ```bash
 pnpm --filter @workspace/gis-service run dev
 ```
+
 Check it at `http://127.0.0.1:5100/healthz`. Keep port 5100 private; dashboard clients
 must use the API server and never call this service directly.
 
 **Dashboard:**
+
 ```bash
 pnpm --filter @workspace/dashboard run dev
 ```
+
 Open [http://localhost:5173](http://localhost:5173).
 
 **Documentation portal:**
+
 ```bash
 pnpm --filter @workspace/documentation run dev
 ```
+
 Open [http://localhost:5176](http://localhost:5176). The portal intentionally
 contains no credentials, private tokens, or personal operational data.
 
@@ -188,9 +201,11 @@ pnpm.cmd user:set-password -- --email=user@example.com
 ```
 
 **Mobile app:**
+
 ```bash
 pnpm --filter @workspace/mobile run dev
 ```
+
 These apps require a development build; Expo Go does not include the native
 Google Maps/background-location configuration. Build and install a dev client,
 then start Metro:
@@ -319,13 +334,13 @@ Sign up at [digitalocean.com](https://www.digitalocean.com/). You'll need a paym
 
 You have two reasonable paths. Given you're already comfortable with Docker, here's how they compare:
 
-| | **App Platform** (recommended to start) | **Droplet + Docker Compose** |
-|---|---|---|
-| What it is | Managed PaaS — connect your GitHub repo, DO builds & runs it | A plain Linux VM you manage yourself |
-| Setup effort | Low — mostly clicking through a wizard | Higher — you SSH in, install Docker, run compose yourself |
-| Matches your local Docker workflow | Partially (it still uses your Dockerfile if you give it one) | Exactly — same `docker compose` commands as local |
-| Ongoing maintenance | DO handles OS patching, SSL, restarts | You handle all of it |
-| Cost (2026 pricing) | ~$5/mo per running service (API server), dashboard can often run as a **free static site** | Droplets start around $4–6/mo, but you're running one VM for everything |
+|                                    | **App Platform** (recommended to start)                                                    | **Droplet + Docker Compose**                                            |
+| ---------------------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| What it is                         | Managed PaaS — connect your GitHub repo, DO builds & runs it                               | A plain Linux VM you manage yourself                                    |
+| Setup effort                       | Low — mostly clicking through a wizard                                                     | Higher — you SSH in, install Docker, run compose yourself               |
+| Matches your local Docker workflow | Partially (it still uses your Dockerfile if you give it one)                               | Exactly — same `docker compose` commands as local                       |
+| Ongoing maintenance                | DO handles OS patching, SSL, restarts                                                      | You handle all of it                                                    |
+| Cost (2026 pricing)                | ~$5/mo per running service (API server), dashboard can often run as a **free static site** | Droplets start around $4–6/mo, but you're running one VM for everything |
 
 **Recommendation:** Start with **App Platform** — it's less to manage and plays nicely with GitHub auto-deploy. If you later want full server control (SSH access, custom cron jobs, etc.), move the API server to a Droplet using the `Dockerfile.api-server` included with this guide — the same container runs in both places. Note: this Dockerfile uses `pnpm install --frozen-lockfile`, which requires `pnpm-lock.yaml` to exactly match `package.json` — I regenerated the lockfile after adding new dependencies during the audit fixes, so this build should work as-is; if you add any dependency yourself later, run `pnpm install` locally first to update the lockfile before rebuilding the image.
 
@@ -361,7 +376,26 @@ Since authentication now runs against your own database, whichever Postgres you 
 
 This component can usually run on App Platform's **free static-site tier**.
 
-### 4.6 Deploy the documentation portal (App Platform, static site)
+### 4.6 Deploy the public landing and legal site
+
+1. Add a **Static Site** component with the repository root as its source.
+2. Build command: `pnpm install --frozen-lockfile && pnpm --filter @workspace/landing run build:production`
+3. Output directory: `artifacts/landing/dist`
+4. Start from `artifacts/landing/.env.example` and configure `VITE_SITE_URL`,
+   `VITE_API_URL`, `VITE_DASHBOARD_URL`, the referrer-restricted browser Maps
+   key, support and approved privacy-contact addresses, and any pilot/store URLs.
+5. Configure a catch-all document of `index.html` if the host does not serve
+   directory indexes. The build also emits direct `/terms`, `/privacy`, and
+   `/reset-password` route files; the included `.htaccess` covers Apache/Hostinger.
+6. Add the landing origin to `CORS_ALLOWED_ORIGINS` on the API and test all three
+   direct routes from a private browser window before publishing the app links.
+
+The production build intentionally fails if the permanent HTTPS domain,
+dashboard origin, Maps key, support email, or privacy-contact email is missing.
+The Terms and Privacy Notice must be approved by the operator's DPO or legal
+adviser before public launch.
+
+### 4.7 Deploy the documentation portal (App Platform, static site)
 
 1. Add another **Static Site** component from the same repository.
 2. Keep the source directory at the repository root so pnpm can resolve the workspace.
@@ -398,6 +432,7 @@ Nothing to deploy to DigitalOcean here. Point `EXPO_PUBLIC_API_URL` at your depl
 ### 4.9 Droplet alternative (if/when you want it)
 
 If you later move the API server to a Droplet instead of App Platform:
+
 1. Create a Droplet (Ubuntu, Basic plan is enough to start).
 2. SSH in, install Docker following DigitalOcean's own "Docker on Ubuntu" guide.
 3. Copy the repo (or just `Dockerfile.api-server` + `.env`) to the Droplet, `git clone` your repo.
@@ -409,29 +444,32 @@ If you later move the API server to a Droplet instead of App Platform:
 
 ## 5. Reference: environment variables
 
-| Variable | Required? | Where it comes from |
-|---|---|---|
-| `PORT` | Yes | You choose locally (5000); App Platform sets it automatically |
-| `DATABASE_URL` | Yes | Local Docker Postgres, or your managed Postgres provider |
-| `JWT_SECRET` | Yes | Generate: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"` |
-| `GIS_SERVICE_URL` | Yes for GIS | Private internal origin, locally `http://127.0.0.1:5100` |
-| `GIS_SERVICE_TOKEN` | Yes for GIS | Independent random secret, minimum 32 characters |
-| `SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` | No | Password reset email; links are logged if unset |
-| `CORS_ALLOWED_ORIGINS` | Yes (once any browser client — dashboard, mobile web preview — calls the API) | Comma-separated list of allowed origins, e.g. your deployed dashboard's URL |
-| `REDIS_URL` | Yes for dispatch/production | Local Docker Redis, or managed Redis/Valkey in production |
-| `GOOGLE_PLACES_API_KEY` | Yes for place search | Server-only Places API key |
-| `GOOGLE_MAPS_SERVER_API_KEY` | Yes for fares/routes | Server-only Routes API key |
-| `PILOT_SERVICE_AREA_ENABLED` | No | Defaults to `true`; set `false` only for development outside the pilot area |
-| `PILOT_SERVICE_AREA_CENTER_LAT` / `PILOT_SERVICE_AREA_CENTER_LON` | No | Center of the point-to-point pilot service radius |
-| `PILOT_SERVICE_AREA_RADIUS_KM` | No | Defaults to 20 km around the Pudtol-Luna pilot corridor |
-| `PILOT_MIN_TRIP_DISTANCE_KM` | No | Rejects accidental same-point bookings; defaults to 0.2 km |
-| `VITE_API_URL` | Yes when web/API origins differ | Public API origin for dashboard and landing builds |
-| `VITE_GOOGLE_MAPS_BROWSER_API_KEY` | Yes for web maps | Referrer-restricted Maps JavaScript API key |
-| `GOOGLE_MAPS_ANDROID_API_KEY` / `GOOGLE_MAPS_IOS_API_KEY` | Yes for native maps | EAS build secrets; platform/app restricted |
-| `TRUST_PROXY_HOPS` | No | `0` direct/ngrok; `1` with one trusted proxy |
-| `OPENWEATHERMAP_API_KEY` | No | Only if you use the weather feature |
-| `READER_API_KEY` | No | Optional integration |
-| `LOG_LEVEL` | No | `info` is a sane default |
+| Variable                                                          | Required?                                                                     | Where it comes from                                                                                                |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `PORT`                                                            | Yes                                                                           | You choose locally (5000); App Platform sets it automatically                                                      |
+| `DATABASE_URL`                                                    | Yes                                                                           | Local Docker Postgres, or your managed Postgres provider                                                           |
+| `JWT_SECRET`                                                      | Yes                                                                           | Generate: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`                         |
+| `GIS_SERVICE_URL`                                                 | Yes for GIS                                                                   | Private internal origin, locally `http://127.0.0.1:5100`                                                           |
+| `GIS_SERVICE_TOKEN`                                               | Yes for GIS                                                                   | Independent random secret, minimum 32 characters                                                                   |
+| `SMTP_HOST`/`SMTP_USER`/`SMTP_PASS`                               | No                                                                            | Password reset email; links are logged if unset                                                                    |
+| `CORS_ALLOWED_ORIGINS`                                            | Yes (once any browser client — dashboard, mobile web preview — calls the API) | Comma-separated list of allowed origins, e.g. your deployed dashboard's URL                                        |
+| `REDIS_URL`                                                       | Yes for dispatch/production                                                   | Local Docker Redis, or managed Redis/Valkey in production                                                          |
+| `GOOGLE_PLACES_API_KEY`                                           | Yes for place search                                                          | Server-only Places API key                                                                                         |
+| `GOOGLE_MAPS_SERVER_API_KEY`                                      | Yes for fares/routes                                                          | Server-only Routes API key                                                                                         |
+| `PILOT_SERVICE_AREA_ENABLED`                                      | No                                                                            | Defaults to `true`; set `false` only for development outside the pilot area                                        |
+| `PILOT_SERVICE_AREA_CENTER_LAT` / `PILOT_SERVICE_AREA_CENTER_LON` | No                                                                            | Center of the point-to-point pilot service radius                                                                  |
+| `PILOT_SERVICE_AREA_RADIUS_KM`                                    | No                                                                            | Defaults to 20 km around the Pudtol-Luna pilot corridor                                                            |
+| `PILOT_MIN_TRIP_DISTANCE_KM`                                      | No                                                                            | Rejects accidental same-point bookings; defaults to 0.2 km                                                         |
+| `VITE_API_URL`                                                    | Yes when web/API origins differ                                               | Public API origin for dashboard and landing builds                                                                 |
+| `VITE_GOOGLE_MAPS_BROWSER_API_KEY`                                | Yes for web maps                                                              | Referrer-restricted Maps JavaScript API key                                                                        |
+| `VITE_SITE_URL`                                                   | Landing production                                                            | Permanent HTTPS origin used for canonical links, social previews, robots, and sitemap                              |
+| `VITE_SUPPORT_EMAIL` / `VITE_PRIVACY_EMAIL`                       | Landing production                                                            | Approved public support and privacy-request contacts                                                               |
+| `EXPO_PUBLIC_LEGAL_BASE_URL`                                      | Mobile production                                                             | Permanent landing origin that hosts `/terms` and `/privacy`; pilot builds fall back to the shared API/ngrok origin |
+| `GOOGLE_MAPS_ANDROID_API_KEY` / `GOOGLE_MAPS_IOS_API_KEY`         | Yes for native maps                                                           | EAS build secrets; platform/app restricted                                                                         |
+| `TRUST_PROXY_HOPS`                                                | No                                                                            | `0` direct/ngrok; `1` with one trusted proxy                                                                       |
+| `OPENWEATHERMAP_API_KEY`                                          | No                                                                            | Only if you use the weather feature                                                                                |
+| `READER_API_KEY`                                                  | No                                                                            | Optional integration                                                                                               |
+| `LOG_LEVEL`                                                       | No                                                                            | `info` is a sane default                                                                                           |
 
 ---
 
