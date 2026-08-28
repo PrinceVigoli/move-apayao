@@ -22,7 +22,6 @@ const siteUrl = secureUrl("VITE_SITE_URL");
 required("VITE_SUPPORT_EMAIL");
 required("VITE_PRIVACY_EMAIL");
 required("VITE_GOOGLE_MAPS_BROWSER_API_KEY");
-secureUrl("VITE_DASHBOARD_URL");
 
 if (siteUrl && /localhost|ngrok-free|example\.(com|org)/i.test(siteUrl)) {
   errors.push(

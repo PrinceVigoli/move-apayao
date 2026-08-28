@@ -50,7 +50,6 @@ export const links = {
       publicContact.supportEmail,
       "MOVE Apayao Driver iOS pilot access",
     ),
-  dashboard: value(import.meta.env.VITE_DASHBOARD_URL),
   documentation: value(import.meta.env.VITE_DOCUMENTATION_URL),
   facebook: value(import.meta.env.VITE_FACEBOOK_URL),
   officialWebsite: "https://lgupudtol.ph/",
@@ -187,7 +186,6 @@ export const stakeholders = {
       body: "Star ratings and written comments attached to the specific trip and driver they describe.",
     },
   ],
-  cta: "Open the admin dashboard",
 };
 
 export const faqs = [

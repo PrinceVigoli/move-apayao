@@ -382,8 +382,9 @@ This component can usually run on App Platform's **free static-site tier**.
 2. Build command: `pnpm install --frozen-lockfile && pnpm --filter @workspace/landing run build:production`
 3. Output directory: `artifacts/landing/dist`
 4. Start from `artifacts/landing/.env.example` and configure `VITE_SITE_URL`,
-   `VITE_API_URL`, `VITE_DASHBOARD_URL`, the referrer-restricted browser Maps
-   key, support and approved privacy-contact addresses, and any pilot/store URLs.
+   `VITE_API_URL`, the referrer-restricted browser Maps key, support and approved
+   privacy-contact addresses, and any pilot/store URLs. The administrative
+   dashboard address is intentionally not exposed from the public landing site.
 5. Configure a catch-all document of `index.html` if the host does not serve
    directory indexes. The build also emits direct `/terms`, `/privacy`, and
    `/reset-password` route files; the included `.htaccess` covers Apache/Hostinger.

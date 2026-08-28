@@ -23,6 +23,15 @@ export default defineConfig({
     port: Number(process.env.PORT ?? 5176),
     host: "0.0.0.0",
     allowedHosts: configuredHosts,
+    // Keep local development aligned with the dashboard and landing site:
+    // browser requests stay same-origin while Vite forwards only /api calls
+    // to the private API server.
+    proxy: {
+      "/api": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+      },
+    },
   },
   preview: {
     port: Number(process.env.PORT ?? 5176),

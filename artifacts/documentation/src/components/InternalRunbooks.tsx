@@ -1,6 +1,6 @@
 import { KeyRound, LoaderCircle, LockKeyhole, LogOut, ShieldCheck } from "lucide-react";
 import { type FormEvent, useState } from "react";
-import { apiUrl } from "../lib/api";
+import { apiUrl, readApiJson } from "../lib/api";
 
 type Runbook = { id: string; title: string; purpose: string; steps: string[]; escalation: string };
 type RunbookResponse = { version: string; updatedAt: string; runbooks: Runbook[] };
@@ -17,7 +17,7 @@ export function InternalRunbooks() {
   const loadRunbooks = async (accessToken: string) => {
     const response = await fetch(apiUrl("/docs/internal/runbooks"), { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store" });
     if (!response.ok) throw new Error(response.status === 403 ? "Only developer and superadmin accounts can open these runbooks." : "Your secure session expired or the API is unavailable.");
-    setRunbooks(await response.json() as RunbookResponse);
+    setRunbooks(await readApiJson<RunbookResponse>(response));
   };
 
   const signIn = async (event: FormEvent) => {
@@ -26,7 +26,7 @@ export function InternalRunbooks() {
     setError("");
     try {
       const response = await fetch(apiUrl("/auth/login"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identifier, password }) });
-      const result = await response.json() as { accessToken?: string; user?: { role?: string; fullName?: string | null; email?: string }; error?: string };
+      const result = await readApiJson<{ accessToken?: string; user?: { role?: string; fullName?: string | null; email?: string }; error?: string }>(response);
       if (!response.ok || !result.accessToken || !result.user) throw new Error(result.error ?? "Sign-in failed.");
       if (!result.user.role || !["developer", "superadmin"].includes(result.user.role)) throw new Error("Only developer and superadmin accounts can open these runbooks.");
       await loadRunbooks(result.accessToken);

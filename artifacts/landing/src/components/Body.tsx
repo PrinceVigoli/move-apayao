@@ -234,12 +234,6 @@ export function Stakeholders() {
             <p className="mt-6 max-w-xl text-base leading-7 text-white/65">
               {stakeholders.body}
             </p>
-            {links.dashboard && (
-              <a href={links.dashboard} className="button button-light mt-9">
-                {stakeholders.cta}
-                <ArrowRight size={17} />
-              </a>
-            )}
           </Reveal>
 
           <div>
