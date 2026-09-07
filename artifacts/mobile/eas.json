@@ -18,6 +18,9 @@
       "environment": "preview",
       "node": "22.23.1",
       "pnpm": "11.17.0",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.moveapayao.com"
+      },
       "distribution": "internal",
       "android": {
         "buildType": "apk"
@@ -27,6 +30,9 @@
       "environment": "production",
       "node": "22.23.1",
       "pnpm": "11.17.0",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.moveapayao.com"
+      },
       "autoIncrement": true
     }
   },
