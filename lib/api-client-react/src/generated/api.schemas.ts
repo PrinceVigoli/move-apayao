@@ -105,10 +105,23 @@ export interface RegisterUserBody {
   termsVersion?: string;
 }
 
+/**
+ * Dashboard sessions keep the refresh token in an HttpOnly cookie.
+ */
+export type LoginBodyClient = typeof LoginBodyClient[keyof typeof LoginBodyClient];
+
+
+export const LoginBodyClient = {
+  mobile: 'mobile',
+  dashboard: 'dashboard',
+} as const;
+
 export interface LoginBody {
   /** Email address or phone number. */
   identifier: string;
   password: string;
+  /** Dashboard sessions keep the refresh token in an HttpOnly cookie. */
+  client?: LoginBodyClient;
 }
 
 export interface RefreshBody {
@@ -855,14 +868,22 @@ export interface LoopStop {
   etaMinutes?: number | null;
 }
 
+export type LoopVehicleLocationSource = typeof LoopVehicleLocationSource[keyof typeof LoopVehicleLocationSource];
+
+
+export const LoopVehicleLocationSource = {
+  iot_gps: 'iot_gps',
+  smartphone_gps: 'smartphone_gps',
+} as const;
+
 export interface LoopVehicle {
   id: number;
   routeId: number;
-  driverId: string;
   status: string;
   currentLat?: number | null;
   currentLon?: number | null;
   updatedAt: string;
+  locationSource: LoopVehicleLocationSource;
   distanceFromUserKm?: number | null;
   etaFromUserMinutes?: number | null;
 }
@@ -882,6 +903,24 @@ export interface LoopVehiclesResponse {
 
 export interface LoopVehicleResponse {
   vehicle: LoopVehicle;
+}
+
+export interface LoopDriverAssignment {
+  id: number;
+  routeId: number;
+  driverId: string;
+  driverName?: string | null;
+  plateNumber?: string | null;
+  status: string;
+  updatedAt: string;
+}
+
+export interface LoopDriverAssignmentsResponse {
+  assignments: LoopDriverAssignment[];
+}
+
+export interface AssignLoopDriverBody {
+  driverId: string;
 }
 
 export type CreateLoopRouteBodyStopsItem = {
@@ -1276,6 +1315,10 @@ includeRoute?: boolean;
 export type GetLoopVehiclesParams = {
 lat?: number;
 lon?: number;
+};
+
+export type AssignLoopDriver201 = {
+  assignment: LoopDriverAssignment;
 };
 
 export type ListTransactionsParams = {

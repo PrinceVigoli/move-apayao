@@ -2,6 +2,10 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { startTripSweeper } from "./lib/trip-sweeper";
 import { purgeExpiredRefreshTokens } from "./lib/tokens";
+import { validateRuntimeEnvironment } from "./lib/env";
+import { startPushReceiptSweeper } from "./lib/push";
+
+validateRuntimeEnvironment();
 
 const rawPort = process.env["PORT"];
 
@@ -28,6 +32,7 @@ app.listen(port, (err) => {
   // Background rescue loop for trips that couldn't be matched at booking
   // time (retries matching, expires stale requests). See lib/trip-sweeper.ts.
   startTripSweeper();
+  startPushReceiptSweeper();
 
   const purgeTokens = () => {
     purgeExpiredRefreshTokens()

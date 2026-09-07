@@ -11,10 +11,9 @@ import { logger } from "./logger";
  *   SMTP_PASS=your-app-password        <- Gmail requires an App Password
  *   SMTP_FROM="MOVE Apayao <no-reply@example.com>"
  *
- * If SMTP is not configured the app still runs; reset requests are accepted
- * and the link is written to the server log instead of being sent. That keeps
- * local development working without credentials, and makes a misconfigured
- * production server obvious in the logs rather than silently dropping mail.
+ * If SMTP is not configured in local development, reset requests are accepted
+ * but no message is delivered. Reset URLs contain bearer secrets and must
+ * never be written to logs. Production configuration validation requires SMTP.
  */
 
 let _transport: Transporter | null = null;
@@ -29,7 +28,7 @@ function getTransport(): Transporter | null {
   const pass = process.env.SMTP_PASS;
 
   if (!host || !user || !pass) {
-    logger.warn("SMTP not configured — password reset links will be logged, not emailed");
+    logger.warn("SMTP not configured - password reset email will not be delivered");
     return null;
   }
 
@@ -51,7 +50,7 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
   const transport = getTransport();
 
   if (!transport) {
-    logger.warn({ to, resetUrl }, "SMTP not configured — password reset link (dev only)");
+    logger.warn({ to }, "SMTP not configured - password reset email not delivered");
     return;
   }
 

@@ -58,7 +58,7 @@ export default function Overview() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard label="Active Trips" value={loading ? "—" : String(summary?.trips.inProgress ?? 0)} note="Currently in progress" icon={Activity} iconClass="bg-primary/10 text-primary" />
-        <MetricCard label="Completed Revenue" value={loading ? "—" : formatPHP(Number(summary?.trips.totalRevenue ?? 0))} note="All recorded completed trips" icon={Wallet} iconClass="bg-emerald-500/10 text-emerald-600" />
+        <MetricCard label="Recorded Fare" value={loading ? "—" : formatPHP(Number(summary?.trips.totalRevenue ?? 0))} note="Expected cash fare from completed trips; not reconciled receipts" icon={Wallet} iconClass="bg-emerald-500/10 text-emerald-600" />
         <MetricCard label="Active Drivers" value={fleet ? `${activeDrivers}/${totalDrivers}` : "—"} note={`${fleetShare}% of registered drivers online or on trip`} icon={CarFront} iconClass="bg-blue-500/10 text-blue-600" />
         <MetricCard label="Open Incidents" value={loading ? "—" : String(summary?.incidents.open ?? 0)} note={`${summary?.incidents.accidents ?? 0} accidents · ${summary?.incidents.floods ?? 0} floods`} icon={AlertTriangle} iconClass="bg-destructive/15 text-destructive" className="border-destructive/40 bg-destructive/5" />
       </div>

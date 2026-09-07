@@ -1070,6 +1070,75 @@ paths:
               schema:
                 $ref: "#/components/schemas/LoopVehicleResponse"
 
+  /admin/loops/{id}/vehicles:
+    get:
+      operationId: listLoopDriverAssignments
+      tags: [loops]
+      summary: List private driver assignments for a loop (admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Loop driver assignments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoopDriverAssignmentsResponse"
+    post:
+      operationId: assignLoopDriver
+      tags: [loops]
+      summary: Assign an approved driver to a loop (admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignLoopDriverBody"
+      responses:
+        "201":
+          description: Driver assigned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assignment:
+                    $ref: "#/components/schemas/LoopDriverAssignment"
+                required: [assignment]
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /admin/loops/{id}/vehicles/{vehicleId}:
+    delete:
+      operationId: unassignLoopDriver
+      tags: [loops]
+      summary: Remove a driver assignment from a loop (admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: vehicleId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Driver unassigned
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   # ── Wallet ───────────────────────────────────────────────────────────────────
 
   /wallet:
@@ -1768,6 +1837,10 @@ components:
           description: Email address or phone number.
         password:
           type: string
+        client:
+          type: string
+          enum: [mobile, dashboard]
+          description: Dashboard sessions keep the refresh token in an HttpOnly cookie.
       required: [identifier, password]
 
     RefreshBody:
@@ -2729,9 +2802,6 @@ components:
           type: integer
         routeId:
           type: integer
-        driverId:
-          type: string
-          format: uuid
         status:
           type: string
         currentLat:
@@ -2743,13 +2813,16 @@ components:
         updatedAt:
           type: string
           format: date-time
+        locationSource:
+          type: string
+          enum: [iot_gps, smartphone_gps]
         distanceFromUserKm:
           type: number
           nullable: true
         etaFromUserMinutes:
           type: integer
           nullable: true
-      required: [id, routeId, driverId, status, updatedAt]
+      required: [id, routeId, status, updatedAt, locationSource]
 
     ListLoopRoutesResponse:
       type: object
@@ -2786,6 +2859,33 @@ components:
         vehicle:
           $ref: "#/components/schemas/LoopVehicle"
       required: [vehicle]
+
+    LoopDriverAssignment:
+      type: object
+      properties:
+        id: { type: integer }
+        routeId: { type: integer }
+        driverId: { type: string, format: uuid }
+        driverName: { type: string, nullable: true }
+        plateNumber: { type: string, nullable: true }
+        status: { type: string }
+        updatedAt: { type: string, format: date-time }
+      required: [id, routeId, driverId, status, updatedAt]
+
+    LoopDriverAssignmentsResponse:
+      type: object
+      properties:
+        assignments:
+          type: array
+          items:
+            $ref: "#/components/schemas/LoopDriverAssignment"
+      required: [assignments]
+
+    AssignLoopDriverBody:
+      type: object
+      properties:
+        driverId: { type: string, format: uuid }
+      required: [driverId]
 
     CreateLoopRouteBody:
       type: object

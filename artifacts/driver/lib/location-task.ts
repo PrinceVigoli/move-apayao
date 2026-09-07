@@ -9,8 +9,9 @@ import { API_BASE_URL } from "@/lib/api-config";
  * This runs OUTSIDE the React tree — even when the app is backgrounded or the
  * phone is locked — so it can't use the generated api-client hooks or the
  * app's fetch wrapper. It talks to the backend with a raw fetch, reading the
- * access token straight from the shared session store (AsyncStorage),
- * exactly the token the in-app client would attach.
+ * access token straight from the shared session store. On native builds the
+ * refresh token lives in SecureStore and getAccessToken() hydrates it even
+ * after Android restarts only this headless task.
  *
  * expo-task-manager requires the task to be DEFINED at module top-level and
  * this module to be imported once at app startup (see _layout.tsx) so the task

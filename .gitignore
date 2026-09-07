@@ -7,6 +7,20 @@ node_modules/
 .env.local
 .env.*.local
 
+# Firebase / Google service credentials
+# Provide app client configs to EAS as GOOGLE_SERVICES_JSON file variables.
+artifacts/mobile/google-services.json
+artifacts/driver/google-services.json
+*firebase*service-account*.json
+*fcm*service-account*.json
+*-firebase-adminsdk-*.json
+firebase-adminsdk-*.json
+
+# Android signing credentials must stay in EAS/local secret storage.
+*.jks
+*.keystore
+local-secrets/
+
 # Expo
 .expo/
 dist/

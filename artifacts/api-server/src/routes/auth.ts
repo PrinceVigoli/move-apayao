@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Response } from "express";
 import { and, desc, eq, inArray, isNull, notInArray, or } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
@@ -25,13 +25,34 @@ import {
   hashToken,
 } from "../lib/tokens";
 import { sendPasswordResetEmail } from "../lib/mailer";
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomInt } from "node:crypto";
 import { z } from "zod";
 import { removeDriverGeo } from "../lib/redis";
 
 const router: IRouter = Router();
 
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
+const DASHBOARD_REFRESH_COOKIE = "moveapayao_staff_refresh";
+const DASHBOARD_ROLES = new Set(["admin", "superadmin", "developer"]);
+
+function setDashboardRefreshCookie(res: Response, token: string): void {
+  res.cookie(DASHBOARD_REFRESH_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    path: "/api/auth",
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+  });
+}
+
+function clearDashboardRefreshCookie(res: Response): void {
+  res.clearCookie(DASHBOARD_REFRESH_COOKIE, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    path: "/api/auth",
+  });
+}
 
 async function takeAccountOutOfDriverPool(userId: string): Promise<void> {
   await db
@@ -191,6 +212,7 @@ const LoginBody = z.object({
   /** Either an email address or a phone number. */
   identifier: z.string().min(3),
   password: z.string().min(1),
+  client: z.enum(["mobile", "dashboard"]).optional(),
 });
 
 /**
@@ -228,6 +250,10 @@ router.post("/auth/login", sensitiveActionLimiter, async (req, res): Promise<voi
     res.status(403).json({ error: "This account has been deactivated" });
     return;
   }
+  if (parsed.data.client === "dashboard" && !DASHBOARD_ROLES.has(user.role)) {
+    res.status(403).json({ error: "This account does not have dashboard access" });
+    return;
+  }
 
   // Transparently upgrade hashes that predate a parameter increase.
   if (needsRehash(user.passwordHash)) {
@@ -245,13 +271,18 @@ router.post("/auth/login", sensitiveActionLimiter, async (req, res): Promise<voi
     .from(driverProfilesTable)
     .where(eq(driverProfilesTable.userId, user.id));
   const session = await issueSession(user, req.headers["user-agent"]);
+  if (parsed.data.client === "dashboard") {
+    setDashboardRefreshCookie(res, session.refreshToken);
+  }
   res.json({
     user: {
       ...publicUser(user),
       driverApplicationStatus: driverApplication?.status,
       driverApplicationReason: driverApplication?.reason,
     },
-    ...session,
+    accessToken: session.accessToken,
+    expiresIn: session.expiresIn,
+    ...(parsed.data.client === "dashboard" ? {} : { refreshToken: session.refreshToken }),
   });
 });
 
@@ -263,14 +294,16 @@ const RefreshBody = z.object({ refreshToken: z.string().min(10) });
 
 router.post("/auth/refresh", async (req, res): Promise<void> => {
   const parsed = RefreshBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Invalid request" });
+  const cookieToken = req.cookies?.[DASHBOARD_REFRESH_COOKIE] as string | undefined;
+  const rawToken = cookieToken ?? (parsed.success ? parsed.data.refreshToken : undefined);
+  if (!rawToken) {
+    res.status(401).json({ error: "Session expired, please sign in again" });
     return;
   }
 
   try {
     const session = await rotateRefreshToken(
-      parsed.data.refreshToken,
+      rawToken,
       async (userId) => {
         const [u] = await db
           .select({
@@ -285,10 +318,16 @@ router.post("/auth/refresh", async (req, res): Promise<void> => {
       },
       req.headers["user-agent"],
     );
-    res.json(session);
+    if (cookieToken) {
+      setDashboardRefreshCookie(res, session.refreshToken);
+      res.json({ accessToken: session.accessToken, expiresIn: session.expiresIn });
+    } else {
+      res.json(session);
+    }
   } catch (err) {
     if (err instanceof RefreshTokenError) {
       if (err.userId) await takeAccountOutOfDriverPool(err.userId);
+      if (cookieToken) clearDashboardRefreshCookie(res);
       res.status(401).json({ error: "Session expired, please sign in again" });
       return;
     }
@@ -298,10 +337,13 @@ router.post("/auth/refresh", async (req, res): Promise<void> => {
 
 router.post("/auth/logout", async (req, res): Promise<void> => {
   const parsed = RefreshBody.safeParse(req.body);
-  if (parsed.success) {
-    const userId = await revokeRefreshToken(parsed.data.refreshToken);
+  const cookieToken = req.cookies?.[DASHBOARD_REFRESH_COOKIE] as string | undefined;
+  const rawToken = cookieToken ?? (parsed.success ? parsed.data.refreshToken : undefined);
+  if (rawToken) {
+    const userId = await revokeRefreshToken(rawToken);
     if (userId) await takeAccountOutOfDriverPool(userId);
   }
+  if (cookieToken) clearDashboardRefreshCookie(res);
   // Always 204 — a client signing out has nothing useful to do with the
   // information that its token was already invalid.
   res.status(204).end();
@@ -328,6 +370,7 @@ const ForgotBody = z.object({ email: z.string().email() });
  * registered — varying it would let anyone test which emails have accounts.
  */
 router.post("/auth/forgot-password", sensitiveActionLimiter, async (req, res): Promise<void> => {
+  const responseNotBefore = Date.now() + 350 + randomInt(0, 100);
   const parsed = ForgotBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request" });
@@ -362,15 +405,17 @@ router.post("/auth/forgot-password", sensitiveActionLimiter, async (req, res): P
       process.env.PASSWORD_RESET_URL_BASE ?? "https://moveapayao.gov.ph/reset-password";
     const resetUrl = `${base}?token=${rawToken}`;
 
-    try {
-      await sendPasswordResetEmail(user.email, resetUrl);
-    } catch (err) {
-      // The token is already stored; surfacing mail-server trouble here would
-      // also confirm to the caller that the address exists.
+    // Do not wait for SMTP only for known accounts: that would disclose
+    // account existence through response timing.
+    void sendPasswordResetEmail(user.email, resetUrl).catch((err) => {
       req.log.error({ err }, "Failed to send password reset email");
-    }
+    });
   }
 
+  const remainingDelayMs = responseNotBefore - Date.now();
+  if (remainingDelayMs > 0) {
+    await new Promise((resolve) => setTimeout(resolve, remainingDelayMs));
+  }
   res.json({ message: "If that email is registered, a reset link has been sent." });
 });
 

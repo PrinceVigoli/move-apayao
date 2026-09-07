@@ -49,7 +49,8 @@ async function buildAll() {
       "pg-native",
       "oracledb",
       "mongodb-client-encryption",
-      "nodemailer",
+      // nodemailer is pure JavaScript and is intentionally bundled so the
+      // runtime image can contain only dist/ instead of all workspace modules.
       "handlebars",
       "knex",
       "typeorm",

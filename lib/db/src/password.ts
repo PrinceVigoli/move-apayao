@@ -37,14 +37,38 @@ const SALT_BYTES = 16;
 // scrypt needs roughly 128 * N * r bytes; give it headroom or Node throws.
 const MAXMEM = 256 * N * R;
 
+// A recommended scrypt operation uses roughly 128 MiB. Bounding concurrent
+// operations prevents simultaneous logins from exhausting a modest pilot VPS.
+const configuredConcurrency = Number(process.env.PASSWORD_HASH_CONCURRENCY ?? 2);
+const MAX_CONCURRENT_SCRYPT = Number.isInteger(configuredConcurrency)
+  ? Math.min(8, Math.max(1, configuredConcurrency))
+  : 2;
+let activeScrypt = 0;
+const scryptWaiters: Array<() => void> = [];
+
+async function withScryptSlot<T>(work: () => Promise<T>): Promise<T> {
+  if (activeScrypt >= MAX_CONCURRENT_SCRYPT) {
+    await new Promise<void>((resolve) => scryptWaiters.push(resolve));
+  }
+  activeScrypt += 1;
+  try {
+    return await work();
+  } finally {
+    activeScrypt -= 1;
+    scryptWaiters.shift()?.();
+  }
+}
+
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(SALT_BYTES);
-  const derived = await scrypt(password.normalize("NFKC"), salt, KEYLEN, {
-    N,
-    r: R,
-    p: P,
-    maxmem: MAXMEM,
-  });
+  const derived = await withScryptSlot(() =>
+    scrypt(password.normalize("NFKC"), salt, KEYLEN, {
+      N,
+      r: R,
+      p: P,
+      maxmem: MAXMEM,
+    }),
+  );
   return [
     "scrypt",
     N,
@@ -64,33 +88,49 @@ export async function verifyPassword(
   password: string,
   stored: string | null | undefined,
 ): Promise<boolean> {
-  if (!stored) return false;
+  const parts = stored?.split("$") ?? [];
+  const candidateN = Number(parts[1]);
+  const candidateR = Number(parts[2]);
+  const candidateP = Number(parts[3]);
+  const candidateSalt = Buffer.from(parts[4] ?? "", "base64");
+  const candidateExpected = Buffer.from(parts[5] ?? "", "base64");
+  const validFormat =
+    parts.length === 6 &&
+    parts[0] === "scrypt" &&
+    Number.isInteger(candidateN) &&
+    candidateN >= 1 << 14 &&
+    candidateN <= 1 << 20 &&
+    (candidateN & (candidateN - 1)) === 0 &&
+    Number.isInteger(candidateR) &&
+    candidateR >= 1 &&
+    candidateR <= 32 &&
+    Number.isInteger(candidateP) &&
+    candidateP >= 1 &&
+    candidateP <= 16 &&
+    candidateSalt.length >= 8 &&
+    candidateSalt.length <= 64 &&
+    candidateExpected.length >= 16 &&
+    candidateExpected.length <= 64;
 
-  const parts = stored.split("$");
-  if (parts.length !== 6 || parts[0] !== "scrypt") return false;
+  // Missing/malformed hashes deliberately use the production cost so login
+  // timing does not reveal whether an account exists.
+  const n = validFormat ? candidateN : N;
+  const r = validFormat ? candidateR : R;
+  const p = validFormat ? candidateP : P;
+  const salt = validFormat ? candidateSalt : Buffer.alloc(SALT_BYTES);
+  const expected = validFormat ? candidateExpected : Buffer.alloc(KEYLEN);
 
-  const [, nRaw, rRaw, pRaw, saltB64, hashB64] = parts;
-  const n = Number(nRaw);
-  const r = Number(rRaw);
-  const p = Number(pRaw);
-  if (!Number.isFinite(n) || !Number.isFinite(r) || !Number.isFinite(p)) return false;
-
-  let expected: Buffer;
   try {
-    expected = Buffer.from(hashB64!, "base64");
-  } catch {
-    return false;
-  }
-
-  try {
-    const derived = await scrypt(
-      password.normalize("NFKC"),
-      Buffer.from(saltB64!, "base64"),
-      expected.length,
-      { N: n, r, p, maxmem: 256 * n * r },
+    const derived = await withScryptSlot(() =>
+      scrypt(password.normalize("NFKC"), salt, expected.length, {
+        N: n,
+        r,
+        p,
+        maxmem: 256 * n * r,
+      }),
     );
     if (derived.length !== expected.length) return false;
-    return timingSafeEqual(derived, expected);
+    return validFormat && timingSafeEqual(derived, expected);
   } catch {
     return false;
   }

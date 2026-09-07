@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { getRedis } from "../lib/redis";
+import { isMailConfigured } from "../lib/mailer";
 
 const router: IRouter = Router();
 
@@ -14,6 +15,8 @@ router.get("/healthz", async (_req, res): Promise<void> => {
     googleRoutes: process.env.GOOGLE_MAPS_SERVER_API_KEY || process.env.GOOGLE_PLACES_API_KEY
       ? "configured"
       : "not_configured",
+    smtp: isMailConfigured() ? "configured" : "not_configured",
+    tripProximity: process.env.TRIP_PROXIMITY_ENFORCEMENT === "true" ? "enforced" : "disabled",
   };
 
   await Promise.all([
@@ -38,8 +41,11 @@ router.get("/healthz", async (_req, res): Promise<void> => {
     dependencies.database === "ok" &&
     dependencies.redis === "ok" &&
     dependencies.googleRoutes === "configured";
+  const productionConfigHealthy =
+    process.env.NODE_ENV !== "production" ||
+    (dependencies.smtp === "configured" && dependencies.tripProximity === "enforced");
   const configuredGisHealthy = dependencies.gis === "not_configured" || dependencies.gis === "ok";
-  const status = coreHealthy && configuredGisHealthy ? "ok" : "degraded";
+  const status = coreHealthy && configuredGisHealthy && productionConfigHealthy ? "ok" : "degraded";
   res.status(status === "ok" ? 200 : 503).json({ status, dependencies });
 });
 

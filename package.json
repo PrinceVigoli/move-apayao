@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "packageManager": "pnpm@11.17.0",
   "engines": {
-    "node": ">=22.13.0"
+    "node": ">=22.13.0 <23"
   },
   "license": "MIT",
   "scripts": {
@@ -12,6 +12,7 @@
     "staff:set-role": "pnpm --filter @workspace/scripts run staff:set-role",
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "release:check": "pnpm run security:test && pnpm run test && pnpm run build",
     "security:test": "node scripts/security/image-size-regression.mjs",
     "test": "pnpm -r --if-present run test",
     "typecheck:libs": "tsc --build",

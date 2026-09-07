@@ -26,6 +26,7 @@ import { revokeAllUserSessions } from "../lib/tokens";
 import { sendPushToUser } from "../lib/push";
 import { sendDriverApplicationDecisionEmail } from "../lib/mailer";
 import { z } from "zod";
+import { readIntensiveLimiter } from "../lib/rate-limit";
 
 const router: IRouter = Router();
 
@@ -196,7 +197,7 @@ const NearbyDriversQuery = z.object({
   radius: z.coerce.number().positive().max(25).default(5),
 });
 
-router.get("/drivers/nearby", requireAuth, async (req, res): Promise<void> => {
+router.get("/drivers/nearby", requireAuth, readIntensiveLimiter, async (req, res): Promise<void> => {
   const parsed = NearbyDriversQuery.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: "Valid lat, lon, and radius (up to 25 km) are required" });

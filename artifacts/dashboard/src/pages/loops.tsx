@@ -1,5 +1,16 @@
 import React, { useState } from "react"
-import { getGetLoopRouteQueryKey, useListLoopRoutes, useCreateLoopRoute, useGetLoopRoute } from "@workspace/api-client-react"
+import { useQueryClient } from "@tanstack/react-query"
+import {
+  getGetLoopRouteQueryKey,
+  getListLoopDriverAssignmentsQueryKey,
+  useAssignLoopDriver,
+  useCreateLoopRoute,
+  useGetLoopRoute,
+  useListDriverApplications,
+  useListLoopDriverAssignments,
+  useListLoopRoutes,
+  useUnassignLoopDriver,
+} from "@workspace/api-client-react"
 import { formatPHP } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { 
@@ -14,12 +25,13 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Route, PlusCircle, Navigation, MapPin, Loader2 } from "lucide-react"
+import { Route, PlusCircle, Navigation, MapPin, Loader2, Trash2, UserPlus } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { RouteMapPicker, RouteStopsMap, type RouteStop } from "@/components/route-map-picker"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function Loops() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -28,7 +40,9 @@ export default function Loops() {
   const [description, setDescription] = useState("")
   const [stops, setStops] = useState<RouteStop[]>([])
   const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null)
+  const [selectedDriverId, setSelectedDriverId] = useState("")
   const { toast } = useToast()
+  const queryClient = useQueryClient()
 
   const { data, isLoading, refetch } = useListLoopRoutes({
     query: { queryKey: ["list-loop-routes"] }
@@ -45,6 +59,15 @@ export default function Loops() {
       },
     },
   )
+  const loopAssignments = useListLoopDriverAssignments(selectedRouteId ?? 0, {
+    query: {
+      queryKey: getListLoopDriverAssignmentsQueryKey(selectedRouteId ?? 0),
+      enabled: selectedRouteId !== null,
+    },
+  })
+  const driverApplications = useListDriverApplications()
+  const assignDriver = useAssignLoopDriver()
+  const unassignDriver = useUnassignLoopDriver()
 
   const routes = data?.routes ?? []
   const selectedStops: RouteStop[] = (routeDetail.data?.stops ?? []).map((stop) => ({
@@ -53,6 +76,59 @@ export default function Loops() {
     lat: stop.lat,
     lon: stop.lon,
   }))
+  const assignedDriverIds = new Set(
+    (loopAssignments.data?.assignments ?? []).map((assignment) => assignment.driverId),
+  )
+  const eligibleDrivers = (driverApplications.data?.applications ?? []).filter(
+    (driver) =>
+      driver.approvalStatus === "approved" &&
+      driver.isActive &&
+      !assignedDriverIds.has(driver.userId),
+  )
+
+  const refreshAssignments = async () => {
+    if (selectedRouteId === null) return
+    await queryClient.invalidateQueries({
+      queryKey: getListLoopDriverAssignmentsQueryKey(selectedRouteId),
+    })
+  }
+
+  const handleAssignDriver = () => {
+    if (selectedRouteId === null || !selectedDriverId) return
+    assignDriver.mutate(
+      { id: selectedRouteId, data: { driverId: selectedDriverId } },
+      {
+        onSuccess: () => {
+          setSelectedDriverId("")
+          void refreshAssignments()
+          toast({ title: "Driver assigned", description: "Live phone/IoT tracking now feeds this loop." })
+        },
+        onError: (error: any) => toast({
+          title: "Assignment failed",
+          description: error?.data?.error ?? error?.message ?? "Could not assign this driver.",
+          variant: "destructive",
+        }),
+      },
+    )
+  }
+
+  const handleUnassignDriver = (vehicleId: number) => {
+    if (selectedRouteId === null) return
+    unassignDriver.mutate(
+      { id: selectedRouteId, vehicleId },
+      {
+        onSuccess: () => {
+          void refreshAssignments()
+          toast({ title: "Driver removed", description: "The loop assignment was removed." })
+        },
+        onError: () => toast({
+          title: "Removal failed",
+          description: "Could not remove this loop assignment.",
+          variant: "destructive",
+        }),
+      },
+    )
+  }
 
   const resetForm = () => {
     setRouteName("")
@@ -292,6 +368,72 @@ export default function Loops() {
               </div>
             </div>
           )}
+
+          <div className="space-y-3 rounded-xl border bg-muted/20 p-4">
+            <div>
+              <h3 className="flex items-center gap-2 font-semibold">
+                <UserPlus className="h-4 w-4 text-accent" /> Assigned drivers
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                A driver must also have an active fleet vehicle assignment for IoT tracking.
+                Their smartphone remains the fallback source.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Select value={selectedDriverId} onValueChange={setSelectedDriverId}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Choose an approved driver" />
+                </SelectTrigger>
+                <SelectContent>
+                  {eligibleDrivers.map((driver) => (
+                    <SelectItem key={driver.userId} value={driver.userId}>
+                      {driver.fullName ?? driver.email}
+                      {driver.plateNumber ? ` - ${driver.plateNumber}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                onClick={handleAssignDriver}
+                disabled={!selectedDriverId || assignDriver.isPending}
+              >
+                {assignDriver.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                Assign
+              </Button>
+            </div>
+
+            {loopAssignments.isLoading ? (
+              <Skeleton className="h-16 w-full" />
+            ) : (loopAssignments.data?.assignments ?? []).length === 0 ? (
+              <div className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+                No drivers assigned. Public live vehicles will remain empty.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {(loopAssignments.data?.assignments ?? []).map((assignment) => (
+                  <div key={assignment.id} className="flex items-center justify-between gap-3 rounded-lg border bg-background p-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{assignment.driverName ?? "Approved driver"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {assignment.plateNumber ?? "No plate recorded"}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={unassignDriver.isPending}
+                      onClick={() => handleUnassignDriver(assignment.id)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" /> Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -1,0 +1,15 @@
+{$LANDING_DOMAIN} {
+  reverse_proxy landing:8080
+}
+
+{$DASHBOARD_DOMAIN} {
+  reverse_proxy dashboard:8080
+}
+
+{$DOCUMENTATION_DOMAIN} {
+  reverse_proxy documentation:8080
+}
+
+{$API_DOMAIN} {
+  reverse_proxy api:5000
+}

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { sql, eq, and, gte, lte, desc } from "drizzle-orm";
+import { sql, eq, and, gte, lt, desc } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { tripsTable, fareTransactionsTable, incidentReportsTable, usersTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
@@ -8,6 +8,18 @@ import { hasProvincialAdminAccess, type AuthenticatedRequest } from "../middlewa
 import { z } from "zod";
 
 const router: IRouter = Router();
+
+const REPORTING_TIME_ZONE = process.env.REPORTING_TIME_ZONE ?? "Asia/Manila";
+const REPORTING_UTC_OFFSET = process.env.REPORTING_UTC_OFFSET ?? "+08:00";
+
+function reportingRange(startDate: string, endDate: string): { start: Date; endExclusive: Date } {
+  const start = new Date(`${startDate}T00:00:00${REPORTING_UTC_OFFSET}`);
+  const endStart = new Date(`${endDate}T00:00:00${REPORTING_UTC_OFFSET}`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(endStart.getTime())) {
+    throw new Error("Invalid reporting date range");
+  }
+  return { start, endExclusive: new Date(endStart.getTime() + 24 * 60 * 60 * 1000) };
+}
 
 /**
  * GET /api/analytics/daily?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
@@ -18,10 +30,12 @@ router.get(
   requireRole("admin"),
   async (req, res): Promise<void> => {
     const { startDate, endDate } = parseDateRange(req.query);
+    const range = reportingRange(startDate, endDate);
+    const reportingDay = sql<string>`timezone(${REPORTING_TIME_ZONE}, ${tripsTable.createdAt})::date`;
 
     const dailyTrips = await db
       .select({
-        date: sql<string>`date_trunc('day', ${tripsTable.createdAt})::date`,
+        date: reportingDay,
         tripCount: sql<number>`count(*)::int`,
         completedCount: sql<number>`count(*) filter (where ${tripsTable.status} = 'completed')::int`,
         cancelledCount: sql<number>`count(*) filter (where ${tripsTable.status} = 'cancelled')::int`,
@@ -39,14 +53,14 @@ router.get(
       .from(tripsTable)
       .where(
         and(
-          gte(tripsTable.createdAt, new Date(startDate)),
-          lte(tripsTable.createdAt, new Date(endDate + "T23:59:59Z")),
+          gte(tripsTable.createdAt, range.start),
+          lt(tripsTable.createdAt, range.endExclusive),
         ),
       )
-      .groupBy(sql`date_trunc('day', ${tripsTable.createdAt})::date`)
-      .orderBy(sql`date_trunc('day', ${tripsTable.createdAt})::date`);
+      .groupBy(reportingDay)
+      .orderBy(reportingDay);
 
-    res.json({ dailyTrips, startDate, endDate });
+    res.json({ dailyTrips, startDate, endDate, reportingTimeZone: REPORTING_TIME_ZONE });
   },
 );
 
@@ -145,10 +159,12 @@ router.get("/analytics/earnings", requireAuth, requireRole("driver", "admin"), a
       : authReq.user.id;
 
   const { startDate, endDate } = parseDateRange(req.query);
+  const range = reportingRange(startDate, endDate);
+  const reportingDay = sql<string>`timezone(${REPORTING_TIME_ZONE}, ${tripsTable.completedAt})::date`;
 
   const earnings = await db
     .select({
-      date: sql<string>`date_trunc('day', ${tripsTable.completedAt})::date`,
+      date: reportingDay,
       tripCount: sql<number>`count(*)::int`,
       totalEarnings: sql<number>`coalesce(sum(${tripsTable.fareAmount}), 0)`,
       avgFare: sql<number>`coalesce(avg(${tripsTable.fareAmount}), 0)`,
@@ -158,14 +174,14 @@ router.get("/analytics/earnings", requireAuth, requireRole("driver", "admin"), a
       and(
         eq(tripsTable.driverId, driverId),
         eq(tripsTable.status, "completed"),
-        gte(tripsTable.completedAt, new Date(startDate)),
-        lte(tripsTable.completedAt, new Date(endDate + "T23:59:59Z")),
+        gte(tripsTable.completedAt, range.start),
+        lt(tripsTable.completedAt, range.endExclusive),
       ),
     )
-    .groupBy(sql`date_trunc('day', ${tripsTable.completedAt})::date`)
-    .orderBy(sql`date_trunc('day', ${tripsTable.completedAt})::date`);
+    .groupBy(reportingDay)
+    .orderBy(reportingDay);
 
-  res.json({ earnings, driverId, startDate, endDate });
+  res.json({ earnings, driverId, startDate, endDate, reportingTimeZone: REPORTING_TIME_ZONE });
 });
 
 export default router;

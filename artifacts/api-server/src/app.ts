@@ -1,5 +1,6 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -9,6 +10,7 @@ import type { AuthenticatedRequest } from "./middlewares/auth";
 const app: Express = express();
 
 app.disable("x-powered-by");
+app.use(cookieParser());
 
 const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS ?? 0);
 if (!Number.isInteger(trustProxyHops) || trustProxyHops < 0 || trustProxyHops > 10) {
@@ -60,6 +62,7 @@ const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS ?? "")
 app.use(
   cors({
     origin: allowedOrigins.length > 0 ? allowedOrigins : false,
+    credentials: true,
   }),
 );
 

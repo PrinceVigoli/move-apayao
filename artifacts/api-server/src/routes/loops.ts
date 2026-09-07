@@ -1,7 +1,14 @@
 import { Router, type IRouter } from "express";
 import { eq, and, desc } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { auditLogsTable, loopRoutesTable, loopStopsTable, loopVehiclesTable } from "@workspace/db";
+import {
+  auditLogsTable,
+  driverProfilesTable,
+  loopRoutesTable,
+  loopStopsTable,
+  loopVehiclesTable,
+  usersTable,
+} from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { getRedis, LOOP_GEO_KEY } from "../lib/redis";
 import { parseIdParam } from "../lib/http";
@@ -9,6 +16,7 @@ import { z } from "zod";
 import type { AuthenticatedRequest } from "../middlewares/auth";
 import { computeDrivingRoute } from "../lib/google-routes";
 import { logger } from "../lib/logger";
+import { getBestDriverLocations } from "../lib/vehicles";
 
 const router: IRouter = Router();
 
@@ -120,31 +128,187 @@ router.get("/loops/:id/vehicles", async (req, res): Promise<void> => {
       .orderBy(loopStopsTable.sequence),
   ]);
 
-  const vehiclesWithEta = vehicles.map((v) => {
-    const stopsWithEta = stops.map((stop) => {
-      let distKm: number | null = null;
-      let etaMins: number | null = null;
+  const liveLocations = await getBestDriverLocations(vehicles.map((vehicle) => vehicle.driverId));
+  const configuredPublicTtl = Number(process.env.PUBLIC_VEHICLE_LOCATION_TTL_MS ?? 300_000);
+  const publicTtlMs = Number.isFinite(configuredPublicTtl)
+    ? Math.min(15 * 60_000, Math.max(30_000, configuredPublicTtl))
+    : 300_000;
 
-      if (v.currentLat != null && v.currentLon != null) {
-        distKm = haversineKm(v.currentLat, v.currentLon, stop.lat, stop.lon);
-        etaMins = etaMinutes(distKm);
-      }
+  const vehiclesWithEta = vehicles.flatMap((v) => {
+    const location = liveLocations.get(v.driverId);
+    if (
+      !location ||
+      !location.isOnShift ||
+      location.capturedAt.getTime() < Date.now() - publicTtlMs
+    ) {
+      return [];
+    }
+    const stopsWithEta = stops.map((stop) => {
+      const distKm = haversineKm(location.lat, location.lon, stop.lat, stop.lon);
+      const etaMins = etaMinutes(distKm);
 
       return { ...stop, distanceKm: distKm, etaMinutes: etaMins };
     });
 
     let distanceFromUserKm: number | null = null;
     let etaFromUserMinutes: number | null = null;
-    if (userLat != null && userLon != null && v.currentLat != null && v.currentLon != null) {
-      distanceFromUserKm = haversineKm(userLat, userLon, v.currentLat, v.currentLon);
+    if (userLat != null && userLon != null) {
+      distanceFromUserKm = haversineKm(userLat, userLon, location.lat, location.lon);
       etaFromUserMinutes = etaMinutes(distanceFromUserKm);
     }
 
-    return { ...v, stops: stopsWithEta, distanceFromUserKm, etaFromUserMinutes };
+    // Never publish the account UUID. The stable loop-vehicle ID is enough for
+    // rendering and prevents public correlation of a driver's movements.
+    return [{
+      id: v.id,
+      routeId: v.routeId,
+      status: "on_route",
+      currentLat: location.lat,
+      currentLon: location.lon,
+      updatedAt: location.capturedAt,
+      locationSource: location.source,
+      stops: stopsWithEta,
+      distanceFromUserKm,
+      etaFromUserMinutes,
+    }];
   });
 
   res.json({ vehicles: vehiclesWithEta });
 });
+
+const AssignLoopDriverBody = z.object({ driverId: z.string().uuid() });
+
+/** Private assignment list used by operations; never exposed by the public feed. */
+router.get(
+  "/admin/loops/:id/vehicles",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res): Promise<void> => {
+    const routeId = parseIdParam(req.params.id);
+    if (routeId === null) {
+      res.status(400).json({ error: "Invalid route ID" });
+      return;
+    }
+    const assignments = await db
+      .select({
+        id: loopVehiclesTable.id,
+        routeId: loopVehiclesTable.routeId,
+        driverId: loopVehiclesTable.driverId,
+        driverName: usersTable.fullName,
+        plateNumber: driverProfilesTable.plateNumber,
+        status: loopVehiclesTable.status,
+        updatedAt: loopVehiclesTable.updatedAt,
+      })
+      .from(loopVehiclesTable)
+      .innerJoin(usersTable, eq(usersTable.id, loopVehiclesTable.driverId))
+      .innerJoin(driverProfilesTable, eq(driverProfilesTable.userId, loopVehiclesTable.driverId))
+      .where(eq(loopVehiclesTable.routeId, routeId));
+    res.json({ assignments });
+  },
+);
+
+/** Assign an approved driver to the published loop location feed. */
+router.post(
+  "/admin/loops/:id/vehicles",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res): Promise<void> => {
+    const authReq = req as AuthenticatedRequest;
+    const routeId = parseIdParam(req.params.id);
+    const parsed = AssignLoopDriverBody.safeParse(req.body);
+    if (routeId === null || !parsed.success) {
+      res.status(400).json({ error: "A valid route and driver are required" });
+      return;
+    }
+    const [[route], [driver], [existing]] = await Promise.all([
+      db.select({ id: loopRoutesTable.id }).from(loopRoutesTable).where(eq(loopRoutesTable.id, routeId)).limit(1),
+      db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .innerJoin(driverProfilesTable, eq(driverProfilesTable.userId, usersTable.id))
+        .where(
+          and(
+            eq(usersTable.id, parsed.data.driverId),
+            eq(usersTable.role, "driver"),
+            eq(usersTable.isActive, true),
+            eq(driverProfilesTable.approvalStatus, "approved"),
+          ),
+        )
+        .limit(1),
+      db
+        .select({ id: loopVehiclesTable.id, routeId: loopVehiclesTable.routeId })
+        .from(loopVehiclesTable)
+        .where(eq(loopVehiclesTable.driverId, parsed.data.driverId))
+        .limit(1),
+    ]);
+    if (!route) {
+      res.status(404).json({ error: "Route not found" });
+      return;
+    }
+    if (!driver) {
+      res.status(400).json({ error: "Driver must be active and approved" });
+      return;
+    }
+    if (existing) {
+      res.status(409).json({
+        error: existing.routeId === routeId
+          ? "Driver is already assigned to this route"
+          : "Driver is already assigned to another route",
+      });
+      return;
+    }
+
+    const [assignment] = await db.transaction(async (trx) => {
+      const inserted = await trx
+        .insert(loopVehiclesTable)
+        .values({ routeId, driverId: driver.id, status: "idle" })
+        .returning();
+      await trx.insert(auditLogsTable).values({
+        actorUserId: authReq.user.id,
+        targetUserId: driver.id,
+        action: "loop.driver_assigned",
+        metadata: { targetType: "loop_route", targetId: String(routeId) },
+      });
+      return inserted;
+    });
+    res.status(201).json({ assignment });
+  },
+);
+
+/** Remove a driver from a loop without changing their fleet/GPS assignment. */
+router.delete(
+  "/admin/loops/:id/vehicles/:vehicleId",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res): Promise<void> => {
+    const authReq = req as AuthenticatedRequest;
+    const routeId = parseIdParam(req.params.id);
+    const vehicleId = parseIdParam(req.params.vehicleId);
+    if (routeId === null || vehicleId === null) {
+      res.status(400).json({ error: "Invalid route assignment" });
+      return;
+    }
+    const removed = await db.transaction(async (trx) => {
+      const [row] = await trx
+        .delete(loopVehiclesTable)
+        .where(and(eq(loopVehiclesTable.id, vehicleId), eq(loopVehiclesTable.routeId, routeId)))
+        .returning();
+      if (!row) return null;
+      await trx.insert(auditLogsTable).values({
+        actorUserId: authReq.user.id,
+        targetUserId: row.driverId,
+        action: "loop.driver_unassigned",
+        metadata: { targetType: "loop_route", targetId: String(routeId) },
+      });
+      return row;
+    });
+    if (!removed) {
+      res.status(404).json({ error: "Route assignment not found" });
+      return;
+    }
+    res.status(204).end();
+  },
+);
 
 /**
  * PUT /api/loops/:id/vehicles/location

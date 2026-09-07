@@ -4,12 +4,12 @@
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/icon-route-m.png",
     "scheme": "moveapayao",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/icon.png",
+      "image": "./assets/images/icon-route-m.png",
       "resizeMode": "contain",
       "backgroundColor": "#F7F5F0"
     },
@@ -19,13 +19,17 @@
     },
     "android": {
       "package": "com.moveapayao.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon-route-m.png",
+        "backgroundColor": "#F7F5F0"
+      },
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "web": {
-      "favicon": "./assets/images/icon.png"
+      "favicon": "./assets/images/icon-route-m.png"
     },
     "plugins": [
       "expo-router",

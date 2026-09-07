@@ -28,6 +28,12 @@ import { getActiveFarePolicy } from "./fare-policy";
 import { validatePilotEndpoints, validatePilotTripDistance } from "../lib/service-area";
 import { getAssignedVehicleId } from "../lib/vehicles";
 import { isTripContactVisible } from "../lib/trip-contact";
+import {
+  clearPickupPinFailures,
+  getPickupPinFailures,
+  recordPickupPinFailure,
+  verifyDriverProximity,
+} from "../lib/trip-safety";
 
 const router: IRouter = Router();
 
@@ -720,6 +726,30 @@ router.post(
       res.status(400).json({ error: "Invalid trip ID" });
       return;
     }
+    const [trip] = await db
+      .select()
+      .from(tripsTable)
+      .where(
+        and(
+          eq(tripsTable.id, tripId),
+          eq(tripsTable.driverId, authReq.user.id),
+          eq(tripsTable.status, "accepted"),
+        ),
+      )
+      .limit(1);
+    if (!trip) {
+      res.status(400).json({ error: "Trip is not ready for arrival" });
+      return;
+    }
+    const proximity = await verifyDriverProximity(
+      authReq.user.id,
+      { lat: trip.pickupLat, lon: trip.pickupLon },
+      "pickup",
+    );
+    if (!proximity.ok) {
+      res.status(409).json({ error: proximity.message, code: proximity.code });
+      return;
+    }
     const [updated] = await db
       .update(tripsTable)
       .set({ status: "arrived", arrivedAt: new Date() })
@@ -770,10 +800,30 @@ router.post(
           eq(tripsTable.status, "arrived"),
         ),
       );
-    if (!trip || trip.pickupCode !== parsed.data.pickupCode) {
+    if (!trip) {
       res.status(400).json({ error: "Pickup PIN is incorrect" });
       return;
     }
+    const failedAttempts = await getPickupPinFailures(tripId, authReq.user.id);
+    if (failedAttempts >= 5) {
+      res.status(429).json({
+        error: "Too many incorrect PIN attempts. Wait 15 minutes or contact operations.",
+        code: "PICKUP_PIN_LOCKED",
+      });
+      return;
+    }
+    if (trip.pickupCode !== parsed.data.pickupCode) {
+      const attempts = await recordPickupPinFailure(tripId, authReq.user.id);
+      res.status(attempts >= 5 ? 429 : 400).json({
+        error: attempts >= 5
+          ? "Too many incorrect PIN attempts. Wait 15 minutes or contact operations."
+          : "Pickup PIN is incorrect",
+        code: attempts >= 5 ? "PICKUP_PIN_LOCKED" : "PICKUP_PIN_INCORRECT",
+        attemptsRemaining: Math.max(0, 5 - attempts),
+      });
+      return;
+    }
+    await clearPickupPinFailures(tripId, authReq.user.id);
     const [updated] = await db
       .update(tripsTable)
       .set({ status: "in_progress", startedAt: new Date() })
@@ -814,6 +864,49 @@ router.post(
     const tripId = parseIdParam(req.params.id);
     if (tripId === null) {
       res.status(400).json({ error: "Invalid trip ID" });
+      return;
+    }
+
+    const [tripToComplete] = await db
+      .select({
+        driverId: tripsTable.driverId,
+        status: tripsTable.status,
+        startedAt: tripsTable.startedAt,
+        dropoffLat: tripsTable.dropoffLat,
+        dropoffLon: tripsTable.dropoffLon,
+      })
+      .from(tripsTable)
+      .where(eq(tripsTable.id, tripId))
+      .limit(1);
+    if (
+      !tripToComplete ||
+      tripToComplete.driverId !== authReq.user.id ||
+      tripToComplete.status !== "in_progress"
+    ) {
+      res.status(400).json({ error: "Trip cannot be completed" });
+      return;
+    }
+    const minimumTripSeconds = Math.min(
+      15 * 60,
+      Math.max(0, Number(process.env.TRIP_MIN_DURATION_SECONDS ?? 30)),
+    );
+    if (
+      tripToComplete.startedAt &&
+      Date.now() - tripToComplete.startedAt.getTime() < minimumTripSeconds * 1000
+    ) {
+      res.status(409).json({
+        error: "The trip was started too recently to complete. Continue to the destination.",
+        code: "TRIP_DURATION_TOO_SHORT",
+      });
+      return;
+    }
+    const proximity = await verifyDriverProximity(
+      authReq.user.id,
+      { lat: tripToComplete.dropoffLat, lon: tripToComplete.dropoffLon },
+      "dropoff",
+    );
+    if (!proximity.ok) {
+      res.status(409).json({ error: proximity.message, code: proximity.code });
       return;
     }
 

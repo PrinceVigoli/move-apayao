@@ -50,6 +50,7 @@ let accessToken: string | null = null;
 let refreshToken: string | null = null;
 let expiresAt = 0;
 let refreshPromise: Promise<string | null> | null = null;
+let storedSessionPromise: Promise<boolean> | null = null;
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
@@ -79,6 +80,16 @@ export async function loadStoredSession(): Promise<boolean> {
   expiresAt = 0;
   await AsyncStorage.multiRemove([ACCESS_KEY, EXPIRY_KEY, ...(Platform.OS === "web" ? [] : [REFRESH_KEY])]);
   return !!refreshToken;
+}
+
+async function ensureStoredSessionLoaded(): Promise<boolean> {
+  if (refreshToken) return true;
+  if (!storedSessionPromise) {
+    storedSessionPromise = loadStoredSession().finally(() => {
+      storedSessionPromise = null;
+    });
+  }
+  return storedSessionPromise;
 }
 
 export async function persistSession(s: SessionPayload): Promise<void> {
@@ -134,7 +145,11 @@ export async function getAccessToken(): Promise<string | null> {
   if (accessToken && Date.now() < expiresAt - EXPIRY_SKEW_MS) {
     return accessToken;
   }
-  if (!refreshToken) return null;
+  // Android may start the headless background-location task after killing the
+  // React process. In that case module memory is empty even though SecureStore
+  // still has a valid refresh token, so hydrate it here rather than relying on
+  // AuthProvider having mounted first.
+  if (!refreshToken && !(await ensureStoredSessionLoaded())) return null;
 
   if (!refreshPromise) {
     refreshPromise = doRefresh().finally(() => {

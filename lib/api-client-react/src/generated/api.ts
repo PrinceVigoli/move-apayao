@@ -23,6 +23,8 @@ import type {
   AnalyticsSummaryResponse,
   AssignIotVehicle201,
   AssignIotVehicleBody,
+  AssignLoopDriver201,
+  AssignLoopDriverBody,
   AvailabilityBody,
   BadRequestResponse,
   CancelTripBody,
@@ -79,6 +81,7 @@ import type {
   ListWalletsParams,
   ListWalletsResponse,
   LoginBody,
+  LoopDriverAssignmentsResponse,
   LoopRouteDetailResponse,
   LoopVehicleResponse,
   LoopVehiclesResponse,
@@ -3689,6 +3692,226 @@ export const useUpdateLoopVehicleLocation = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdateLoopVehicleLocationMutationOptions(options));
+    }
+
+export const getListLoopDriverAssignmentsUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/loops/${id}/vehicles`
+}
+
+/**
+ * @summary List private driver assignments for a loop (admin only)
+ */
+export const listLoopDriverAssignments = async (id: number, options?: RequestInit): Promise<LoopDriverAssignmentsResponse> => {
+
+  return customFetch<LoopDriverAssignmentsResponse>(getListLoopDriverAssignmentsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListLoopDriverAssignmentsQueryKey = (id: number,) => {
+    return [
+    `/api/admin/loops/${id}/vehicles`
+    ] as const;
+    }
+
+
+export const getListLoopDriverAssignmentsQueryOptions = <TData = Awaited<ReturnType<typeof listLoopDriverAssignments>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLoopDriverAssignments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListLoopDriverAssignmentsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLoopDriverAssignments>>> = ({ signal }) => listLoopDriverAssignments(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listLoopDriverAssignments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListLoopDriverAssignmentsQueryResult = NonNullable<Awaited<ReturnType<typeof listLoopDriverAssignments>>>
+export type ListLoopDriverAssignmentsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List private driver assignments for a loop (admin only)
+ */
+
+export function useListLoopDriverAssignments<TData = Awaited<ReturnType<typeof listLoopDriverAssignments>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLoopDriverAssignments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListLoopDriverAssignmentsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAssignLoopDriverUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/loops/${id}/vehicles`
+}
+
+/**
+ * @summary Assign an approved driver to a loop (admin only)
+ */
+export const assignLoopDriver = async (id: number,
+    assignLoopDriverBody: AssignLoopDriverBody, options?: RequestInit): Promise<AssignLoopDriver201> => {
+
+  return customFetch<AssignLoopDriver201>(getAssignLoopDriverUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(assignLoopDriverBody)
+  }
+);}
+
+
+
+
+export const getAssignLoopDriverMutationOptions = <TError = ErrorType<ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignLoopDriver>>, TError,{id: number;data: BodyType<AssignLoopDriverBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assignLoopDriver>>, TError,{id: number;data: BodyType<AssignLoopDriverBody>}, TContext> => {
+
+const mutationKey = ['assignLoopDriver'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assignLoopDriver>>, {id: number;data: BodyType<AssignLoopDriverBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  assignLoopDriver(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssignLoopDriverMutationResult = NonNullable<Awaited<ReturnType<typeof assignLoopDriver>>>
+    export type AssignLoopDriverMutationBody = BodyType<AssignLoopDriverBody>
+    export type AssignLoopDriverMutationError = ErrorType<ConflictResponse>
+
+    /**
+ * @summary Assign an approved driver to a loop (admin only)
+ */
+export const useAssignLoopDriver = <TError = ErrorType<ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignLoopDriver>>, TError,{id: number;data: BodyType<AssignLoopDriverBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assignLoopDriver>>,
+        TError,
+        {id: number;data: BodyType<AssignLoopDriverBody>},
+        TContext
+      > => {
+      return useMutation(getAssignLoopDriverMutationOptions(options));
+    }
+
+export const getUnassignLoopDriverUrl = (id: number,
+    vehicleId: number,) => {
+
+
+
+
+  return `/api/admin/loops/${id}/vehicles/${vehicleId}`
+}
+
+/**
+ * @summary Remove a driver assignment from a loop (admin only)
+ */
+export const unassignLoopDriver = async (id: number,
+    vehicleId: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getUnassignLoopDriverUrl(id,vehicleId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getUnassignLoopDriverMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unassignLoopDriver>>, TError,{id: number;vehicleId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unassignLoopDriver>>, TError,{id: number;vehicleId: number}, TContext> => {
+
+const mutationKey = ['unassignLoopDriver'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unassignLoopDriver>>, {id: number;vehicleId: number}> = (props) => {
+          const {id,vehicleId} = props ?? {};
+
+          return  unassignLoopDriver(id,vehicleId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnassignLoopDriverMutationResult = NonNullable<Awaited<ReturnType<typeof unassignLoopDriver>>>
+
+    export type UnassignLoopDriverMutationError = ErrorType<NotFoundResponse>
+
+    /**
+ * @summary Remove a driver assignment from a loop (admin only)
+ */
+export const useUnassignLoopDriver = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unassignLoopDriver>>, TError,{id: number;vehicleId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof unassignLoopDriver>>,
+        TError,
+        {id: number;vehicleId: number},
+        TContext
+      > => {
+      return useMutation(getUnassignLoopDriverMutationOptions(options));
     }
 
 export const getGetWalletUrl = () => {

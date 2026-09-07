@@ -89,7 +89,8 @@ export const RegisterUserResponse = zod.object({
  */
 export const LoginBody = zod.object({
   "identifier": zod.string().describe('Email address or phone number.'),
-  "password": zod.string()
+  "password": zod.string(),
+  "client": zod.enum(['mobile', 'dashboard']).optional().describe('Dashboard sessions keep the refresh token in an HttpOnly cookie.')
 })
 
 export const LoginResponse = zod.object({
@@ -1619,11 +1620,11 @@ export const GetLoopVehiclesResponse = zod.object({
   "vehicles": zod.array(zod.object({
   "id": zod.number(),
   "routeId": zod.number(),
-  "driverId": zod.string().uuid(),
   "status": zod.string(),
   "currentLat": zod.number().nullish(),
   "currentLon": zod.number().nullish(),
   "updatedAt": zod.coerce.date(),
+  "locationSource": zod.enum(['iot_gps', 'smartphone_gps']),
   "distanceFromUserKm": zod.number().nullish(),
   "etaFromUserMinutes": zod.number().nullish()
 }))
@@ -1648,15 +1649,70 @@ export const UpdateLoopVehicleLocationResponse = zod.object({
   "vehicle": zod.object({
   "id": zod.number(),
   "routeId": zod.number(),
-  "driverId": zod.string().uuid(),
   "status": zod.string(),
   "currentLat": zod.number().nullish(),
   "currentLon": zod.number().nullish(),
   "updatedAt": zod.coerce.date(),
+  "locationSource": zod.enum(['iot_gps', 'smartphone_gps']),
   "distanceFromUserKm": zod.number().nullish(),
   "etaFromUserMinutes": zod.number().nullish()
 })
 })
+
+
+/**
+ * @summary List private driver assignments for a loop (admin only)
+ */
+export const ListLoopDriverAssignmentsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListLoopDriverAssignmentsResponse = zod.object({
+  "assignments": zod.array(zod.object({
+  "id": zod.number(),
+  "routeId": zod.number(),
+  "driverId": zod.string().uuid(),
+  "driverName": zod.string().nullish(),
+  "plateNumber": zod.string().nullish(),
+  "status": zod.string(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Assign an approved driver to a loop (admin only)
+ */
+export const AssignLoopDriverParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AssignLoopDriverBody = zod.object({
+  "driverId": zod.string().uuid()
+})
+
+export const AssignLoopDriverResponse = zod.object({
+  "assignment": zod.object({
+  "id": zod.number(),
+  "routeId": zod.number(),
+  "driverId": zod.string().uuid(),
+  "driverName": zod.string().nullish(),
+  "plateNumber": zod.string().nullish(),
+  "status": zod.string(),
+  "updatedAt": zod.coerce.date()
+})
+})
+
+
+/**
+ * @summary Remove a driver assignment from a loop (admin only)
+ */
+export const UnassignLoopDriverParams = zod.object({
+  "id": zod.coerce.number(),
+  "vehicleId": zod.coerce.number()
+})
+
+export const UnassignLoopDriverResponse = zod.void()
 
 
 /**
@@ -2236,4 +2292,3 @@ export const IngestGpsLocationBody = zod.object({
 })
 
 export const IngestGpsLocationResponse = zod.record(zod.string(), zod.unknown())
-

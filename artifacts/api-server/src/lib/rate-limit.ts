@@ -25,7 +25,12 @@ if (!REDIS_CONFIGURED) {
  * across all server instances instead of resetting per process; falls back
  * to an in-memory store otherwise (see note above).
  */
-function makeLimiter(windowMs: number, limit: number, byUser = false): RateLimitRequestHandler {
+function makeLimiter(
+  namespace: string,
+  windowMs: number,
+  limit: number,
+  byUser = false,
+): RateLimitRequestHandler {
   return rateLimit({
     windowMs,
     limit,
@@ -33,6 +38,10 @@ function makeLimiter(windowMs: number, limit: number, byUser = false): RateLimit
     legacyHeaders: false,
     store: REDIS_CONFIGURED
       ? new RedisStore({
+          // Multiple limiters run on sensitive routes. A unique prefix keeps
+          // the API-wide counter separate from the stricter auth/money counter
+          // and prevents one request from incrementing the same Redis key twice.
+          prefix: `move-apayao:rate-limit:${namespace}:`,
           sendCommand: (...args: [string, ...string[]]) =>
             getRedis().call(...args) as Promise<any>,
         })
@@ -44,10 +53,16 @@ function makeLimiter(windowMs: number, limit: number, byUser = false): RateLimit
 }
 
 // General ceiling applied to the whole API.
-export const generalLimiter = makeLimiter(60_000, 120);
+// High enough for several drivers sharing carrier NAT while endpoint-specific
+// limiters still protect expensive/sensitive operations.
+export const generalLimiter = makeLimiter("general", 60_000, 600);
+
+// Authenticated map/search reads are limited per account, not only per shared
+// mobile IP, which avoids both location scraping and carrier-NAT false blocks.
+export const readIntensiveLimiter = makeLimiter("read-intensive", 60_000, 60, true);
 
 // Tight limiter for money-moving / auth-adjacent endpoints: wallet top-up,
 // NFC tap, registration. These are the highest-value targets for abuse
 // (brute force, card draining, load generation) and deserve a much lower
 // ceiling than general read traffic.
-export const sensitiveActionLimiter = makeLimiter(60_000, 10, true);
+export const sensitiveActionLimiter = makeLimiter("sensitive", 60_000, 10, true);

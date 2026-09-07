@@ -1,0 +1,155 @@
+name: move-apayao
+
+networks:
+  public:
+  private:
+    internal: true
+
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
+
+services:
+  db:
+    image: postgis/postgis:16-3.5
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [private]
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [private]
+
+  migrate:
+    profiles: [tools]
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    env_file: ${PRODUCTION_ENV_FILE:-deploy/.env.production}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [private]
+
+  gis:
+    build:
+      context: .
+      dockerfile: Dockerfile.gis-service
+    restart: unless-stopped
+    env_file: ${PRODUCTION_ENV_FILE:-deploy/.env.production}
+    environment:
+      PORT: 5100
+      HOST: 0.0.0.0
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [private]
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api-server
+    restart: unless-stopped
+    env_file: ${PRODUCTION_ENV_FILE:-deploy/.env.production}
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      GIS_SERVICE_URL: http://gis:5100
+      TRUST_PROXY_HOPS: 1
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      gis:
+        condition: service_healthy
+    networks: [public, private]
+
+  landing:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        APP_FILTER: "@workspace/landing"
+        APP_DIR: artifacts/landing
+        BUILD_SCRIPT: build:production
+        VITE_API_URL: https://${API_DOMAIN}
+        VITE_SITE_URL: https://${LANDING_DOMAIN}
+        VITE_DOCUMENTATION_URL: https://${DOCUMENTATION_DOMAIN}
+        VITE_GOOGLE_MAPS_BROWSER_API_KEY: ${GOOGLE_MAPS_BROWSER_API_KEY}
+        VITE_SERVICE_OPERATOR: ${SERVICE_OPERATOR}
+        VITE_SUPPORT_EMAIL: ${SUPPORT_EMAIL}
+        VITE_PRIVACY_EMAIL: ${PRIVACY_EMAIL}
+        VITE_SUPPORT_PHONE: ${SUPPORT_PHONE}
+        VITE_OFFICE_ADDRESS: ${OFFICE_ADDRESS}
+        VITE_SUPPORT_HOURS: ${SUPPORT_HOURS}
+        VITE_PASSENGER_ANDROID_URL: ${PASSENGER_ANDROID_URL:-}
+        VITE_DRIVER_ANDROID_URL: ${DRIVER_ANDROID_URL:-}
+        VITE_STORES_LIVE: ${STORES_LIVE:-false}
+    restart: unless-stopped
+    networks: [public]
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        APP_FILTER: "@workspace/dashboard"
+        APP_DIR: artifacts/dashboard
+        VITE_API_URL: https://${API_DOMAIN}
+        VITE_GOOGLE_MAPS_BROWSER_API_KEY: ${GOOGLE_MAPS_BROWSER_API_KEY}
+    restart: unless-stopped
+    networks: [public]
+
+  documentation:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        APP_FILTER: "@workspace/documentation"
+        APP_DIR: artifacts/documentation
+        VITE_API_URL: https://${API_DOMAIN}
+        VITE_PRODUCT_URL: https://${LANDING_DOMAIN}
+    restart: unless-stopped
+    networks: [public]
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    environment:
+      LANDING_DOMAIN: ${LANDING_DOMAIN}
+      DASHBOARD_DOMAIN: ${DASHBOARD_DOMAIN}
+      DOCUMENTATION_DOMAIN: ${DOCUMENTATION_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [landing, dashboard, documentation, api]
+    networks: [public]

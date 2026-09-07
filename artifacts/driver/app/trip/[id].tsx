@@ -196,7 +196,10 @@ export default function DriverTripScreen() {
               {
                 onSuccess: () => {
                   invalidate();
-                  Alert.alert("Trip completed", "Fare collected. Nice work!");
+                  Alert.alert(
+                    "Trip completed",
+                    "The expected cash fare was recorded. Follow the pilot cash-handling procedure.",
+                  );
                   setRateVisible(true);
                 },
                 onError: (e: any) => {

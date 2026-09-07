@@ -80,7 +80,7 @@ export default function Analytics() {
       "Completed",
       "Cancelled",
       "Unique Passengers",
-      "Revenue (PHP)",
+      "Recorded fare (PHP)",
       "Avg Duration (min)",
     ]
     const lines = dailyData.map((d) =>
@@ -147,7 +147,7 @@ export default function Analytics() {
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Revenue in range</p>
+            <p className="text-sm text-muted-foreground">Recorded fare in range</p>
             <p className="text-2xl font-bold">
               {isLoadingDaily ? <Skeleton className="h-8 w-24" /> : formatPHP(totalRevenueInRange)}
             </p>
@@ -163,7 +163,7 @@ export default function Analytics() {
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Lifetime revenue</p>
+            <p className="text-sm text-muted-foreground">Lifetime recorded fare</p>
             <p className="text-2xl font-bold">
               {isLoadingSummary ? <Skeleton className="h-8 w-24" /> : formatPHP(summary?.trips.totalRevenue ?? 0)}
             </p>
@@ -174,7 +174,7 @@ export default function Analytics() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Daily Revenue & Volume</CardTitle>
+            <CardTitle>Daily Recorded Fare & Volume</CardTitle>
             <CardDescription>Correlation between trips and earnings</CardDescription>
           </CardHeader>
           <CardContent>
@@ -224,7 +224,7 @@ export default function Analytics() {
                       yAxisId="left"
                       type="monotone"
                       dataKey="revenue"
-                      name="Revenue (₱)"
+                      name="Recorded fare (₱)"
                       stroke="hsl(var(--primary))"
                       strokeWidth={3}
                       fill="url(#colorRevenue)"
