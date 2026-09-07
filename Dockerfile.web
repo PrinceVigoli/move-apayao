@@ -4,6 +4,7 @@ WORKDIR /repo
 
 ARG APP_FILTER
 ARG APP_DIR
+ARG DIST_DIR=dist
 ARG BUILD_SCRIPT=build
 ARG VITE_API_URL
 ARG VITE_SITE_URL
@@ -38,7 +39,7 @@ ENV VITE_API_URL=$VITE_API_URL \
 COPY . .
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter "$APP_FILTER" run "$BUILD_SCRIPT"
-RUN mkdir -p /site && cp -R "$APP_DIR/dist/." /site/
+RUN mkdir -p /site && cp -R "$APP_DIR/$DIST_DIR/." /site/
 
 FROM caddy:2.10-alpine
 COPY deploy/static.Caddyfile /etc/caddy/Caddyfile

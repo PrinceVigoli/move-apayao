@@ -118,6 +118,7 @@ services:
       args:
         APP_FILTER: "@workspace/dashboard"
         APP_DIR: artifacts/dashboard
+        DIST_DIR: dist/public
         VITE_API_URL: https://${API_DOMAIN}
         VITE_GOOGLE_MAPS_BROWSER_API_KEY: ${GOOGLE_MAPS_BROWSER_API_KEY}
     restart: unless-stopped
@@ -140,6 +141,7 @@ services:
     restart: unless-stopped
     environment:
       LANDING_DOMAIN: ${LANDING_DOMAIN}
+      WWW_DOMAIN: ${WWW_DOMAIN}
       DASHBOARD_DOMAIN: ${DASHBOARD_DOMAIN}
       DOCUMENTATION_DOMAIN: ${DOCUMENTATION_DOMAIN}
       API_DOMAIN: ${API_DOMAIN}

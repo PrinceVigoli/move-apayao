@@ -2,6 +2,10 @@
   reverse_proxy landing:8080
 }
 
+{$WWW_DOMAIN} {
+  redir https://{$LANDING_DOMAIN}{uri} permanent
+}
+
 {$DASHBOARD_DOMAIN} {
   reverse_proxy dashboard:8080
 }
