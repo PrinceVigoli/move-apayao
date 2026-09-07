@@ -30,6 +30,8 @@ expo-env.d.ts
 # Native build output (if prebuild/eas generates these)
 artifacts/mobile/android/
 artifacts/mobile/ios/
+*.apk
+*.aab
 
 # Build output
 build/

@@ -151,6 +151,7 @@ services:
       - "443:443/udp"
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deploy/releases:/srv/downloads:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on: [landing, dashboard, documentation, api]
