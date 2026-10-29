@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#f8f5ee"/><stop offset="1" stop-color="#e8f2e8"/></linearGradient></defs>
+  <rect width="1080" height="1920" fill="url(#bg)"/>
+  <text x="70" y="125" font-family="Arial" font-weight="700" font-size="34" letter-spacing="7" fill="#12653e">BUILT TO LEARN</text>
+  <text x="70" y="235" font-family="Arial" font-weight="800" font-size="82" fill="#082034">PILOT FIRST.</text>
+  <text x="70" y="325" font-family="Arial" font-weight="800" font-size="82" fill="#0b5e3c">EXPAND NEXT.</text>
+  <g transform="translate(0 70)">
+    <path d="M155 1140 C230 920 370 1040 430 820 S655 560 805 700 S915 1010 835 1190" fill="none" stroke="#c7d8cc" stroke-width="20" stroke-linecap="round"/>
+    <path d="M120 1310 C275 1180 385 1370 550 1200 S765 980 950 1120" fill="none" stroke="#d6e4d9" stroke-width="15" stroke-linecap="round"/>
+    <path d="M240 1195 C205 1030 250 875 365 770 C470 675 600 605 715 700 C810 780 770 910 670 965 C565 1025 480 1120 430 1265 C390 1375 290 1350 240 1195Z" fill="none" stroke="#0b5e3c" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M240 1195 C205 1030 250 875 365 770 C470 675 600 605 715 700 C810 780 770 910 670 965 C565 1025 480 1120 430 1265 C390 1375 290 1350 240 1195Z" fill="none" stroke="#c8ff4a" stroke-width="9" stroke-dasharray="16 22"/>
+    <circle cx="240" cy="1195" r="34" fill="#ff4a22" stroke="#fff" stroke-width="9"/>
+    <circle cx="365" cy="770" r="28" fill="#12653e" stroke="#c8ff4a" stroke-width="8"/>
+    <circle cx="715" cy="700" r="28" fill="#12653e" stroke="#c8ff4a" stroke-width="8"/>
+    <circle cx="670" cy="965" r="28" fill="#12653e" stroke="#c8ff4a" stroke-width="8"/>
+  </g>
+  <g font-family="Arial" text-anchor="middle">
+    <rect x="105" y="1480" width="870" height="130" rx="42" fill="#063528"/>
+    <text x="540" y="1535" font-weight="800" font-size="36" letter-spacing="5" fill="#c8ff4a">TEST · LEARN · IMPROVE</text>
+    <text x="540" y="1583" font-size="27" fill="#ffffff">Real trips guide responsible expansion</text>
+    <text x="540" y="1710" font-weight="700" font-size="37" fill="#082034">More communities after successful</text>
+    <text x="540" y="1757" font-weight="700" font-size="37" fill="#082034">pilot testing and LGU approval</text>
+  </g>
+</svg>
