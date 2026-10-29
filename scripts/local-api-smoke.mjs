@@ -60,6 +60,8 @@ check("wrong password rejected");
 const profile = await request("/auth/profile", 200, { token: account.accessToken });
 assert.equal(profile.user.email, email);
 check("authenticated profile");
+assert.equal(profile.subscription ?? null, null);
+check("new passengers have no subscription plan");
 await request("/auth/users", 403, { token: account.accessToken });
 check("passenger cannot list admin users");
 const loops = await request("/loops", 200);

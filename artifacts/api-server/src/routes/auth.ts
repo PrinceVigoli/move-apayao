@@ -126,7 +126,7 @@ export const RegisterBody = z
  * POST /api/auth/register
  *
  * Creates the account and signs the user straight in. All writes (user,
- * wallet, subscription, driver profile) share one transaction so a failure
+ * wallet, optional driver profile) share one transaction so a failure
  * partway through cannot leave a user without a wallet.
  */
 router.post("/auth/register", sensitiveActionLimiter, async (req, res): Promise<void> => {
@@ -171,18 +171,6 @@ router.post("/auth/register", sensitiveActionLimiter, async (req, res): Promise<
       .returning();
 
     await trx.insert(fareWalletsTable).values({ userId: created!.id });
-
-    if (body.role === "passenger") {
-      const expiresAt = new Date(now);
-      expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-      await trx.insert(subscriptionsTable).values({
-        userId: created!.id,
-        plan: "annual",
-        status: "active",
-        startsAt: now,
-        expiresAt,
-      });
-    }
 
     if (body.role === "driver_applicant") {
       await trx.insert(driverProfilesTable).values({

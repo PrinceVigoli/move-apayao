@@ -1798,6 +1798,669 @@ export const ListWalletsResponse = zod.object({
 })
 
 
+export const GetFixedLoopServiceResponse = zod.object({
+  "service": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "vehicleId": zod.number(),
+  "unitLabel": zod.string(),
+  "seatedCapacity": zod.number(),
+  "standingCapacity": zod.number(),
+  "bookingDays": zod.number(),
+  "outboundStops": zod.array(zod.object({
+  "key": zod.string(),
+  "name": zod.string(),
+  "lat": zod.number().nullish(),
+  "lon": zod.number().nullish()
+})),
+  "returnStops": zod.array(zod.object({
+  "key": zod.string(),
+  "name": zod.string(),
+  "lat": zod.number().nullish(),
+  "lon": zod.number().nullish()
+})),
+  "vehicleStatus": zod.enum(['scheduled', 'boarding', 'on_route', 'off_duty']),
+  "location": zod.object({
+  "lat": zod.number(),
+  "lon": zod.number(),
+  "updatedAt": zod.coerce.date()
+}).nullable(),
+  "activeRun": zod.object({
+  "id": zod.number(),
+  "serviceDate": zod.coerce.date(),
+  "direction": zod.enum(['to_asc', 'to_pudtol']),
+  "unitLabel": zod.string(),
+  "departureAt": zod.coerce.date(),
+  "arrivalAt": zod.coerce.date(),
+  "stops": zod.array(zod.object({
+  "key": zod.string(),
+  "name": zod.string(),
+  "lat": zod.number().nullish(),
+  "lon": zod.number().nullish()
+})),
+  "status": zod.enum(['scheduled', 'boarding', 'on_route', 'completed', 'cancelled']),
+  "currentStopIndex": zod.number(),
+  "bookingOpen": zod.boolean()
+}).nullable()
+}).nullable()
+})
+
+
+export const ListFixedLoopRunsQueryParams = zod.object({
+  "date": zod.date().optional()
+})
+
+export const ListFixedLoopRunsResponse = zod.object({
+  "runs": zod.array(zod.object({
+  "id": zod.number(),
+  "serviceDate": zod.coerce.date(),
+  "direction": zod.enum(['to_asc', 'to_pudtol']),
+  "unitLabel": zod.string(),
+  "departureAt": zod.coerce.date(),
+  "arrivalAt": zod.coerce.date(),
+  "stops": zod.array(zod.object({
+  "key": zod.string(),
+  "name": zod.string(),
+  "lat": zod.number().nullish(),
+  "lon": zod.number().nullish()
+})),
+  "status": zod.enum(['scheduled', 'boarding', 'on_route', 'completed', 'cancelled']),
+  "currentStopIndex": zod.number(),
+  "bookingOpen": zod.boolean()
+}))
+})
+
+
+
+
+
+export const GetFixedLoopAvailabilityParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const getFixedLoopAvailabilityQueryPickupIndexMin = 0;
+
+
+
+
+export const GetFixedLoopAvailabilityQueryParams = zod.object({
+  "pickupIndex": zod.coerce.number().min(getFixedLoopAvailabilityQueryPickupIndexMin).optional(),
+  "dropoffIndex": zod.coerce.number().min(1).optional()
+})
+
+export const GetFixedLoopAvailabilityResponse = zod.object({
+  "run": zod.object({
+  "id": zod.number(),
+  "serviceDate": zod.coerce.date(),
+  "direction": zod.enum(['to_asc', 'to_pudtol']),
+  "unitLabel": zod.string(),
+  "departureAt": zod.coerce.date(),
+  "arrivalAt": zod.coerce.date(),
+  "stops": zod.array(zod.object({
+  "key": zod.string(),
+  "name": zod.string(),
+  "lat": zod.number().nullish(),
+  "lon": zod.number().nullish()
+})),
+  "status": zod.enum(['scheduled', 'boarding', 'on_route', 'completed', 'cancelled']),
+  "currentStopIndex": zod.number(),
+  "bookingOpen": zod.boolean()
+}),
+  "pickupIndex": zod.number(),
+  "dropoffIndex": zod.number(),
+  "availableSeats": zod.array(zod.number()),
+  "availableStanding": zod.array(zod.number())
+})
+
+
+
+export const createFixedLoopReservationBodyPickupIndexMin = 0;
+
+
+export const createFixedLoopReservationBodySeatsItemMax = 19;
+
+export const createFixedLoopReservationBodySeatsMax = 19;
+
+export const createFixedLoopReservationBodyStandingItemMax = 10;
+
+export const createFixedLoopReservationBodyStandingMax = 10;
+
+export const createFixedLoopReservationBodyRequestIdMin = 10;
+export const createFixedLoopReservationBodyRequestIdMax = 100;
+
+
+
+export const CreateFixedLoopReservationBody = zod.object({
+  "runId": zod.number().min(1),
+  "pickupIndex": zod.number().min(createFixedLoopReservationBodyPickupIndexMin),
+  "dropoffIndex": zod.number().min(1),
+  "seats": zod.array(zod.number().min(1).max(createFixedLoopReservationBodySeatsItemMax)).max(createFixedLoopReservationBodySeatsMax).optional(),
+  "standing": zod.array(zod.number().min(1).max(createFixedLoopReservationBodyStandingItemMax)).max(createFixedLoopReservationBodyStandingMax).optional(),
+  "requestId": zod.string().min(createFixedLoopReservationBodyRequestIdMin).max(createFixedLoopReservationBodyRequestIdMax)
+}).describe('Select at least one seated or standing place. The same requestId replays the original reservation.')
+
+export const CreateFixedLoopReservationResponse = zod.object({
+  "reservation": zod.object({
+  "id": zod.number(),
+  "reference": zod.string(),
+  "run": zod.object({
+  "id": zod.number(),
+  "serviceDate": zod.coerce.date(),
+  "direction": zod.enum(['to_asc', 'to_pudtol']),
+  "unitLabel": zod.string(),
+  "departureAt": zod.coerce.date(),
+  "arrivalAt": zod.coerce.date(),
+  "stops": zod.array(zod.object({
+  "key": zod.string(),
+  "name": zod.string(),
+  "lat": zod.number().nullish(),
+  "lon": zod.number().nullish()
+})),
+  "status": zod.enum(['scheduled', 'boarding', 'on_route', 'completed', 'cancelled']),
+  "currentStopIndex": zod.number(),
+  "bookingOpen": zod.boolean()
+}),
+  "pickupIndex": zod.number(),
+  "dropoffIndex": zod.number(),
+  "pickupName": zod.string(),
+  "dropoffName": zod.string(),
+  "seats": zod.array(zod.number()),
+  "standing": zod.array(zod.number()),
+  "status": zod.enum(['confirmed', 'boarded', 'completed', 'cancelled', 'no_show']),
+  "source": zod.enum(['app', 'walk_in']),
+  "createdAt": zod.coerce.date(),
+  "passengerName": zod.string().nullish()
+})
+})
+
+
+export const listMyFixedLoopReservationsQueryLimitDefault = 20;
+export const listMyFixedLoopReservationsQueryLimitMax = 50;
+
+export const listMyFixedLoopReservationsQueryOffsetDefault = 0;
+export const listMyFixedLoopReservationsQueryOffsetMin = 0;
+
+
+
+export const ListMyFixedLoopReservationsQueryParams = zod.object({
+  "limit": zod.coerce.number().min(1).max(listMyFixedLoopReservationsQueryLimitMax).default(listMyFixedLoopReservationsQueryLimitDefault),
+  "offset": zod.coerce.number().min(listMyFixedLoopReservationsQueryOffsetMin).default(listMyFixedLoopReservationsQueryOffsetDefault)
+})
+
+export const ListMyFixedLoopReservationsResponse = zod.object({
+  "reservations": zod.array(zod.object({
+  "id": zod.number(),
+  "reference": zod.string(),
+  "run": zod.object({
+  "id": zod.number(),
+  "serviceDate": zod.coerce.date(),
+  "direction": zod.enum(['to_asc', 'to_pudtol']),
+  "unitLabel": zod.string(),
+  "departureAt": zod.coerce.date(),
+  "arrivalAt": zod.coerce.date(),
+  "stops": zod.array(zod.object({
+  "key": zod.string(),
+  "name": zod.string(),
+  "lat": zod.number().nullish(),
+  "lon": zod.number().nullish()
+})),
+  "status": zod.enum(['scheduled', 'boarding', 'on_route', 'completed', 'cancelled']),
+  "currentStopIndex": zod.number(),
+  "bookingOpen": zod.boolean()
+}),
+  "pickupIndex": zod.number(),
+  "dropoffIndex": zod.number(),
+  "pickupName": zod.string(),
+  "dropoffName": zod.string(),
+  "seats": zod.array(zod.number()),
+  "standing": zod.array(zod.number()),
+  "status": zod.enum(['confirmed', 'boarded', 'completed', 'cancelled', 'no_show']),
+  "source": zod.enum(['app', 'walk_in']),
+  "createdAt": zod.coerce.date(),
+  "passengerName": zod.string().nullish()
+})),
+  "limit": zod.number(),
+  "offset": zod.number()
+})
+
+
+
+
+
+export const GetFixedLoopReservationParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const GetFixedLoopReservationResponse = zod.object({
+  "reservation": zod.object({
+  "id": zod.number(),
+  "reference": zod.string(),
+  "run": zod.object({
+  "id": zod.number(),
+  "serviceDate": zod.coerce.date(),
+  "direction": zod.enum(['to_asc', 'to_pudtol']),
+  "unitLabel": zod.string(),
+  "departureAt": zod.coerce.date(),
+  "arrivalAt": zod.coerce.date(),
+  "stops": zod.array(zod.object({
+  "key": zod.string(),
+  "name": zod.string(),
+  "lat": zod.number().nullish(),
+  "lon": zod.number().nullish()
+})),
+  "status": zod.enum(['scheduled', 'boarding', 'on_route', 'completed', 'cancelled']),
+  "currentStopIndex": zod.number(),
+  "bookingOpen": zod.boolean()
+}),
+  "pickupIndex": zod.number(),
+  "dropoffIndex": zod.number(),
+  "pickupName": zod.string(),
+  "dropoffName": zod.string(),
+  "seats": zod.array(zod.number()),
+  "standing": zod.array(zod.number()),
+  "status": zod.enum(['confirmed', 'boarded', 'completed', 'cancelled', 'no_show']),
+  "source": zod.enum(['app', 'walk_in']),
+  "createdAt": zod.coerce.date(),
+  "passengerName": zod.string().nullish()
+})
+})
+
+
+
+
+
+export const CancelFixedLoopReservationParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const CancelFixedLoopReservationResponse = zod.object({
+  "reservation": zod.object({
+  "id": zod.number(),
+  "reference": zod.string(),
+  "run": zod.object({
+  "id": zod.number(),
+  "serviceDate": zod.coerce.date(),
+  "direction": zod.enum(['to_asc', 'to_pudtol']),
+  "unitLabel": zod.string(),
+  "departureAt": zod.coerce.date(),
+  "arrivalAt": zod.coerce.date(),
+  "stops": zod.array(zod.object({
+  "key": zod.string(),
+  "name": zod.string(),
+  "lat": zod.number().nullish(),
+  "lon": zod.number().nullish()
+})),
+  "status": zod.enum(['scheduled', 'boarding', 'on_route', 'completed', 'cancelled']),
+  "currentStopIndex": zod.number(),
+  "bookingOpen": zod.boolean()
+}),
+  "pickupIndex": zod.number(),
+  "dropoffIndex": zod.number(),
+  "pickupName": zod.string(),
+  "dropoffName": zod.string(),
+  "seats": zod.array(zod.number()),
+  "standing": zod.array(zod.number()),
+  "status": zod.enum(['confirmed', 'boarded', 'completed', 'cancelled', 'no_show']),
+  "source": zod.enum(['app', 'walk_in']),
+  "createdAt": zod.coerce.date(),
+  "passengerName": zod.string().nullish()
+})
+})
+
+
+export const ListFixedLoopOperatorRunsQueryParams = zod.object({
+  "date": zod.date().optional()
+})
+
+export const ListFixedLoopOperatorRunsResponse = zod.object({
+  "service": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "unitLabel": zod.string(),
+  "enabled": zod.boolean()
+}).nullable(),
+  "runs": zod.array(zod.object({
+  "id": zod.number(),
+  "serviceDate": zod.coerce.date(),
+  "direction": zod.enum(['to_asc', 'to_pudtol']),
+  "unitLabel": zod.string(),
+  "departureAt": zod.coerce.date(),
+  "arrivalAt": zod.coerce.date(),
+  "stops": zod.array(zod.object({
+  "key": zod.string(),
+  "name": zod.string(),
+  "lat": zod.number().nullish(),
+  "lon": zod.number().nullish()
+})),
+  "status": zod.enum(['scheduled', 'boarding', 'on_route', 'completed', 'cancelled']),
+  "currentStopIndex": zod.number(),
+  "bookingOpen": zod.boolean()
+}))
+})
+
+
+
+
+
+export const GetFixedLoopManifestParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const GetFixedLoopManifestResponse = zod.object({
+  "run": zod.object({
+  "id": zod.number(),
+  "serviceDate": zod.coerce.date(),
+  "direction": zod.enum(['to_asc', 'to_pudtol']),
+  "unitLabel": zod.string(),
+  "departureAt": zod.coerce.date(),
+  "arrivalAt": zod.coerce.date(),
+  "stops": zod.array(zod.object({
+  "key": zod.string(),
+  "name": zod.string(),
+  "lat": zod.number().nullish(),
+  "lon": zod.number().nullish()
+})),
+  "status": zod.enum(['scheduled', 'boarding', 'on_route', 'completed', 'cancelled']),
+  "currentStopIndex": zod.number(),
+  "bookingOpen": zod.boolean()
+}),
+  "reservations": zod.array(zod.object({
+  "id": zod.number(),
+  "reference": zod.string(),
+  "run": zod.object({
+  "id": zod.number(),
+  "serviceDate": zod.coerce.date(),
+  "direction": zod.enum(['to_asc', 'to_pudtol']),
+  "unitLabel": zod.string(),
+  "departureAt": zod.coerce.date(),
+  "arrivalAt": zod.coerce.date(),
+  "stops": zod.array(zod.object({
+  "key": zod.string(),
+  "name": zod.string(),
+  "lat": zod.number().nullish(),
+  "lon": zod.number().nullish()
+})),
+  "status": zod.enum(['scheduled', 'boarding', 'on_route', 'completed', 'cancelled']),
+  "currentStopIndex": zod.number(),
+  "bookingOpen": zod.boolean()
+}),
+  "pickupIndex": zod.number(),
+  "dropoffIndex": zod.number(),
+  "pickupName": zod.string(),
+  "dropoffName": zod.string(),
+  "seats": zod.array(zod.number()),
+  "standing": zod.array(zod.number()),
+  "status": zod.enum(['confirmed', 'boarded', 'completed', 'cancelled', 'no_show']),
+  "source": zod.enum(['app', 'walk_in']),
+  "createdAt": zod.coerce.date(),
+  "passengerName": zod.string().nullish()
+}))
+})
+
+
+
+
+
+export const RecordFixedLoopWalkInParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+
+export const recordFixedLoopWalkInBodySeatsItemMax = 19;
+
+export const recordFixedLoopWalkInBodySeatsMax = 19;
+
+export const recordFixedLoopWalkInBodyStandingItemMax = 10;
+
+export const recordFixedLoopWalkInBodyStandingMax = 10;
+
+export const recordFixedLoopWalkInBodyRequestIdMin = 10;
+export const recordFixedLoopWalkInBodyRequestIdMax = 100;
+
+
+
+export const RecordFixedLoopWalkInBody = zod.object({
+  "dropoffIndex": zod.number().min(1),
+  "seats": zod.array(zod.number().min(1).max(recordFixedLoopWalkInBodySeatsItemMax)).max(recordFixedLoopWalkInBodySeatsMax).optional(),
+  "standing": zod.array(zod.number().min(1).max(recordFixedLoopWalkInBodyStandingItemMax)).max(recordFixedLoopWalkInBodyStandingMax).optional(),
+  "requestId": zod.string().min(recordFixedLoopWalkInBodyRequestIdMin).max(recordFixedLoopWalkInBodyRequestIdMax)
+})
+
+export const RecordFixedLoopWalkInResponse = zod.object({
+  "reservation": zod.object({
+  "id": zod.number(),
+  "reference": zod.string(),
+  "run": zod.object({
+  "id": zod.number(),
+  "serviceDate": zod.coerce.date(),
+  "direction": zod.enum(['to_asc', 'to_pudtol']),
+  "unitLabel": zod.string(),
+  "departureAt": zod.coerce.date(),
+  "arrivalAt": zod.coerce.date(),
+  "stops": zod.array(zod.object({
+  "key": zod.string(),
+  "name": zod.string(),
+  "lat": zod.number().nullish(),
+  "lon": zod.number().nullish()
+})),
+  "status": zod.enum(['scheduled', 'boarding', 'on_route', 'completed', 'cancelled']),
+  "currentStopIndex": zod.number(),
+  "bookingOpen": zod.boolean()
+}),
+  "pickupIndex": zod.number(),
+  "dropoffIndex": zod.number(),
+  "pickupName": zod.string(),
+  "dropoffName": zod.string(),
+  "seats": zod.array(zod.number()),
+  "standing": zod.array(zod.number()),
+  "status": zod.enum(['confirmed', 'boarded', 'completed', 'cancelled', 'no_show']),
+  "source": zod.enum(['app', 'walk_in']),
+  "createdAt": zod.coerce.date(),
+  "passengerName": zod.string().nullish()
+})
+})
+
+
+
+
+
+export const CheckInFixedLoopReservationParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const CheckInFixedLoopReservationBody = zod.object({
+  "action": zod.enum(['board', 'no_show'])
+})
+
+export const CheckInFixedLoopReservationResponse = zod.object({
+  "reservation": zod.object({
+  "id": zod.number(),
+  "reference": zod.string(),
+  "run": zod.object({
+  "id": zod.number(),
+  "serviceDate": zod.coerce.date(),
+  "direction": zod.enum(['to_asc', 'to_pudtol']),
+  "unitLabel": zod.string(),
+  "departureAt": zod.coerce.date(),
+  "arrivalAt": zod.coerce.date(),
+  "stops": zod.array(zod.object({
+  "key": zod.string(),
+  "name": zod.string(),
+  "lat": zod.number().nullish(),
+  "lon": zod.number().nullish()
+})),
+  "status": zod.enum(['scheduled', 'boarding', 'on_route', 'completed', 'cancelled']),
+  "currentStopIndex": zod.number(),
+  "bookingOpen": zod.boolean()
+}),
+  "pickupIndex": zod.number(),
+  "dropoffIndex": zod.number(),
+  "pickupName": zod.string(),
+  "dropoffName": zod.string(),
+  "seats": zod.array(zod.number()),
+  "standing": zod.array(zod.number()),
+  "status": zod.enum(['confirmed', 'boarded', 'completed', 'cancelled', 'no_show']),
+  "source": zod.enum(['app', 'walk_in']),
+  "createdAt": zod.coerce.date(),
+  "passengerName": zod.string().nullish()
+})
+})
+
+
+
+
+
+export const ControlFixedLoopRunParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const controlFixedLoopRunBodyExpectedStopIndexMin = 0;
+
+
+
+export const ControlFixedLoopRunBody = zod.object({
+  "action": zod.enum(['boarding', 'start', 'next_stop', 'cancel']),
+  "confirmAlighted": zod.boolean().optional().describe('Required to cancel a run with onboard passengers; operator confirms they have all alighted.'),
+  "expectedStopIndex": zod.number().min(controlFixedLoopRunBodyExpectedStopIndexMin).optional().describe('Required for next_stop to prevent duplicate advances.')
+})
+
+export const ControlFixedLoopRunResponse = zod.object({
+  "run": zod.object({
+  "id": zod.number(),
+  "serviceDate": zod.coerce.date(),
+  "direction": zod.enum(['to_asc', 'to_pudtol']),
+  "unitLabel": zod.string(),
+  "departureAt": zod.coerce.date(),
+  "arrivalAt": zod.coerce.date(),
+  "stops": zod.array(zod.object({
+  "key": zod.string(),
+  "name": zod.string(),
+  "lat": zod.number().nullish(),
+  "lon": zod.number().nullish()
+})),
+  "status": zod.enum(['scheduled', 'boarding', 'on_route', 'completed', 'cancelled']),
+  "currentStopIndex": zod.number(),
+  "bookingOpen": zod.boolean()
+})
+})
+
+
+/**
+ * @summary Send app feedback
+ */
+export const createFeedbackBodyMessageMin = 10;
+export const createFeedbackBodyMessageMax = 2000;
+
+export const createFeedbackBodyAppVersionMax = 40;
+
+
+
+export const CreateFeedbackBody = zod.object({
+  "category": zod.enum(['bug', 'suggestion', 'other']),
+  "message": zod.string().min(createFeedbackBodyMessageMin).max(createFeedbackBodyMessageMax),
+  "appVersion": zod.string().min(1).max(createFeedbackBodyAppVersionMax).optional(),
+  "platform": zod.enum(['android', 'ios', 'web']).optional()
+})
+
+export const createFeedbackResponseFeedbackMessageMin = 10;
+export const createFeedbackResponseFeedbackMessageMax = 2000;
+
+
+
+export const CreateFeedbackResponse = zod.object({
+  "feedback": zod.object({
+  "id": zod.number(),
+  "reporterId": zod.string().uuid(),
+  "reporterName": zod.string().nullish(),
+  "reporterEmail": zod.string().nullish(),
+  "category": zod.enum(['bug', 'suggestion', 'other']),
+  "message": zod.string().min(createFeedbackResponseFeedbackMessageMin).max(createFeedbackResponseFeedbackMessageMax),
+  "appVersion": zod.string().nullish(),
+  "platform": zod.string().nullish(),
+  "status": zod.enum(['open', 'reviewing', 'resolved']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+})
+
+
+/**
+ * @summary Review app feedback (admin only)
+ */
+export const listFeedbackQueryLimitDefault = 50;
+export const listFeedbackQueryLimitMax = 100;
+
+export const listFeedbackQueryOffsetDefault = 0;
+export const listFeedbackQueryOffsetMin = 0;
+
+
+
+export const ListFeedbackQueryParams = zod.object({
+  "status": zod.enum(['open', 'reviewing', 'resolved']).optional(),
+  "limit": zod.coerce.number().min(1).max(listFeedbackQueryLimitMax).default(listFeedbackQueryLimitDefault),
+  "offset": zod.coerce.number().min(listFeedbackQueryOffsetMin).default(listFeedbackQueryOffsetDefault)
+})
+
+export const listFeedbackResponseFeedbackItemMessageMin = 10;
+export const listFeedbackResponseFeedbackItemMessageMax = 2000;
+
+
+
+export const ListFeedbackResponse = zod.object({
+  "feedback": zod.array(zod.object({
+  "id": zod.number(),
+  "reporterId": zod.string().uuid(),
+  "reporterName": zod.string().nullish(),
+  "reporterEmail": zod.string().nullish(),
+  "category": zod.enum(['bug', 'suggestion', 'other']),
+  "message": zod.string().min(listFeedbackResponseFeedbackItemMessageMin).max(listFeedbackResponseFeedbackItemMessageMax),
+  "appVersion": zod.string().nullish(),
+  "platform": zod.string().nullish(),
+  "status": zod.enum(['open', 'reviewing', 'resolved']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),
+  "limit": zod.number(),
+  "offset": zod.number()
+})
+
+
+/**
+ * @summary Update feedback status (admin only)
+ */
+
+
+
+export const UpdateFeedbackParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const UpdateFeedbackBody = zod.object({
+  "status": zod.enum(['open', 'reviewing', 'resolved'])
+})
+
+export const updateFeedbackResponseFeedbackMessageMin = 10;
+export const updateFeedbackResponseFeedbackMessageMax = 2000;
+
+
+
+export const UpdateFeedbackResponse = zod.object({
+  "feedback": zod.object({
+  "id": zod.number(),
+  "reporterId": zod.string().uuid(),
+  "reporterName": zod.string().nullish(),
+  "reporterEmail": zod.string().nullish(),
+  "category": zod.enum(['bug', 'suggestion', 'other']),
+  "message": zod.string().min(updateFeedbackResponseFeedbackMessageMin).max(updateFeedbackResponseFeedbackMessageMax),
+  "appVersion": zod.string().nullish(),
+  "platform": zod.string().nullish(),
+  "status": zod.enum(['open', 'reviewing', 'resolved']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+})
+
+
 /**
  * @summary Submit an incident report
  */

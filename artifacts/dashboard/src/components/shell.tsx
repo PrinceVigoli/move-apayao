@@ -15,6 +15,7 @@ import {
   LocateFixed,
   Network,
   Calculator,
+  MessageSquare,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -33,6 +34,7 @@ const navItems: Array<{
   { href: "/drivers", label: "Drivers", icon: CarFront },
   { href: "/fleet", label: "Fleet Map", icon: LocateFixed },
   { href: "/incidents", label: "Incidents", icon: AlertTriangle },
+  { href: "/feedback", label: "App feedback", icon: MessageSquare },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/subscriptions", label: "Subscriptions", icon: CreditCard },
   { href: "/loops", label: "Loop Routes", icon: MapIcon },

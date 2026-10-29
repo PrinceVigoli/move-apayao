@@ -1,11 +1,8 @@
 # Local Android validation and Google Play assessment
 
-Date: 2026-10-29 (Asia/Manila).
+Date: 2026-10-30 (Asia/Manila).
 
-This validates the existing passenger/driver apps. The planned Pudtol-Luna
-reservation inventory (19 seated + 10 standing), directional schedules and
-driver manifest are not implemented by these changes. This is not a production
-release approval.
+The passenger app now opens the Pudtol?Luna fixed loop and supports dated directional departures, selected stops, numbered seats/standing places, tickets and cancellation. The assigned driver sees daily runs, manifests, boarding/no-shows, walk-ins and explicit arrival/alighting controls. This is local validation for a review branch, not production release approval.
 
 ## Changes made during validation
 
@@ -20,6 +17,10 @@ release approval.
 - Declare `babel-preset-expo` in both apps. A clean transform of the changed
   legal module exposed a missing direct dependency that prior Metro caches
   had masked.
+- Resolve the image-parser security probe through the actual Expo CLI
+  dependency chains. A clean pnpm install can shorten package-store names,
+  so a folder-name check incorrectly rejected the patched parser in CI.
+  The malformed-input and timeout checks remain enforced.
 
 ## Automated and API results
 
@@ -30,10 +31,11 @@ release approval.
 | Passenger and driver Expo SDK compatibility | Passed against online compatibility data |
 | Passenger and driver Android Hermes exports | Passed on final source with clean Metro caches and Node.js 22 |
 | Committed database migrations | Passed on isolated local PostgreSQL/PostGIS database |
-| Local API runtime smoke test | 14 checks passed, including a rerun after dependency fixes under Node.js 22 |
+| Local API runtime smoke test | 15 checks passed, including verification that new passengers receive no annual plan |
 | `pnpm audit --prod --audit-level critical` | Passed after fixes: 0 critical; 42 high, 27 moderate and 2 low findings remain |
 | Public API `/api/livez` and `/api/healthz` | HTTP 200 in read-only checks |
 | Public website `/privacy` and `/terms` | HTTP 200 in read-only checks |
+| GitHub CI on commit `08ce134` | All System checks steps passed in [run 40875076697](https://github.com/PrinceVigoli/move-apayao/actions/runs/40875076697) |
 
 The isolated API runs on port 5500, uses database
 `move_apayao_validation_20261029` and local Redis database 15. Test accounts
@@ -49,12 +51,26 @@ establish that the dependency tree is free of vulnerabilities.
 
 ## Android device results
 
-A Samsung Galaxy A54 (SM-A546E) is connected through ADB. The installed apps
-and stored pilot APKs are older builds, so their behavior cannot certify current
-source. A separate `com.moveapayao.mobile.localtest` development APK is being
-built from current passenger source, with local API traffic routed through USB.
-Device validation is pending. Native build files and temporary exports are local
-artifacts, not release binaries.
+A Samsung Galaxy A54 (SM-A546E, Android 16/API 36) ran a separate source-built development APK, package com.moveapayao.mobile.localtest. USB reverse connects it to the isolated API. Physical checks passed for sign-in/session restore, the fixed-loop service and directional departure picker, numbered seat selection, reservation ticket, cancellation, Profile without an annual plan, and feedback submission with a server-issued reference. The greeting now uses Asia/Manila and refreshes on foreground/minute boundaries; the observed morning greeting matched the phone's 6 AM clock.
+
+The local e-jeep is deliberately off duty with no fabricated GPS. A live map and actual pickup/alighting journey remain unverified. The separate local-test package previously showed blank Google map tiles; native Maps package/signing restrictions must be verified for final release packages. No map is rendered when vehicle GPS is unavailable.
+
+A separate driver local-test APK build and physical verification are in progress. Final native artifacts are local development builds, not signed store binaries. The phone has 4 KB memory pages, so these checks do not establish 16 KB compatibility.
+
+## Fixed-loop runtime integration
+
+All four migrations apply from an empty isolated PostgreSQL/PostGIS database. scripts/fixed-loop-integration.mjs passed eight groups against a second database (move_apayao_validation_suite_final_20261030), API 5501 and Redis 14:
+
+- Correct directional stops, 19 seated/10 standing, 16 daily half-hour legs and seven-day booking horizon.
+- Concurrent final-seat attempts yield exactly one success; database uniqueness also rejects occupied duplicate segments.
+- Separate seat/standing capacity, full inventory, invalid selections and stop order.
+- Idempotent booking retries, one active passenger booking per run, segment reuse, cancellation and privacy.
+- Driver boarding without double deduction, departure cutoff, no-shows, walk-ins using shared inventory, explicit alighting protecting downstream reservations and retry-safe stop advancement.
+- Completed departures reject new reservations; cancellation with onboard passengers requires alighting confirmation.
+- Feedback input validation, privileged inbox/status updates and passenger access restrictions.
+- Fresh GPS visibility requires an active shift; stale GPS is withheld and fixed-loop drivers remain excluded from on-demand dispatch.
+
+CI now runs the same integration suite with disposable PostGIS/Redis services. It requires a freshly seeded database whose name starts with move_apayao_validation_suite_ or move_apayao_validation_ci, a loopback API URL and LOCAL_FIXED_LOOP_TEST=1. The suite adjusts only its disposable run timestamps to test departure rules at any hour. Local fixture credentials remain in ignored local-secrets and are never committed.
 
 ## Google Play decision
 
@@ -64,8 +80,8 @@ its verification and production-access requirements are complete.
 
 Before publication:
 
-1. Implement and validate the fixed-loop launch scope, including concurrency
-   limits for seated/standing reservations, walk-ins, cancellations and boarding.
+1. Configure the live fixed-loop operator and service, verify exact stop pins,
+   physical seat labels, fares and daily timetable feasibility. Complete an actual pilot journey.
 2. Complete physical Android tests: onboarding, permissions, map display,
    registration/login, offline/reconnect behavior, notifications and actual trip
    flows for both passenger and driver. Device launch alone is insufficient.
