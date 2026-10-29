@@ -66,6 +66,9 @@ onlyBuiltDependencies:
   - unrs-resolver
 
 overrides:
+  # Fix critical IP-spoofing and shell-quoting advisories in transitive dependencies.
+  proxy-addr@<2.0.8: 2.0.8
+  shell-quote@<1.11.0: 1.11.0
   # Deployment targets linux-x64 only; exclude all other platform binaries
   "esbuild>@esbuild/darwin-arm64": "-"
   "esbuild>@esbuild/darwin-x64": "-"
