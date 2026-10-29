@@ -121,9 +121,9 @@ function ContactCard({ privacy = false }: { privacy?: boolean }) {
       <p className="flex items-start gap-2">
         <MapPin size={16} /> {publicContact.address}
       </p>
-      <a href={privacy ? links.privacyEmail : links.email}>
+      {email ? <a href={privacy ? links.privacyEmail : links.email}>
         <Mail size={16} /> {email}
-      </a>
+      </a> : <p>Project support and privacy contact details will be announced here once confirmed.</p>}
       <p>Office availability: {publicContact.hours}</p>
     </div>
   );
@@ -134,8 +134,8 @@ export function TermsPage() {
     <LegalShell kind="terms">
       <p className="legal-lead">
         These Terms govern the MOVE Apayao passenger app, driver app, website,
-        and related transport-dispatch services operated by{" "}
-        {publicContact.operator} for the Pudtol pilot.
+        and related transport-dispatch services for the Pudtol pilot, a project
+        of the Department of Science and Technology (DOST).
       </p>
       <Section id="acceptance" title="1. Accepting these Terms">
         <p>
@@ -257,8 +257,9 @@ export function PrivacyPage() {
   return (
     <LegalShell kind="privacy">
       <p className="legal-lead">
-        {publicContact.operator} is the personal information controller for the
-        MOVE Apayao Pudtol pilot. This notice explains the processing performed
+        MOVE Apayao is a project of the Department of Science and Technology
+        (DOST). The responsible project privacy contact will be identified here
+        once confirmed. This notice explains the processing performed
         across the passenger app, driver app, public site, operations dashboard,
         API, GPS and IoT tracking, and support channels.
       </p>

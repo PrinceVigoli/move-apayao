@@ -1,26 +1,25 @@
 const value = (input: string | undefined) => input?.trim() ?? "";
 const emailLink = (email: string, subject?: string) =>
-  `mailto:${email}${subject ? `?subject=${encodeURIComponent(subject)}` : ""}`;
+  email ? `mailto:${email}${subject ? `?subject=${encodeURIComponent(subject)}` : ""}` : "#contact";
 
 export const legalVersion = "2026-08-27";
 
 export const publicContact = {
   operator:
     value(import.meta.env.VITE_SERVICE_OPERATOR) ||
-    "Municipal Government of Pudtol",
+    "Department of Science and Technology (DOST)",
   supportEmail:
-    value(import.meta.env.VITE_SUPPORT_EMAIL) || "lgupudtol1@gmail.com",
+    value(import.meta.env.VITE_SUPPORT_EMAIL),
   privacyEmail:
     value(import.meta.env.VITE_PRIVACY_EMAIL) ||
-    value(import.meta.env.VITE_SUPPORT_EMAIL) ||
-    "lgupudtol1@gmail.com",
+    value(import.meta.env.VITE_SUPPORT_EMAIL),
   phone: value(import.meta.env.VITE_SUPPORT_PHONE),
   address:
     value(import.meta.env.VITE_OFFICE_ADDRESS) ||
-    "Pudtol Municipal Hall, Poblacion, Pudtol, Apayao 3812",
+    "Apayao, Philippines",
   hours:
     value(import.meta.env.VITE_SUPPORT_HOURS) ||
-    "Monday to Friday, during government office hours",
+    "To be confirmed",
 };
 
 const appUrls = {
@@ -52,7 +51,7 @@ export const links = {
     ),
   documentation: value(import.meta.env.VITE_DOCUMENTATION_URL),
   facebook: value(import.meta.env.VITE_FACEBOOK_URL),
-  officialWebsite: "https://lgupudtol.ph/",
+  officialWebsite: "https://www.dost.gov.ph/",
   email: emailLink(publicContact.supportEmail),
   privacyEmail: emailLink(
     publicContact.privacyEmail,
@@ -165,9 +164,9 @@ export const drivers = {
 };
 
 export const stakeholders = {
-  eyebrow: "For the LGU and partners",
+  eyebrow: "For DOST and project partners",
   title: "Every trip is a record you can report on.",
-  body: "MOVE Apayao was built for Pudtol with support from DOST. Operations staff get an admin dashboard covering the whole service, so ridership and revenue reporting come from the system itself rather than a separate spreadsheet.",
+  body: "MOVE Apayao is a project of the Department of Science and Technology (DOST), piloted in Pudtol, Apayao. Operations staff get an admin dashboard covering the whole service, so ridership and revenue reporting come from the system itself rather than a separate spreadsheet.",
   items: [
     {
       title: "Daily ridership and revenue",
