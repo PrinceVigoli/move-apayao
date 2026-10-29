@@ -9,10 +9,10 @@ export const publicContact = {
     value(import.meta.env.VITE_SERVICE_OPERATOR) ||
     "Department of Science and Technology (DOST)",
   supportEmail:
-    value(import.meta.env.VITE_SUPPORT_EMAIL),
+    value(import.meta.env.VITE_SUPPORT_EMAIL) || "support@moveapayao.com",
   privacyEmail:
     value(import.meta.env.VITE_PRIVACY_EMAIL) ||
-    value(import.meta.env.VITE_SUPPORT_EMAIL),
+    value(import.meta.env.VITE_SUPPORT_EMAIL) || "support@moveapayao.com",
   phone: value(import.meta.env.VITE_SUPPORT_PHONE),
   address:
     value(import.meta.env.VITE_OFFICE_ADDRESS) ||
