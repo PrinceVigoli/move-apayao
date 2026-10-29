@@ -35,11 +35,11 @@ The passenger app now opens the Pudtol?Luna fixed loop and supports dated direct
 | `pnpm audit --prod --audit-level critical` | Passed after fixes: 0 critical; 42 high, 27 moderate and 2 low findings remain |
 | Public API `/api/livez` and `/api/healthz` | HTTP 200 in read-only checks |
 | Public website `/privacy` and `/terms` | HTTP 200 in read-only checks |
-| GitHub CI on commit `08ce134` | All System checks steps passed in [run 40875076697](https://github.com/PrinceVigoli/move-apayao/actions/runs/40875076697) |
+| GitHub CI on implementation commit `0d1f136` | All System checks passed, including fresh-database integration and both Android exports, in [run 40968019704](https://github.com/PrinceVigoli/move-apayao/actions/runs/40968019704) |
 
 The isolated API runs on port 5500, uses database
-`move_apayao_validation_20261029` and local Redis database 15. Test accounts
-remain deactivated there. No live accounts, bookings or database records were
+`move_apayao_validation_20261029` and local Redis database 15. Disposable smoke-test accounts
+remain deactivated there; the isolated phone fixtures remain active for review. No live accounts, bookings or database records were
 changed. Local health reports degraded because Google Routes credentials are
 intentionally absent; paid routing, matching a real driver, push delivery and
 physical journeys have not been validated.
@@ -55,7 +55,7 @@ A Samsung Galaxy A54 (SM-A546E, Android 16/API 36) ran a separate source-built d
 
 The local e-jeep is deliberately off duty with no fabricated GPS. A live map and actual pickup/alighting journey remain unverified. The separate local-test package previously showed blank Google map tiles; native Maps package/signing restrictions must be verified for final release packages. No map is rendered when vehicle GPS is unavailable.
 
-A separate driver local-test APK build and physical verification are in progress. Final native artifacts are local development builds, not signed store binaries. The phone has 4 KB memory pages, so these checks do not establish 16 KB compatibility.
+A separate source-built driver APK, com.moveapayao.driver.localtest, also installed and ran on the same device. Local operator sign-in, automatic fixed-loop mode, the Runs/Profile navigation, dated run selection and the shared manifest passed. The manifest showed the cancelled passenger booking and a second confirmed reservation with seat 4, while actual onboard counts correctly remained zero. Driver boarding/alighting and walk-in lifecycle were exercised in the runtime integration suite; physical route travel and live GPS remain pending. Final native artifacts are local development builds, not signed store binaries. The phone has 4 KB memory pages, so these checks do not establish 16 KB compatibility.
 
 ## Fixed-loop runtime integration
 
