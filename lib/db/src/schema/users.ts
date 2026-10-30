@@ -20,6 +20,7 @@ export const usersTable = pgTable(
     role: text("role").notNull().default("passenger"),
     avatarUrl: text("avatar_url"),
     isActive: boolean("is_active").notNull().default(true),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
     termsVersion: text("terms_version"),
@@ -29,6 +30,7 @@ export const usersTable = pgTable(
   },
   (table) => ({
     phoneIdx: index("users_phone_idx").on(table.phone),
+    deletedAccountCheck: check("users_deleted_account_check", sql`${table.deletedAt} is null or (${table.isActive} = false and ${table.passwordHash} is null and ${table.phone} is null and ${table.fullName} is null and ${table.avatarUrl} is null)`),
     roleCheck: check(
       "users_role_check",
       sql`${table.role} in ('passenger', 'driver_applicant', 'driver', 'admin', 'superadmin', 'developer')`,

@@ -7,6 +7,7 @@ export * from "./fares";
 export * from "./fare-policies";
 export * from "./incidents";
 export * from "./feedback";
+export * from "./account-deletion";
 export * from "./fixed-loop";
 export * from "./subscriptions";
 export * from "./audit-logs";

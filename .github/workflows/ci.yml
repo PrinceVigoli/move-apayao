@@ -76,6 +76,7 @@ jobs:
             sleep 1
           done
           node scripts/fixed-loop-integration.mjs
+          node scripts/account-deletion-integration.mjs
       - name: Check Expo SDK compatibility
         run: |
           pnpm --filter @workspace/mobile exec expo install --check

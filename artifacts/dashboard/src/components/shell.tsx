@@ -35,6 +35,7 @@ const navItems: Array<{
   { href: "/fleet", label: "Fleet Map", icon: LocateFixed },
   { href: "/incidents", label: "Incidents", icon: AlertTriangle },
   { href: "/feedback", label: "App feedback", icon: MessageSquare },
+  { href: "/account-deletion", label: "Account deletion", icon: ShieldCheck },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/subscriptions", label: "Subscriptions", icon: CreditCard },
   { href: "/loops", label: "Loop Routes", icon: MapIcon },

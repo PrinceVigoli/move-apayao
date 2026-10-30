@@ -441,7 +441,7 @@ export function Footer() {
                 <a href="#drivers">Drive with us</a>
               </li>
               <li>
-                <a href="#partners">For the LGU</a>
+                <a href="#partners">DOST and partners</a>
               </li>
             </ul>
           </div>

@@ -39,6 +39,9 @@ tags:
   - name: docs
     description: Developer/superadmin internal operational documentation
 
+  - name: account-deletion
+    description: Verified deletion requests and administrator processing
+
 paths:
   /healthz:
     get:
@@ -2133,6 +2136,141 @@ paths:
                 type: object
                 additionalProperties: true
 
+  /account-deletion/requests:
+    post:
+      tags:
+        - account-deletion
+      security: []
+      operationId: createAccountDeletionRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAccountDeletionBody'
+      responses:
+        '201':
+          description: AccountDeletionResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDeletionResponse'
+        '400':
+          description: Invalid request
+        '401':
+          description: Invalid credentials
+        '403':
+          description: Access denied
+        '409':
+          description: Resolve active service, balance or retention review first
+    get:
+      tags:
+        - account-deletion
+      security:
+        - bearerAuth: []
+      operationId: listAccountDeletionRequests
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - pending
+              - reviewing
+              - completed
+      responses:
+        '200':
+          description: AccountDeletionListResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDeletionListResponse'
+        '400':
+          description: Invalid request
+        '401':
+          description: Invalid credentials
+        '403':
+          description: Access denied
+        '409':
+          description: Resolve active service, balance or retention review first
+  /account-deletion/requests/{id}:
+    get:
+      tags:
+        - account-deletion
+      security: []
+      operationId: getAccountDeletionRequest
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: AccountDeletionResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDeletionResponse'
+        '400':
+          description: Invalid request
+        '401':
+          description: Invalid credentials
+        '403':
+          description: Access denied
+        '404':
+          description: Receipt not found
+        '409':
+          description: Resolve active service, balance or retention review first
+    patch:
+      tags:
+        - account-deletion
+      security:
+        - bearerAuth: []
+      operationId: reviewAccountDeletionRequest
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewAccountDeletionBody'
+      responses:
+        '200':
+          description: AccountDeletionResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDeletionResponse'
+        '400':
+          description: Invalid request
+        '401':
+          description: Invalid credentials
+        '403':
+          description: Access denied
+        '409':
+          description: Resolve active service, balance or retention review first
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2167,6 +2305,143 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
 
   schemas:
+    AccountDeletionReceipt:
+      type: object
+      properties:
+        reference:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - pending
+            - reviewing
+            - completed
+        requestedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        retentionReason:
+          type: string
+          nullable: true
+        retentionUntil:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - reference
+        - status
+        - requestedAt
+        - completedAt
+        - retentionReason
+        - retentionUntil
+    AccountDeletionResponse:
+      type: object
+      properties:
+        request:
+          $ref: '#/components/schemas/AccountDeletionReceipt'
+      required:
+        - request
+    CreateAccountDeletionBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 1
+          maxLength: 256
+        confirm:
+          type: boolean
+          enum:
+            - true
+      required:
+        - email
+        - password
+        - confirm
+    AccountDeletionAdminItem:
+      type: object
+      properties:
+        reference:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - pending
+            - reviewing
+            - completed
+        requestedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        retentionReason:
+          type: string
+          nullable: true
+        retentionUntil:
+          type: string
+          format: date-time
+          nullable: true
+        name:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        role:
+          type: string
+      required:
+        - reference
+        - status
+        - requestedAt
+        - completedAt
+        - retentionReason
+        - retentionUntil
+        - name
+        - email
+        - role
+    AccountDeletionListResponse:
+      type: object
+      properties:
+        requests:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountDeletionAdminItem'
+        limit:
+          type: integer
+        offset:
+          type: integer
+      required:
+        - requests
+        - limit
+        - offset
+    ReviewAccountDeletionBody:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+            - review
+            - complete
+        confirmDeletion:
+          type: boolean
+        retentionReason:
+          type: string
+          minLength: 20
+          maxLength: 1000
+        retentionUntil:
+          type: string
+          format: date-time
+      required:
+        - action
     HealthStatus:
       type: object
       properties:

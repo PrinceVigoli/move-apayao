@@ -5,6 +5,85 @@
  * MOVE Apayao — Transit & Trip Booking API
  * OpenAPI spec version: 1.0.0
  */
+export type AccountDeletionReceiptStatus = typeof AccountDeletionReceiptStatus[keyof typeof AccountDeletionReceiptStatus];
+
+
+export const AccountDeletionReceiptStatus = {
+  pending: 'pending',
+  reviewing: 'reviewing',
+  completed: 'completed',
+} as const;
+
+export interface AccountDeletionReceipt {
+  reference: string;
+  status: AccountDeletionReceiptStatus;
+  requestedAt: string;
+  completedAt: string | null;
+  retentionReason: string | null;
+  retentionUntil: string | null;
+}
+
+export interface AccountDeletionResponse {
+  request: AccountDeletionReceipt;
+}
+
+export interface CreateAccountDeletionBody {
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 1
+     * @maxLength 256
+     */
+  password: string;
+  confirm: true;
+}
+
+export type AccountDeletionAdminItemStatus = typeof AccountDeletionAdminItemStatus[keyof typeof AccountDeletionAdminItemStatus];
+
+
+export const AccountDeletionAdminItemStatus = {
+  pending: 'pending',
+  reviewing: 'reviewing',
+  completed: 'completed',
+} as const;
+
+export interface AccountDeletionAdminItem {
+  reference: string;
+  status: AccountDeletionAdminItemStatus;
+  requestedAt: string;
+  completedAt: string | null;
+  retentionReason: string | null;
+  retentionUntil: string | null;
+  name: string | null;
+  email: string | null;
+  role: string;
+}
+
+export interface AccountDeletionListResponse {
+  requests: AccountDeletionAdminItem[];
+  limit: number;
+  offset: number;
+}
+
+export type ReviewAccountDeletionBodyAction = typeof ReviewAccountDeletionBodyAction[keyof typeof ReviewAccountDeletionBodyAction];
+
+
+export const ReviewAccountDeletionBodyAction = {
+  review: 'review',
+  complete: 'complete',
+} as const;
+
+export interface ReviewAccountDeletionBody {
+  action: ReviewAccountDeletionBodyAction;
+  confirmDeletion?: boolean;
+  /**
+     * @minLength 20
+     * @maxLength 1000
+     */
+  retentionReason?: string;
+  retentionUntil?: string;
+}
+
 export type HealthStatusStatus = typeof HealthStatusStatus[keyof typeof HealthStatusStatus];
 
 
@@ -1758,4 +1837,26 @@ export type AssignIotVehicle201 = { [key: string]: unknown };
 export type RevokeGpsDevice200 = { [key: string]: unknown };
 
 export type IngestGpsLocation202 = { [key: string]: unknown };
+
+export type ListAccountDeletionRequestsParams = {
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+status?: ListAccountDeletionRequestsStatus;
+};
+
+export type ListAccountDeletionRequestsStatus = typeof ListAccountDeletionRequestsStatus[keyof typeof ListAccountDeletionRequestsStatus];
+
+
+export const ListAccountDeletionRequestsStatus = {
+  pending: 'pending',
+  reviewing: 'reviewing',
+  completed: 'completed',
+} as const;
 

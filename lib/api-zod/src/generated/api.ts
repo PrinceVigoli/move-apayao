@@ -2955,3 +2955,102 @@ export const IngestGpsLocationBody = zod.object({
 })
 
 export const IngestGpsLocationResponse = zod.record(zod.string(), zod.unknown())
+
+
+export const createAccountDeletionRequestBodyEmailMax = 254;
+
+export const createAccountDeletionRequestBodyPasswordMax = 256;
+
+
+
+export const CreateAccountDeletionRequestBody = zod.object({
+  "email": zod.string().email().max(createAccountDeletionRequestBodyEmailMax),
+  "password": zod.string().min(1).max(createAccountDeletionRequestBodyPasswordMax),
+  "confirm": zod.literal(true)
+})
+
+export const CreateAccountDeletionRequestResponse = zod.object({
+  "request": zod.object({
+  "reference": zod.string().uuid(),
+  "status": zod.enum(['pending', 'reviewing', 'completed']),
+  "requestedAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable(),
+  "retentionReason": zod.string().nullable(),
+  "retentionUntil": zod.coerce.date().nullable()
+})
+})
+
+
+export const listAccountDeletionRequestsQueryLimitDefault = 50;
+export const listAccountDeletionRequestsQueryLimitMax = 100;
+
+export const listAccountDeletionRequestsQueryOffsetDefault = 0;
+export const listAccountDeletionRequestsQueryOffsetMin = 0;
+
+
+
+export const ListAccountDeletionRequestsQueryParams = zod.object({
+  "limit": zod.coerce.number().min(1).max(listAccountDeletionRequestsQueryLimitMax).default(listAccountDeletionRequestsQueryLimitDefault),
+  "offset": zod.coerce.number().min(listAccountDeletionRequestsQueryOffsetMin).default(listAccountDeletionRequestsQueryOffsetDefault),
+  "status": zod.enum(['pending', 'reviewing', 'completed']).optional()
+})
+
+export const ListAccountDeletionRequestsResponse = zod.object({
+  "requests": zod.array(zod.object({
+  "reference": zod.string().uuid(),
+  "status": zod.enum(['pending', 'reviewing', 'completed']),
+  "requestedAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable(),
+  "retentionReason": zod.string().nullable(),
+  "retentionUntil": zod.coerce.date().nullable(),
+  "name": zod.string().nullable(),
+  "email": zod.string().nullable(),
+  "role": zod.string()
+})),
+  "limit": zod.number(),
+  "offset": zod.number()
+})
+
+
+export const GetAccountDeletionRequestParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GetAccountDeletionRequestResponse = zod.object({
+  "request": zod.object({
+  "reference": zod.string().uuid(),
+  "status": zod.enum(['pending', 'reviewing', 'completed']),
+  "requestedAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable(),
+  "retentionReason": zod.string().nullable(),
+  "retentionUntil": zod.coerce.date().nullable()
+})
+})
+
+
+export const ReviewAccountDeletionRequestParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const reviewAccountDeletionRequestBodyRetentionReasonMin = 20;
+export const reviewAccountDeletionRequestBodyRetentionReasonMax = 1000;
+
+
+
+export const ReviewAccountDeletionRequestBody = zod.object({
+  "action": zod.enum(['review', 'complete']),
+  "confirmDeletion": zod.boolean().optional(),
+  "retentionReason": zod.string().min(reviewAccountDeletionRequestBodyRetentionReasonMin).max(reviewAccountDeletionRequestBodyRetentionReasonMax).optional(),
+  "retentionUntil": zod.coerce.date().optional()
+})
+
+export const ReviewAccountDeletionRequestResponse = zod.object({
+  "request": zod.object({
+  "reference": zod.string().uuid(),
+  "status": zod.enum(['pending', 'reviewing', 'completed']),
+  "requestedAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable(),
+  "retentionReason": zod.string().nullable(),
+  "retentionUntil": zod.coerce.date().nullable()
+})
+})

@@ -93,6 +93,7 @@ function LegalShell({
               Privacy Notice
             </a>
             <a href="/#contact">Contact</a>
+            <a href="/delete-account">Delete your account</a>
           </aside>
           <article className="legal-card">{children}</article>
         </div>
@@ -344,7 +345,7 @@ export function PrivacyPage() {
       <Section id="retention" title="5. Retention and deletion">
         <p>
           Data is kept only for as long as needed for the declared purpose and
-          the LGU’s approved records-retention, audit, safety, dispute, and
+          the project’s approved records-retention, audit, safety, dispute, and
           legal requirements. Retention varies by record: live operational cache
           data is short-lived; account data is kept while the account is active;
           and trip, incident, financial, approval, security, and government
@@ -357,6 +358,7 @@ export function PrivacyPage() {
           request erasure or blocking, and the operator will explain any record
           that must lawfully be retained.
         </p>
+        <p><a href="/delete-account">Request permanent account deletion</a> from our website, including after uninstalling the app. The page explains identity verification, removed data, required retained records and how to check your request. This is separate from recoverable deactivation.</p>
       </Section>
       <Section id="security" title="6. Security and location controls">
         <p>

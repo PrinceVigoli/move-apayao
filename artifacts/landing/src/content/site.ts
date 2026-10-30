@@ -2,7 +2,7 @@ const value = (input: string | undefined) => input?.trim() ?? "";
 const emailLink = (email: string, subject?: string) =>
   email ? `mailto:${email}${subject ? `?subject=${encodeURIComponent(subject)}` : ""}` : "#contact";
 
-export const legalVersion = "2026-08-27";
+export const legalVersion = "2026-10-30";
 
 export const publicContact = {
   operator:
@@ -63,36 +63,20 @@ export const links = {
 };
 
 export const hero = {
-  eyebrow: "Pudtol · Apayao",
-  title: "E-trike rides you can actually track.",
-  body: "Book a ride from your barangay, watch your driver come to you on the map, and pay the fare in cash when you arrive.",
-  primaryCta: "Get the app",
-  secondaryCta: "Drive with us",
-  note: "Free to download. No account fees.",
+  eyebrow: "Pudtol?Luna ? Apayao",
+  title: "Your place on the daily e-jeep loop.",
+  body: "Choose a departure, select your pickup and drop-off stops, and reserve a numbered seat or standing place on the Pudtol?Luna pilot.",
+  primaryCta: "Get the passenger app",
+  secondaryCta: "Driver app",
+  note: "Free Android pilot downloads. No passenger account fees.",
 };
 
 /* sequence of steps for the "How it works" section on the landing page */
 export const steps = [
-  {
-    n: "01",
-    title: "Set where you are going",
-    body: "Tap the map or search for a place. Say how many of you are riding — the app only matches vehicles with enough seats.",
-  },
-  {
-    n: "02",
-    title: "Get matched to the nearest driver",
-    body: "The nearest available e-trike with room for your group is assigned automatically. If nobody is free, the app keeps looking and tells you either way.",
-  },
-  {
-    n: "03",
-    title: "Watch them approach",
-    body: "Your driver moves on the map in real time, so you know whether to wait inside or step out to the road.",
-  },
-  {
-    n: "04",
-    title: "Pay cash, then rate the ride",
-    body: "Hand the fare to your driver at drop-off. Rate the trip afterwards so the service keeps improving.",
-  },
+  { n: "01", title: "Find the fixed-loop e-jeep", body: "Open the passenger app to see the assigned unit and its latest location when the driver is sharing fresh GPS." },
+  { n: "02", title: "Choose your departure and stops", body: "Select a daily departure and your pickup and drop-off stops in that direction's travel order." },
+  { n: "03", title: "Choose an available place", body: "See 19 numbered seats and 10 standing places separately. Your reservation is confirmed when the server returns your reference." },
+  { n: "04", title: "Show your reference and board", body: "Show your reservation reference to the driver. Confirm the fare with the operator; no online fare payment is collected by the app." },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -101,48 +85,19 @@ export const steps = [
 
 export const coverage = {
   eyebrow: "Where we run",
-  title: "One loop today. More as the fleet grows.",
-  body: "MOVE Apayao is starting small and on purpose. The pilot runs a single loop through Pudtol so we can prove the service works — arrival times, driver availability, fare reporting — before adding routes.",
-  stats: [
-    { value: "Pudtol", label: "Pilot service area" },
-    { value: "Cash", label: "Fare collection" },
-    { value: "Live", label: "GPS trip tracking" },
-  ],
-  caveat:
-    "Coverage is expanding. If your barangay is not on the loop yet, tell us — requests help the LGU decide which route comes next.",
+  title: "Pudtol to ASC. Back through Tumog.",
+  body: "The daily pilot travels from Pudtol Public Market via Dagupan Gym, Luna National High School and the Provincial Capitol to Apayao State College, using Payanan Road. The return uses the national highway via Tumog National High School and Dagupan Gym to Pudtol Public Market.",
+  stats: [{ value: "19 + 10", label: "Seated + standing places" },{ value: "Daily", label: "Scheduled departures" },{ value: "GPS", label: "When the operator is online" }],
+  caveat: "Departure times are shown in Philippine time. Follow the assigned e-jeep's location for intermediate pickup; contact the project team about service changes.",
 };
 
 export const features = [
-  {
-    icon: "MapPin",
-    title: "Live driver tracking",
-    body: "See your assigned driver move on the map from the moment you are matched until you are dropped off.",
-  },
-  {
-    icon: "Users",
-    title: "Group booking",
-    body: "Riding with family? Set the number of passengers and only vehicles with enough seats will be matched.",
-  },
-  {
-    icon: "History",
-    title: "Trip history",
-    body: "Every ride you take is saved with its route, distance and fare, so you can check what you paid.",
-  },
-  {
-    icon: "CloudRain",
-    title: "Weather-aware",
-    body: "Current conditions are shown in the app, which matters during the rainy season on mountain roads.",
-  },
-  {
-    icon: "TriangleAlert",
-    title: "Report a problem",
-    body: "Flag a road accident, a flooded section or a vehicle issue from your phone. Reports are location-tagged for the LGU.",
-  },
-  {
-    icon: "Star",
-    title: "Driver ratings",
-    body: "Rate each trip and leave a comment. Ratings are visible to the operations team, not just averaged away.",
-  },
+ {icon:"MapPin",title:"Vehicle location",body:"See the assigned e-jeep's fresh GPS position while its operator is online. The app tells you when location is unavailable."},
+ {icon:"Users",title:"Numbered places",body:"Choose available seats or standing places for your departure and journey. Availability is shared with the driver's walk-in records."},
+ {icon:"History",title:"Your reservations",body:"Keep a reservation reference, view its status and cancel eligible bookings before the departure cutoff."},
+ {icon:"CloudRain",title:"Daily timetable",body:"Choose a departure today or during the following six days, with separate outbound and return stops."},
+ {icon:"TriangleAlert",title:"Report a problem",body:"Send an app bug or suggestion from Profile. Ride and safety reports have a separate reporting path."},
+ {icon:"Star",title:"Driver-confirmed boarding",body:"The operator confirms boarding and alighting. Occupied places are not released simply because a timer or GPS position changes."},
 ];
 
 /* ------------------------------------------------------------------ */
@@ -150,72 +105,26 @@ export const features = [
 /* ------------------------------------------------------------------ */
 
 export const drivers = {
-  eyebrow: "For drivers",
-  title: "Get passengers without waiting at the terminal.",
-  body: "Sign up once with your vehicle and licence details. Go online when you want to work, accept the rides that come to you, and see what you earned at the end of the day.",
-  points: [
-    "Ride requests come to your phone — no queuing for passengers",
-    "Turn-by-turn navigation to pickup and drop-off",
-    "Daily and 30-day earnings, counted per completed trip",
-    "You collect the fare in cash, directly from the passenger",
-  ],
-  cta: "Download the driver app",
-  note: "The driver app is a separate download from the passenger app.",
+ eyebrow:"For the pilot operator",title:"One manifest for reservations and walk-ins.",
+ body:"The dedicated e-jeep account opens daily runs, shows passenger references and selected places, and provides boarding and run controls.",
+ points:["Confirm reserved passengers have boarded","Record walk-ins against the same available places","Confirm arrival and alighting before places are released","Go online to share the e-jeep's current location"],
+ cta:"Download the driver app",note:"The driver app is a separate Android download. Pilot access is assigned by the project team.",
 };
 
 export const stakeholders = {
-  eyebrow: "For DOST and project partners",
-  title: "Every trip is a record you can report on.",
-  body: "MOVE Apayao is a project of the Department of Science and Technology (DOST), piloted in Pudtol, Apayao. Operations staff get an admin dashboard covering the whole service, so ridership and revenue reporting come from the system itself rather than a separate spreadsheet.",
-  items: [
-    {
-      title: "Daily ridership and revenue",
-      body: "Trips per day, trip duration, passengers carried and fares collected, charted over any date range and exportable as CSV.",
-    },
-    {
-      title: "Live fleet map",
-      body: "Every registered driver on one map — available, on a trip, or offline — with how long ago each was last seen.",
-    },
-    {
-      title: "Safety and incident log",
-      body: "Accident, flood and vehicle reports from riders and drivers, location-tagged and timestamped.",
-    },
-    {
-      title: "Rider feedback",
-      body: "Star ratings and written comments attached to the specific trip and driver they describe.",
-    },
-  ],
+ eyebrow:"For DOST and project partners",title:"A connected pilot service.",
+ body:"MOVE Apayao is a project of the Department of Science and Technology (DOST), piloted in Apayao. The operations dashboard supports driver and user administration, fleet oversight, incident reports, app feedback and account-deletion requests.",
+ items:[{title:"Assigned pilot operator",body:"A dedicated driver account manages the scheduled e-jeep service."},{title:"Fleet oversight",body:"View available vehicle information and GPS freshness through the operations tools."},{title:"Safety and incident records",body:"Review reports submitted to the project team."},{title:"Passenger feedback",body:"Review app bugs and suggestions in a dedicated inbox."}],
 };
 
 export const faqs = [
-  {
-    q: "How do I pay?",
-    a: "Cash, handed to your driver at drop-off. The app shows the fare before you book so there are no surprises. We are not accepting in-app payments or transport cards yet.",
-  },
-  {
-    q: "How much does a ride cost?",
-    a: "The fare is calculated from the distance and the number of passengers, and is shown in the app before you confirm the booking.",
-  },
-  {
-    q: "Which areas are covered?",
-    a: "The pilot covers Pudtol. If no driver is available near you, the app keeps searching for a few minutes and then tells you plainly instead of leaving you waiting.",
-  },
-  {
-    q: "Do I need mobile data the whole time?",
-    a: "You need a connection to book and to watch your driver approach. Coverage in parts of Apayao is patchy, so if the map stops updating, your driver is still on the way — call them directly.",
-  },
-  {
-    q: "What if something goes wrong during a trip?",
-    a: 'Use "Report an Issue" in the app to log an accident, a flooded road or a vehicle problem. Your location is attached so the operations team knows where it happened.',
-  },
-  {
-    q: "What do you do with my location data?",
-    a: "Location is used to match you with a nearby driver and to show your trip in progress. Trip records are kept so the LGU can report on ridership and follow up on incidents.",
-  },
-  {
-    q: "How do I drive for MOVE Apayao?",
-    a: "Download the driver app and register with your vehicle type, plate number and licence details. Registrations are reviewed by the operations team.",
-  },
+ {q:"How do I pay?",a:"Confirm the fare and cash collection with the operator. The fixed-loop app does not collect online fare payments."},
+ {q:"Which stops are covered?",a:"Pudtol Public Market, Dagupan Gym, Luna National High School, the Provincial Capitol and ASC are on the outbound leg. The return goes from ASC through Tumog National High School and Dagupan Gym to Pudtol Public Market."},
+ {q:"Can I choose a specific time?",a:"Yes. Select a scheduled departure in Philippine time. Reservations close at the terminal departure time; intermediate pickup depends on the vehicle's actual progress."},
+ {q:"Can I choose my seat?",a:"Choose available numbered seats or standing places. The pilot has 19 seated and 10 standing places. A selected place is confirmed only after successful reservation."},
+ {q:"Do I need mobile data?",a:"An internet connection is needed to confirm or cancel a reservation and see current availability or GPS. A disconnected screen cannot confirm a new place."},
+ {q:"How do I report an app problem?",a:"Open Profile and select Send feedback for app bugs and suggestions. Use the separate ride/safety reporting option for incidents."},
+ {q:"How do I delete my account?",a:"Open Account & security and select Request account deletion, or visit moveapayao.com/delete-account. The page explains verification, processing and retained records."},
 ];
 
 export const footer = {

@@ -12,11 +12,13 @@ Status (2026-10-30): passenger reservations and driver operations are implemente
 - Capacity is 19 numbered seats and 10 standing places for overlapping stop segments. A seat can be reserved again for a later nonoverlapping journey.
 - The driver confirms boarding, no-shows, walk-ins, arrival and alighting. Neither the clock nor GPS automatically releases occupied places. Boarding retains the allocation; explicit alighting releases only that reservation's allocation.
 - Driver cancellation with onboard passengers requires confirmation that everyone has alighted. Retried stop advancement cannot skip stops.
-- Local fixtures are created only by `scripts/src/seed-local-fixed-loop.ts`, with a loopback validation-database guard and ignored credentials. The dedicated live driver account has not been provisioned.
+- Local fixtures are created only by `scripts/src/seed-local-fixed-loop.ts`, with a loopback validation-database guard and ignored credentials.
 
 ## Release follow-up
 
-The launch configuration still needs a dedicated live operator/vehicle assignment with the confirmed stops. The legacy account seed only provisions the earlier account and loop vehicle; it does not enable the new reservation service. Do not use the local fixture against a live database.
+Provision the dedicated account using `scripts/src/seed-fixed-loop.ts` with `FIXED_LOOP_PROVISION=1`, preserving credentials in ignored private storage. Then use `scripts/src/configure-fixed-loop.ts` with `FIXED_LOOP_CONFIGURE=1` to configure the confirmed service. This operation is repeat-safe, refuses mismatching existing assignments/stops, and never fabricates GPS or changes a moving vehicle. Do not use local fixtures against a live database.
+
+The `pilot` EAS profile in each app produces a signed standalone APK connected to the permanent live API, with remote version increments. This direct-download pilot is separate from later Play Store publication.
 
 Fares and collection remain for operator confirmation; this implementation collects no online payment. Verify stop pins, physical seat labels, timetable feasibility, actual GPS, cancellation notifications and a full pilot journey before deployment. The admin feedback inbox is implemented; general service/timetable management is not yet an admin UI.
 

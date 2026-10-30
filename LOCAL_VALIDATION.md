@@ -85,10 +85,9 @@ Before publication:
 2. Complete physical Android tests: onboarding, permissions, map display,
    registration/login, offline/reconnect behavior, notifications and actual trip
    flows for both passenger and driver. Device launch alone is insufficient.
-3. Provide an account/data deletion request path in the app and on the website.
-   Current account deactivation is explicitly recoverable and retains account
-   data; it is not a verified deletion workflow. Define retained records and
-   retention periods with the service operator.
+3. Operate the account-deletion queue and confirm the lawful retention rules
+   with the project operator. The verified web request, in-app links, admin
+   completion and personal-data cleanup are now implemented; see ACCOUNT_DELETION.md.
 4. Review the remaining high-severity dependency findings and resolve applicable
    risks before producing the publication candidate.
 5. Produce signed production AABs, verify target API and 16 KB page-size support
@@ -128,3 +127,9 @@ passwords or session tokens. It expects a fresh local rate-limit budget. Set
 `EXPO_PUBLIC_API_URL=http://127.0.0.1:5500` when starting the test Metro server,
 and use `adb reverse tcp:5500 tcp:5500` plus `adb reverse tcp:8081 tcp:8081` for
 a phone connected over USB. Those settings belong only to local testing.
+
+## Standalone pilot update
+
+The pilot APK profiles target the live API and are separate from Play Store submission. Live service provisioning uses the guarded seed/configuration scripts in FIXED_LOOP_PLAN.md. The website describes scheduled e-jeep reservations, numbered seats/standing places and driver manifests rather than the later on-demand enhancement. Shared VPS download storage is configurable with RELEASE_DOWNLOADS_DIR so versioned releases preserve the published APKs.
+
+Account-deletion verification passed six runtime test groups after the eight fixed-loop groups on an isolated local database. A fresh browser submitted and refreshed a private request receipt. No live user account was erased. Schema and server guards prevent ordinary reactivation and new personal records after permanent deletion; financial/service holds and recorded retention remain administrator responsibilities.

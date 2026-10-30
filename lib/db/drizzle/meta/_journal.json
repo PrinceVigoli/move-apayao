@@ -29,6 +29,13 @@
       "when": 1793281326522,
       "tag": "0003_fixed_loop_reservations",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793323708396,
+      "tag": "0004_account_deletion",
+      "breakpoints": true
     }
   ]
 }

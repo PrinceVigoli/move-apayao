@@ -80,7 +80,7 @@ export function ProductPhone() {
   return (
     <div
       className="product-phone"
-      aria-label="Passenger app preview showing the real Pudtol-Payanan pilot loop"
+      aria-label="Illustrative passenger app preview for the Pudtol-Luna pilot"
     >
       <div className="phone-speaker" aria-hidden="true" />
       <div className="phone-status" aria-hidden="true">
@@ -89,8 +89,8 @@ export function ProductPhone() {
       </div>
 
       <div className="phone-eta">
-        <span>Driver heading to pickup</span>
-        <strong>Live tracking</strong>
+        <span>Pudtol?Luna e-jeep</span>
+        <strong>App preview</strong>
       </div>
 
       <div className="phone-map" aria-hidden="true">
@@ -146,15 +146,15 @@ export function ProductPhone() {
       </div>
 
       <div className="phone-driver">
-        <div className="phone-avatar">JD</div>
+        <div className="phone-avatar">01</div>
         <div>
-          <strong>Juan Dela Cruz</strong>
+          <strong>Pilot e-jeep</strong>
           <span>
             <ShieldCheck size={9} /> Verified ·{" "}
             <Star size={9} fill="currentColor" /> 4.9 · Red E-Trike
           </span>
         </div>
-        <span className="phone-plate">APY-1001</span>
+        <span className="phone-plate">UNIT 01</span>
       </div>
 
       <div className="phone-progress" aria-hidden="true">
@@ -168,13 +168,13 @@ export function ProductPhone() {
       </div>
       <div className="phone-progress-labels" aria-hidden="true">
         <span>Confirmed</span>
-        <span>Arriving</span>
-        <span>Drop-off</span>
+        <span>Places</span>
+        <span>Reference</span>
       </div>
 
       <div className="phone-route-card">
         <span className="start" />
-        <strong>Poblacion, Pudtol</strong>
+        <strong>Pudtol Public Market</strong>
         <span className="end" />
         <strong>Via Payanan · Capitol · ASC · Tumog</strong>
       </div>

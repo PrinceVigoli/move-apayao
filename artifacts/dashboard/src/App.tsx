@@ -13,6 +13,7 @@ const Drivers = lazy(() => import('@/pages/drivers'));
 const FleetMap = lazy(() => import('@/pages/fleet-map'));
 const Incidents = lazy(() => import('@/pages/incidents'));
 const Feedback = lazy(() => import('@/pages/feedback'));
+const AccountDeletion = lazy(() => import('@/pages/account-deletion'));
 const Analytics = lazy(() => import('@/pages/analytics'));
 const Subscriptions = lazy(() => import('@/pages/subscriptions'));
 const Loops = lazy(() => import('@/pages/loops'));
@@ -72,6 +73,7 @@ function ProtectedApp() {
         <Route path="/fleet" component={FleetMap} />
         <Route path="/incidents" component={Incidents} />
         <Route path="/feedback" component={Feedback} />
+        <Route path="/account-deletion" component={AccountDeletion} />
         <Route path="/analytics" component={Analytics} />
         <Route path="/subscriptions" component={Subscriptions} />
         <Route path="/loops" component={Loops} />

@@ -9,7 +9,7 @@ dotenv.config({ path: path.join(root, "artifacts/api-server/.env.local") });
 dotenv.config({ path: path.join(root, "artifacts/api-server/.env") });
 
 async function main() {
-  if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not configured.");
+  if (process.env.FIXED_LOOP_PROVISION !== "1" || !process.env.DATABASE_URL) throw new Error("Explicit FIXED_LOOP_PROVISION=1 and DATABASE_URL are required.");
   const { db, usersTable, driverProfilesTable, fareWalletsTable, subscriptionsTable, hashPassword, verifyPassword } =
     await import("@workspace/db");
   const { eq } = await import("drizzle-orm");
@@ -21,7 +21,7 @@ async function main() {
     return;
   }
 
-  const credentialPath = path.join(root, "local-secrets/pudtol-luna-fixed-loop.json");
+  const credentialPath = path.resolve(root, process.env.FIXED_LOOP_CREDENTIAL_DIR || "local-secrets", "pudtol-luna-fixed-loop.json");
   await mkdir(path.dirname(credentialPath), { recursive: true });
   let password: string;
   try {
