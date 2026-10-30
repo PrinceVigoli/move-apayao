@@ -9,6 +9,7 @@ import {
   Footer,
 } from "@/components/Body";
 import { ResetPassword } from "@/components/ResetPassword";
+import { DeleteAccount } from "@/components/DeleteAccount";
 import { PrivacyPage, TermsPage } from "@/components/LegalPage";
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
   }
   if (pathname === "/terms") return <TermsPage />;
   if (pathname === "/privacy") return <PrivacyPage />;
+  if (pathname === "/delete-account") return <DeleteAccount />;
 
   return (
     <>

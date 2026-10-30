@@ -93,6 +93,7 @@ function LegalShell({
               Privacy Notice
             </a>
             <a href="/#contact">Contact</a>
+            <a href="/delete-account">Delete your account</a>
           </aside>
           <article className="legal-card">{children}</article>
         </div>
@@ -121,9 +122,9 @@ function ContactCard({ privacy = false }: { privacy?: boolean }) {
       <p className="flex items-start gap-2">
         <MapPin size={16} /> {publicContact.address}
       </p>
-      <a href={privacy ? links.privacyEmail : links.email}>
+      {email ? <a href={privacy ? links.privacyEmail : links.email}>
         <Mail size={16} /> {email}
-      </a>
+      </a> : <p>Project support and privacy contact details will be announced here once confirmed.</p>}
       <p>Office availability: {publicContact.hours}</p>
     </div>
   );
@@ -134,8 +135,8 @@ export function TermsPage() {
     <LegalShell kind="terms">
       <p className="legal-lead">
         These Terms govern the MOVE Apayao passenger app, driver app, website,
-        and related transport-dispatch services operated by{" "}
-        {publicContact.operator} for the Pudtol pilot.
+        and related transport-dispatch services for the Pudtol pilot, a project
+        of the Department of Science and Technology (DOST).
       </p>
       <Section id="acceptance" title="1. Accepting these Terms">
         <p>
@@ -257,8 +258,9 @@ export function PrivacyPage() {
   return (
     <LegalShell kind="privacy">
       <p className="legal-lead">
-        {publicContact.operator} is the personal information controller for the
-        MOVE Apayao Pudtol pilot. This notice explains the processing performed
+        MOVE Apayao is a project of the Department of Science and Technology
+        (DOST). The responsible project privacy contact will be identified here
+        once confirmed. This notice explains the processing performed
         across the passenger app, driver app, public site, operations dashboard,
         API, GPS and IoT tracking, and support channels.
       </p>
@@ -343,7 +345,7 @@ export function PrivacyPage() {
       <Section id="retention" title="5. Retention and deletion">
         <p>
           Data is kept only for as long as needed for the declared purpose and
-          the LGU’s approved records-retention, audit, safety, dispute, and
+          the project’s approved records-retention, audit, safety, dispute, and
           legal requirements. Retention varies by record: live operational cache
           data is short-lived; account data is kept while the account is active;
           and trip, incident, financial, approval, security, and government
@@ -356,6 +358,7 @@ export function PrivacyPage() {
           request erasure or blocking, and the operator will explain any record
           that must lawfully be retained.
         </p>
+        <p><a href="/delete-account">Request permanent account deletion</a> from our website, including after uninstalling the app. The page explains identity verification, removed data, required retained records and how to check your request. This is separate from recoverable deactivation.</p>
       </Section>
       <Section id="security" title="6. Security and location controls">
         <p>

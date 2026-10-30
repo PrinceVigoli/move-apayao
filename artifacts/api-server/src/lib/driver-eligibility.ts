@@ -5,6 +5,8 @@ import {
   subscriptionsTable,
   tripsTable,
   usersTable,
+  fixedLoopServicesTable,
+  loopVehiclesTable,
 } from "@workspace/db";
 
 export const DRIVER_LOCATION_FRESHNESS_MS = 3 * 60 * 1000;
@@ -45,6 +47,11 @@ export async function getEligibleDriverProfiles(
     eq(usersTable.role, "driver"),
     hasCurrentSubscription,
     hasNoActiveTrip,
+    sql<boolean>`not exists (
+      select 1 from ${fixedLoopServicesTable}
+      inner join ${loopVehiclesTable} on ${fixedLoopServicesTable.vehicleId} = ${loopVehiclesTable.id}
+      where ${loopVehiclesTable.driverId} = ${driverProfilesTable.userId}
+    )`,
   ];
   if (requireAvailable) filters.push(eq(driverProfilesTable.isAvailable, true));
   if (requireFreshLocation) {

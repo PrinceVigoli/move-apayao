@@ -5,6 +5,85 @@
  * MOVE Apayao — Transit & Trip Booking API
  * OpenAPI spec version: 1.0.0
  */
+export type AccountDeletionReceiptStatus = typeof AccountDeletionReceiptStatus[keyof typeof AccountDeletionReceiptStatus];
+
+
+export const AccountDeletionReceiptStatus = {
+  pending: 'pending',
+  reviewing: 'reviewing',
+  completed: 'completed',
+} as const;
+
+export interface AccountDeletionReceipt {
+  reference: string;
+  status: AccountDeletionReceiptStatus;
+  requestedAt: string;
+  completedAt: string | null;
+  retentionReason: string | null;
+  retentionUntil: string | null;
+}
+
+export interface AccountDeletionResponse {
+  request: AccountDeletionReceipt;
+}
+
+export interface CreateAccountDeletionBody {
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 1
+     * @maxLength 256
+     */
+  password: string;
+  confirm: true;
+}
+
+export type AccountDeletionAdminItemStatus = typeof AccountDeletionAdminItemStatus[keyof typeof AccountDeletionAdminItemStatus];
+
+
+export const AccountDeletionAdminItemStatus = {
+  pending: 'pending',
+  reviewing: 'reviewing',
+  completed: 'completed',
+} as const;
+
+export interface AccountDeletionAdminItem {
+  reference: string;
+  status: AccountDeletionAdminItemStatus;
+  requestedAt: string;
+  completedAt: string | null;
+  retentionReason: string | null;
+  retentionUntil: string | null;
+  name: string | null;
+  email: string | null;
+  role: string;
+}
+
+export interface AccountDeletionListResponse {
+  requests: AccountDeletionAdminItem[];
+  limit: number;
+  offset: number;
+}
+
+export type ReviewAccountDeletionBodyAction = typeof ReviewAccountDeletionBodyAction[keyof typeof ReviewAccountDeletionBodyAction];
+
+
+export const ReviewAccountDeletionBodyAction = {
+  review: 'review',
+  complete: 'complete',
+} as const;
+
+export interface ReviewAccountDeletionBody {
+  action: ReviewAccountDeletionBodyAction;
+  confirmDeletion?: boolean;
+  /**
+     * @minLength 20
+     * @maxLength 1000
+     */
+  retentionReason?: string;
+  retentionUntil?: string;
+}
+
 export type HealthStatusStatus = typeof HealthStatusStatus[keyof typeof HealthStatusStatus];
 
 
@@ -998,6 +1077,334 @@ export interface ListWalletsResponse {
   offset: number;
 }
 
+export interface FixedLoopStop {
+  key: string;
+  name: string;
+  lat?: number | null;
+  lon?: number | null;
+}
+
+export type FixedLoopRunDirection = typeof FixedLoopRunDirection[keyof typeof FixedLoopRunDirection];
+
+
+export const FixedLoopRunDirection = {
+  to_asc: 'to_asc',
+  to_pudtol: 'to_pudtol',
+} as const;
+
+export type FixedLoopRunStatus = typeof FixedLoopRunStatus[keyof typeof FixedLoopRunStatus];
+
+
+export const FixedLoopRunStatus = {
+  scheduled: 'scheduled',
+  boarding: 'boarding',
+  on_route: 'on_route',
+  completed: 'completed',
+  cancelled: 'cancelled',
+} as const;
+
+export interface FixedLoopRun {
+  id: number;
+  serviceDate: string;
+  direction: FixedLoopRunDirection;
+  unitLabel: string;
+  departureAt: string;
+  arrivalAt: string;
+  stops: FixedLoopStop[];
+  status: FixedLoopRunStatus;
+  currentStopIndex: number;
+  bookingOpen: boolean;
+}
+
+export type FixedLoopServiceVehicleStatus = typeof FixedLoopServiceVehicleStatus[keyof typeof FixedLoopServiceVehicleStatus];
+
+
+export const FixedLoopServiceVehicleStatus = {
+  scheduled: 'scheduled',
+  boarding: 'boarding',
+  on_route: 'on_route',
+  off_duty: 'off_duty',
+} as const;
+
+export type FixedLoopServiceLocation = {
+  lat: number;
+  lon: number;
+  updatedAt: string;
+} | null;
+
+export interface FixedLoopService {
+  id: number;
+  name: string;
+  vehicleId: number;
+  unitLabel: string;
+  seatedCapacity: number;
+  standingCapacity: number;
+  bookingDays: number;
+  outboundStops: FixedLoopStop[];
+  returnStops: FixedLoopStop[];
+  vehicleStatus: FixedLoopServiceVehicleStatus;
+  location: FixedLoopServiceLocation;
+  activeRun: FixedLoopRun | null;
+}
+
+export interface FixedLoopServiceResponse {
+  service: FixedLoopService | null;
+}
+
+export interface FixedLoopRunsResponse {
+  runs: FixedLoopRun[];
+}
+
+export interface FixedLoopRunResponse {
+  run: FixedLoopRun;
+}
+
+export interface FixedLoopAvailabilityResponse {
+  run: FixedLoopRun;
+  pickupIndex: number;
+  dropoffIndex: number;
+  availableSeats: number[];
+  availableStanding: number[];
+}
+
+export type FixedLoopReservationStatus = typeof FixedLoopReservationStatus[keyof typeof FixedLoopReservationStatus];
+
+
+export const FixedLoopReservationStatus = {
+  confirmed: 'confirmed',
+  boarded: 'boarded',
+  completed: 'completed',
+  cancelled: 'cancelled',
+  no_show: 'no_show',
+} as const;
+
+export type FixedLoopReservationSource = typeof FixedLoopReservationSource[keyof typeof FixedLoopReservationSource];
+
+
+export const FixedLoopReservationSource = {
+  app: 'app',
+  walk_in: 'walk_in',
+} as const;
+
+export interface FixedLoopReservation {
+  id: number;
+  reference: string;
+  run: FixedLoopRun;
+  pickupIndex: number;
+  dropoffIndex: number;
+  pickupName: string;
+  dropoffName: string;
+  seats: number[];
+  standing: number[];
+  status: FixedLoopReservationStatus;
+  source: FixedLoopReservationSource;
+  createdAt: string;
+  passengerName?: string | null;
+}
+
+export interface FixedLoopReservationResponse {
+  reservation: FixedLoopReservation;
+}
+
+export interface FixedLoopReservationsResponse {
+  reservations: FixedLoopReservation[];
+  limit: number;
+  offset: number;
+}
+
+/**
+ * Select at least one seated or standing place. The same requestId replays the original reservation.
+ */
+export interface CreateFixedLoopReservationBody {
+  /** @minimum 1 */
+  runId: number;
+  /** @minimum 0 */
+  pickupIndex: number;
+  /** @minimum 1 */
+  dropoffIndex: number;
+  /**
+     * @maxItems 19
+     * @items.minimum 1
+     * @items.maximum 19
+     */
+  seats?: number[];
+  /**
+     * @maxItems 10
+     * @items.minimum 1
+     * @items.maximum 10
+     */
+  standing?: number[];
+  /**
+     * @minLength 10
+     * @maxLength 100
+     */
+  requestId: string;
+}
+
+export interface RecordFixedLoopWalkInBody {
+  /** @minimum 1 */
+  dropoffIndex: number;
+  /**
+     * @maxItems 19
+     * @items.minimum 1
+     * @items.maximum 19
+     */
+  seats?: number[];
+  /**
+     * @maxItems 10
+     * @items.minimum 1
+     * @items.maximum 10
+     */
+  standing?: number[];
+  /**
+     * @minLength 10
+     * @maxLength 100
+     */
+  requestId: string;
+}
+
+export type CheckInFixedLoopReservationBodyAction = typeof CheckInFixedLoopReservationBodyAction[keyof typeof CheckInFixedLoopReservationBodyAction];
+
+
+export const CheckInFixedLoopReservationBodyAction = {
+  board: 'board',
+  no_show: 'no_show',
+} as const;
+
+export interface CheckInFixedLoopReservationBody {
+  action: CheckInFixedLoopReservationBodyAction;
+}
+
+export type ControlFixedLoopRunBodyAction = typeof ControlFixedLoopRunBodyAction[keyof typeof ControlFixedLoopRunBodyAction];
+
+
+export const ControlFixedLoopRunBodyAction = {
+  boarding: 'boarding',
+  start: 'start',
+  next_stop: 'next_stop',
+  cancel: 'cancel',
+} as const;
+
+export interface ControlFixedLoopRunBody {
+  action: ControlFixedLoopRunBodyAction;
+  /** Required to cancel a run with onboard passengers; operator confirms they have all alighted. */
+  confirmAlighted?: boolean;
+  /**
+     * Required for next_stop to prevent duplicate advances.
+     * @minimum 0
+     */
+  expectedStopIndex?: number;
+}
+
+export interface FixedLoopOperatorService {
+  id: number;
+  name: string;
+  unitLabel: string;
+  enabled: boolean;
+}
+
+export interface FixedLoopOperatorRunsResponse {
+  service: FixedLoopOperatorService | null;
+  runs: FixedLoopRun[];
+}
+
+export interface FixedLoopManifestResponse {
+  run: FixedLoopRun;
+  reservations: FixedLoopReservation[];
+}
+
+export type AppFeedbackCategory = typeof AppFeedbackCategory[keyof typeof AppFeedbackCategory];
+
+
+export const AppFeedbackCategory = {
+  bug: 'bug',
+  suggestion: 'suggestion',
+  other: 'other',
+} as const;
+
+export type AppFeedbackStatus = typeof AppFeedbackStatus[keyof typeof AppFeedbackStatus];
+
+
+export const AppFeedbackStatus = {
+  open: 'open',
+  reviewing: 'reviewing',
+  resolved: 'resolved',
+} as const;
+
+export interface AppFeedback {
+  id: number;
+  reporterId: string;
+  reporterName?: string | null;
+  reporterEmail?: string | null;
+  category: AppFeedbackCategory;
+  /**
+     * @minLength 10
+     * @maxLength 2000
+     */
+  message: string;
+  appVersion?: string | null;
+  platform?: string | null;
+  status: AppFeedbackStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateFeedbackBodyCategory = typeof CreateFeedbackBodyCategory[keyof typeof CreateFeedbackBodyCategory];
+
+
+export const CreateFeedbackBodyCategory = {
+  bug: 'bug',
+  suggestion: 'suggestion',
+  other: 'other',
+} as const;
+
+export type CreateFeedbackBodyPlatform = typeof CreateFeedbackBodyPlatform[keyof typeof CreateFeedbackBodyPlatform];
+
+
+export const CreateFeedbackBodyPlatform = {
+  android: 'android',
+  ios: 'ios',
+  web: 'web',
+} as const;
+
+export interface CreateFeedbackBody {
+  category: CreateFeedbackBodyCategory;
+  /**
+     * @minLength 10
+     * @maxLength 2000
+     */
+  message: string;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  appVersion?: string;
+  platform?: CreateFeedbackBodyPlatform;
+}
+
+export type UpdateFeedbackBodyStatus = typeof UpdateFeedbackBodyStatus[keyof typeof UpdateFeedbackBodyStatus];
+
+
+export const UpdateFeedbackBodyStatus = {
+  open: 'open',
+  reviewing: 'reviewing',
+  resolved: 'resolved',
+} as const;
+
+export interface UpdateFeedbackBody {
+  status: UpdateFeedbackBodyStatus;
+}
+
+export interface FeedbackResponse {
+  feedback: AppFeedback;
+}
+
+export interface ListFeedbackResponse {
+  feedback: AppFeedback[];
+  limit: number;
+  offset: number;
+}
+
 export type IncidentReportType = typeof IncidentReportType[keyof typeof IncidentReportType];
 
 
@@ -1331,6 +1738,59 @@ limit?: number;
 offset?: number;
 };
 
+export type ListFixedLoopRunsParams = {
+date?: string;
+};
+
+export type GetFixedLoopAvailabilityParams = {
+/**
+ * @minimum 0
+ */
+pickupIndex?: number;
+/**
+ * @minimum 1
+ */
+dropoffIndex?: number;
+};
+
+export type ListMyFixedLoopReservationsParams = {
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type ListFixedLoopOperatorRunsParams = {
+date?: string;
+};
+
+export type ListFeedbackParams = {
+status?: ListFeedbackStatus;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type ListFeedbackStatus = typeof ListFeedbackStatus[keyof typeof ListFeedbackStatus];
+
+
+export const ListFeedbackStatus = {
+  open: 'open',
+  reviewing: 'reviewing',
+  resolved: 'resolved',
+} as const;
+
 export type ListIncidentsParams = {
 limit?: number;
 offset?: number;
@@ -1377,4 +1837,26 @@ export type AssignIotVehicle201 = { [key: string]: unknown };
 export type RevokeGpsDevice200 = { [key: string]: unknown };
 
 export type IngestGpsLocation202 = { [key: string]: unknown };
+
+export type ListAccountDeletionRequestsParams = {
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+status?: ListAccountDeletionRequestsStatus;
+};
+
+export type ListAccountDeletionRequestsStatus = typeof ListAccountDeletionRequestsStatus[keyof typeof ListAccountDeletionRequestsStatus];
+
+
+export const ListAccountDeletionRequestsStatus = {
+  pending: 'pending',
+  reviewing: 'reviewing',
+  completed: 'completed',
+} as const;
 

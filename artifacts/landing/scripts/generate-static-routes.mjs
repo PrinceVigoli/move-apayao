@@ -6,6 +6,12 @@ const source = await readFile(join(dist, "index.html"), "utf8");
 
 const routes = [
   {
+    path: "delete-account",
+    title: "Delete your account | MOVE Apayao",
+    description: "Request deletion of your MOVE Apayao account and personal data, and check a private deletion request.",
+    noindex: true,
+  },
+  {
     path: "terms",
     title: "Terms of Service | MOVE Apayao",
     description:

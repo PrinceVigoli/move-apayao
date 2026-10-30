@@ -22,6 +22,10 @@ tags:
     description: Fare wallet and transactions
   - name: incidents
     description: Incident reporting
+  - name: fixed-loop
+    description: Scheduled Pudtol-Luna e-jeep tracking, reservations and boarding
+  - name: feedback
+    description: App bug reports and suggestions
   - name: analytics
     description: Reporting and analytics
   - name: weather
@@ -34,6 +38,9 @@ tags:
     description: Developer/superadmin fleet GPS provisioning and device telemetry
   - name: docs
     description: Developer/superadmin internal operational documentation
+
+  - name: account-deletion
+    description: Verified deletion requests and administrator processing
 
 paths:
   /healthz:
@@ -1232,6 +1239,460 @@ paths:
 
   # ── Incidents ────────────────────────────────────────────────────────────────
 
+  /fixed-loop/service:
+    get:
+      security:
+        - bearerAuth: []
+      tags:
+        - fixed-loop
+      operationId: getFixedLoopService
+      parameters: []
+      responses:
+        '200':
+          description: FixedLoopServiceResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixedLoopServiceResponse'
+        '400':
+          description: Invalid input
+        '401':
+          description: Sign-in required
+        '403':
+          description: Access denied
+        '409':
+          description: Availability or run state changed
+  /fixed-loop/runs:
+    get:
+      security:
+        - bearerAuth: []
+      tags:
+        - fixed-loop
+      operationId: listFixedLoopRuns
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: FixedLoopRunsResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixedLoopRunsResponse'
+        '400':
+          description: Invalid input
+        '401':
+          description: Sign-in required
+        '403':
+          description: Access denied
+        '409':
+          description: Availability or run state changed
+  /fixed-loop/runs/{id}/availability:
+    get:
+      security:
+        - bearerAuth: []
+      tags:
+        - fixed-loop
+      operationId: getFixedLoopAvailability
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: pickupIndex
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - name: dropoffIndex
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: FixedLoopAvailabilityResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixedLoopAvailabilityResponse'
+        '400':
+          description: Invalid input
+        '401':
+          description: Sign-in required
+        '403':
+          description: Access denied
+        '409':
+          description: Availability or run state changed
+  /fixed-loop/reservations:
+    post:
+      security:
+        - bearerAuth: []
+      tags:
+        - fixed-loop
+      operationId: createFixedLoopReservation
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFixedLoopReservationBody'
+      responses:
+        '201':
+          description: FixedLoopReservationResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixedLoopReservationResponse'
+        '400':
+          description: Invalid input
+        '401':
+          description: Sign-in required
+        '403':
+          description: Access denied
+        '409':
+          description: Availability or run state changed
+    get:
+      security:
+        - bearerAuth: []
+      tags:
+        - fixed-loop
+      operationId: listMyFixedLoopReservations
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: FixedLoopReservationsResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixedLoopReservationsResponse'
+        '400':
+          description: Invalid input
+        '401':
+          description: Sign-in required
+        '403':
+          description: Access denied
+        '409':
+          description: Availability or run state changed
+  /fixed-loop/reservations/{id}:
+    get:
+      security:
+        - bearerAuth: []
+      tags:
+        - fixed-loop
+      operationId: getFixedLoopReservation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: FixedLoopReservationResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixedLoopReservationResponse'
+        '400':
+          description: Invalid input
+        '401':
+          description: Sign-in required
+        '403':
+          description: Access denied
+        '409':
+          description: Availability or run state changed
+  /fixed-loop/reservations/{id}/cancel:
+    post:
+      security:
+        - bearerAuth: []
+      tags:
+        - fixed-loop
+      operationId: cancelFixedLoopReservation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: FixedLoopReservationResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixedLoopReservationResponse'
+        '400':
+          description: Invalid input
+        '401':
+          description: Sign-in required
+        '403':
+          description: Access denied
+        '409':
+          description: Availability or run state changed
+  /fixed-loop/operator/runs:
+    get:
+      security:
+        - bearerAuth: []
+      tags:
+        - fixed-loop
+      operationId: listFixedLoopOperatorRuns
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: FixedLoopOperatorRunsResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixedLoopOperatorRunsResponse'
+        '400':
+          description: Invalid input
+        '401':
+          description: Sign-in required
+        '403':
+          description: Access denied
+        '409':
+          description: Availability or run state changed
+  /fixed-loop/runs/{id}/manifest:
+    get:
+      security:
+        - bearerAuth: []
+      tags:
+        - fixed-loop
+      operationId: getFixedLoopManifest
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: FixedLoopManifestResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixedLoopManifestResponse'
+        '400':
+          description: Invalid input
+        '401':
+          description: Sign-in required
+        '403':
+          description: Access denied
+        '409':
+          description: Availability or run state changed
+  /fixed-loop/runs/{id}/walk-ins:
+    post:
+      security:
+        - bearerAuth: []
+      tags:
+        - fixed-loop
+      operationId: recordFixedLoopWalkIn
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordFixedLoopWalkInBody'
+      responses:
+        '201':
+          description: FixedLoopReservationResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixedLoopReservationResponse'
+        '400':
+          description: Invalid input
+        '401':
+          description: Sign-in required
+        '403':
+          description: Access denied
+        '409':
+          description: Availability or run state changed
+  /fixed-loop/reservations/{id}/check-in:
+    post:
+      security:
+        - bearerAuth: []
+      tags:
+        - fixed-loop
+      operationId: checkInFixedLoopReservation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckInFixedLoopReservationBody'
+      responses:
+        '200':
+          description: FixedLoopReservationResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixedLoopReservationResponse'
+        '400':
+          description: Invalid input
+        '401':
+          description: Sign-in required
+        '403':
+          description: Access denied
+        '409':
+          description: Availability or run state changed
+  /fixed-loop/runs/{id}/control:
+    post:
+      security:
+        - bearerAuth: []
+      tags:
+        - fixed-loop
+      operationId: controlFixedLoopRun
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ControlFixedLoopRunBody'
+      responses:
+        '200':
+          description: FixedLoopRunResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FixedLoopRunResponse'
+        '400':
+          description: Invalid input
+        '401':
+          description: Sign-in required
+        '403':
+          description: Access denied
+        '409':
+          description: Availability or run state changed
+
+  /feedback:
+    post:
+      operationId: createFeedback
+      tags: [feedback]
+      summary: Send app feedback
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFeedbackBody"
+      responses:
+        "201":
+          description: Feedback saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbackResponse"
+        "400":
+          description: Invalid feedback
+        "401":
+          description: Sign-in required
+    get:
+      operationId: listFeedback
+      tags: [feedback]
+      summary: Review app feedback (admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, reviewing, resolved]
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: Feedback inbox
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListFeedbackResponse"
+        "403":
+          description: Administrator access required
+
+  /feedback/{id}:
+    patch:
+      operationId: updateFeedback
+      tags: [feedback]
+      summary: Update feedback status (admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFeedbackBody"
+      responses:
+        "200":
+          description: Updated feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbackResponse"
+        "403":
+          description: Administrator access required
+        "404":
+          description: Feedback not found
+
   /incidents:
     post:
       operationId: createIncident
@@ -1675,6 +2136,141 @@ paths:
                 type: object
                 additionalProperties: true
 
+  /account-deletion/requests:
+    post:
+      tags:
+        - account-deletion
+      security: []
+      operationId: createAccountDeletionRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAccountDeletionBody'
+      responses:
+        '201':
+          description: AccountDeletionResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDeletionResponse'
+        '400':
+          description: Invalid request
+        '401':
+          description: Invalid credentials
+        '403':
+          description: Access denied
+        '409':
+          description: Resolve active service, balance or retention review first
+    get:
+      tags:
+        - account-deletion
+      security:
+        - bearerAuth: []
+      operationId: listAccountDeletionRequests
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - pending
+              - reviewing
+              - completed
+      responses:
+        '200':
+          description: AccountDeletionListResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDeletionListResponse'
+        '400':
+          description: Invalid request
+        '401':
+          description: Invalid credentials
+        '403':
+          description: Access denied
+        '409':
+          description: Resolve active service, balance or retention review first
+  /account-deletion/requests/{id}:
+    get:
+      tags:
+        - account-deletion
+      security: []
+      operationId: getAccountDeletionRequest
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: AccountDeletionResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDeletionResponse'
+        '400':
+          description: Invalid request
+        '401':
+          description: Invalid credentials
+        '403':
+          description: Access denied
+        '404':
+          description: Receipt not found
+        '409':
+          description: Resolve active service, balance or retention review first
+    patch:
+      tags:
+        - account-deletion
+      security:
+        - bearerAuth: []
+      operationId: reviewAccountDeletionRequest
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewAccountDeletionBody'
+      responses:
+        '200':
+          description: AccountDeletionResponse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDeletionResponse'
+        '400':
+          description: Invalid request
+        '401':
+          description: Invalid credentials
+        '403':
+          description: Access denied
+        '409':
+          description: Resolve active service, balance or retention review first
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1709,6 +2305,143 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
 
   schemas:
+    AccountDeletionReceipt:
+      type: object
+      properties:
+        reference:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - pending
+            - reviewing
+            - completed
+        requestedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        retentionReason:
+          type: string
+          nullable: true
+        retentionUntil:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - reference
+        - status
+        - requestedAt
+        - completedAt
+        - retentionReason
+        - retentionUntil
+    AccountDeletionResponse:
+      type: object
+      properties:
+        request:
+          $ref: '#/components/schemas/AccountDeletionReceipt'
+      required:
+        - request
+    CreateAccountDeletionBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 1
+          maxLength: 256
+        confirm:
+          type: boolean
+          enum:
+            - true
+      required:
+        - email
+        - password
+        - confirm
+    AccountDeletionAdminItem:
+      type: object
+      properties:
+        reference:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - pending
+            - reviewing
+            - completed
+        requestedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        retentionReason:
+          type: string
+          nullable: true
+        retentionUntil:
+          type: string
+          format: date-time
+          nullable: true
+        name:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        role:
+          type: string
+      required:
+        - reference
+        - status
+        - requestedAt
+        - completedAt
+        - retentionReason
+        - retentionUntil
+        - name
+        - email
+        - role
+    AccountDeletionListResponse:
+      type: object
+      properties:
+        requests:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountDeletionAdminItem'
+        limit:
+          type: integer
+        offset:
+          type: integer
+      required:
+        - requests
+        - limit
+        - offset
+    ReviewAccountDeletionBody:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+            - review
+            - complete
+        confirmDeletion:
+          type: boolean
+        retentionReason:
+          type: string
+          minLength: 20
+          maxLength: 1000
+        retentionUntil:
+          type: string
+          format: date-time
+      required:
+        - action
     HealthStatus:
       type: object
       properties:
@@ -3033,6 +3766,459 @@ components:
       required: [wallets, limit, offset]
 
     # ── Incidents ────────────────────────────────────────────────────────────
+
+    FixedLoopStop:
+      type: object
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        lat:
+          type: number
+          nullable: true
+        lon:
+          type: number
+          nullable: true
+      required:
+        - key
+        - name
+    FixedLoopRun:
+      type: object
+      properties:
+        id:
+          type: integer
+        serviceDate:
+          type: string
+          format: date
+        direction:
+          type: string
+          enum:
+            - to_asc
+            - to_pudtol
+        unitLabel:
+          type: string
+        departureAt:
+          type: string
+          format: date-time
+        arrivalAt:
+          type: string
+          format: date-time
+        stops:
+          type: array
+          items:
+            $ref: '#/components/schemas/FixedLoopStop'
+        status:
+          type: string
+          enum:
+            - scheduled
+            - boarding
+            - on_route
+            - completed
+            - cancelled
+        currentStopIndex:
+          type: integer
+        bookingOpen:
+          type: boolean
+      required:
+        - id
+        - serviceDate
+        - direction
+        - unitLabel
+        - departureAt
+        - arrivalAt
+        - stops
+        - status
+        - currentStopIndex
+        - bookingOpen
+    FixedLoopService:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        vehicleId:
+          type: integer
+        unitLabel:
+          type: string
+        seatedCapacity:
+          type: integer
+        standingCapacity:
+          type: integer
+        bookingDays:
+          type: integer
+        outboundStops:
+          type: array
+          items:
+            $ref: '#/components/schemas/FixedLoopStop'
+        returnStops:
+          type: array
+          items:
+            $ref: '#/components/schemas/FixedLoopStop'
+        vehicleStatus:
+          type: string
+          enum:
+            - scheduled
+            - boarding
+            - on_route
+            - off_duty
+        location:
+          nullable: true
+          type: object
+          properties:
+            lat:
+              type: number
+            lon:
+              type: number
+            updatedAt:
+              type: string
+              format: date-time
+          required:
+            - lat
+            - lon
+            - updatedAt
+        activeRun:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/FixedLoopRun'
+      required:
+        - id
+        - name
+        - vehicleId
+        - unitLabel
+        - seatedCapacity
+        - standingCapacity
+        - bookingDays
+        - outboundStops
+        - returnStops
+        - vehicleStatus
+        - location
+        - activeRun
+    FixedLoopServiceResponse:
+      type: object
+      properties:
+        service:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/FixedLoopService'
+      required:
+        - service
+    FixedLoopRunsResponse:
+      type: object
+      properties:
+        runs:
+          type: array
+          items:
+            $ref: '#/components/schemas/FixedLoopRun'
+      required:
+        - runs
+    FixedLoopRunResponse:
+      type: object
+      properties:
+        run:
+          $ref: '#/components/schemas/FixedLoopRun'
+      required:
+        - run
+    FixedLoopAvailabilityResponse:
+      type: object
+      properties:
+        run:
+          $ref: '#/components/schemas/FixedLoopRun'
+        pickupIndex:
+          type: integer
+        dropoffIndex:
+          type: integer
+        availableSeats:
+          type: array
+          items:
+            type: integer
+        availableStanding:
+          type: array
+          items:
+            type: integer
+      required:
+        - run
+        - pickupIndex
+        - dropoffIndex
+        - availableSeats
+        - availableStanding
+    FixedLoopReservation:
+      type: object
+      properties:
+        id:
+          type: integer
+        reference:
+          type: string
+        run:
+          $ref: '#/components/schemas/FixedLoopRun'
+        pickupIndex:
+          type: integer
+        dropoffIndex:
+          type: integer
+        pickupName:
+          type: string
+        dropoffName:
+          type: string
+        seats:
+          type: array
+          items:
+            type: integer
+        standing:
+          type: array
+          items:
+            type: integer
+        status:
+          type: string
+          enum:
+            - confirmed
+            - boarded
+            - completed
+            - cancelled
+            - no_show
+        source:
+          type: string
+          enum:
+            - app
+            - walk_in
+        createdAt:
+          type: string
+          format: date-time
+        passengerName:
+          type: string
+          nullable: true
+      required:
+        - id
+        - reference
+        - run
+        - pickupIndex
+        - dropoffIndex
+        - pickupName
+        - dropoffName
+        - seats
+        - standing
+        - status
+        - source
+        - createdAt
+    FixedLoopReservationResponse:
+      type: object
+      properties:
+        reservation:
+          $ref: '#/components/schemas/FixedLoopReservation'
+      required:
+        - reservation
+    FixedLoopReservationsResponse:
+      type: object
+      properties:
+        reservations:
+          type: array
+          items:
+            $ref: '#/components/schemas/FixedLoopReservation'
+        limit:
+          type: integer
+        offset:
+          type: integer
+      required:
+        - reservations
+        - limit
+        - offset
+    CreateFixedLoopReservationBody:
+      description: Select at least one seated or standing place. The same requestId replays the original reservation.
+      type: object
+      properties:
+        runId:
+          type: integer
+          minimum: 1
+        pickupIndex:
+          type: integer
+          minimum: 0
+        dropoffIndex:
+          type: integer
+          minimum: 1
+        seats:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+            maximum: 19
+          maxItems: 19
+          uniqueItems: true
+        standing:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+            maximum: 10
+          maxItems: 10
+          uniqueItems: true
+        requestId:
+          type: string
+          minLength: 10
+          maxLength: 100
+      required:
+        - runId
+        - pickupIndex
+        - dropoffIndex
+        - requestId
+    RecordFixedLoopWalkInBody:
+      type: object
+      properties:
+        dropoffIndex:
+          type: integer
+          minimum: 1
+        seats:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+            maximum: 19
+          maxItems: 19
+          uniqueItems: true
+        standing:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+            maximum: 10
+          maxItems: 10
+          uniqueItems: true
+        requestId:
+          type: string
+          minLength: 10
+          maxLength: 100
+      required:
+        - dropoffIndex
+        - requestId
+    CheckInFixedLoopReservationBody:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+            - board
+            - no_show
+      required:
+        - action
+    ControlFixedLoopRunBody:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+            - boarding
+            - start
+            - next_stop
+            - cancel
+        confirmAlighted:
+          type: boolean
+          description: Required to cancel a run with onboard passengers; operator confirms they have all alighted.
+        expectedStopIndex:
+          type: integer
+          minimum: 0
+          description: Required for next_stop to prevent duplicate advances.
+      required:
+        - action
+    FixedLoopOperatorService:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        unitLabel:
+          type: string
+        enabled:
+          type: boolean
+      required:
+        - id
+        - name
+        - unitLabel
+        - enabled
+    FixedLoopOperatorRunsResponse:
+      type: object
+      properties:
+        service:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/FixedLoopOperatorService'
+        runs:
+          type: array
+          items:
+            $ref: '#/components/schemas/FixedLoopRun'
+      required:
+        - service
+        - runs
+    FixedLoopManifestResponse:
+      type: object
+      properties:
+        run:
+          $ref: '#/components/schemas/FixedLoopRun'
+        reservations:
+          type: array
+          items:
+            $ref: '#/components/schemas/FixedLoopReservation'
+      required:
+        - run
+        - reservations
+
+    AppFeedback:
+      type: object
+      properties:
+        id: { type: integer }
+        reporterId: { type: string, format: uuid }
+        reporterName: { type: string, nullable: true }
+        reporterEmail: { type: string, nullable: true }
+        category:
+          type: string
+          enum: [bug, suggestion, other]
+        message: { type: string, minLength: 10, maxLength: 2000 }
+        appVersion: { type: string, nullable: true }
+        platform: { type: string, nullable: true }
+        status:
+          type: string
+          enum: [open, reviewing, resolved]
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, reporterId, category, message, status, createdAt, updatedAt]
+
+    CreateFeedbackBody:
+      type: object
+      properties:
+        category:
+          type: string
+          enum: [bug, suggestion, other]
+        message: { type: string, minLength: 10, maxLength: 2000 }
+        appVersion: { type: string, minLength: 1, maxLength: 40 }
+        platform:
+          type: string
+          enum: [android, ios, web]
+      required: [category, message]
+
+    UpdateFeedbackBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [open, reviewing, resolved]
+      required: [status]
+
+    FeedbackResponse:
+      type: object
+      properties:
+        feedback:
+          $ref: "#/components/schemas/AppFeedback"
+      required: [feedback]
+
+    ListFeedbackResponse:
+      type: object
+      properties:
+        feedback:
+          type: array
+          items:
+            $ref: "#/components/schemas/AppFeedback"
+        limit: { type: integer }
+        offset: { type: integer }
+      required: [feedback, limit, offset]
 
     IncidentReport:
       type: object

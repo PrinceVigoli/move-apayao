@@ -101,6 +101,7 @@ services:
         VITE_GOOGLE_MAPS_BROWSER_API_KEY: ${GOOGLE_MAPS_BROWSER_API_KEY}
         VITE_SERVICE_OPERATOR: ${SERVICE_OPERATOR}
         VITE_SUPPORT_EMAIL: ${SUPPORT_EMAIL}
+        VITE_CONTACT_DETAILS_PENDING: ${CONTACT_DETAILS_PENDING:-false}
         VITE_PRIVACY_EMAIL: ${PRIVACY_EMAIL}
         VITE_SUPPORT_PHONE: ${SUPPORT_PHONE}
         VITE_OFFICE_ADDRESS: ${OFFICE_ADDRESS}
@@ -151,7 +152,7 @@ services:
       - "443:443/udp"
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./deploy/releases:/srv/downloads:ro
+      - ${RELEASE_DOWNLOADS_DIR:-./deploy/releases}:/srv/downloads:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on: [landing, dashboard, documentation, api]

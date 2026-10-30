@@ -30,12 +30,22 @@ expo-env.d.ts
 # Native build output (if prebuild/eas generates these)
 artifacts/mobile/android/
 artifacts/mobile/ios/
+artifacts/driver/android/
+artifacts/driver/ios/
 *.apk
 *.aab
 
 # Build output
 build/
 *.tsbuildinfo
+/tmp/
+
+# Local video source footage and rendered drafts
+artifacts/landing/video-production/raw/*
+!artifacts/landing/video-production/raw/.gitkeep
+artifacts/landing/video-production/exports/*
+!artifacts/landing/video-production/exports/.gitkeep
+artifacts/landing/video-production/work/
 
 # Logs
 *.log
