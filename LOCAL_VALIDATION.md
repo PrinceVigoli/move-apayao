@@ -80,8 +80,8 @@ its verification and production-access requirements are complete.
 
 Before publication:
 
-1. Configure the live fixed-loop operator and service, verify exact stop pins,
-   physical seat labels, fares and daily timetable feasibility. Complete an actual pilot journey.
+1. Verify exact stop pins, physical seat labels, fares and daily timetable
+   feasibility with the configured live pilot operator. Complete an actual pilot journey.
 2. Complete physical Android tests: onboarding, permissions, map display,
    registration/login, offline/reconnect behavior, notifications and actual trip
    flows for both passenger and driver. Device launch alone is insufficient.
@@ -133,3 +133,34 @@ a phone connected over USB. Those settings belong only to local testing.
 The pilot APK profiles target the live API and are separate from Play Store submission. Live service provisioning uses the guarded seed/configuration scripts in FIXED_LOOP_PLAN.md. The website describes scheduled e-jeep reservations, numbered seats/standing places and driver manifests rather than the later on-demand enhancement. Shared VPS download storage is configurable with RELEASE_DOWNLOADS_DIR so versioned releases preserve the published APKs.
 
 Account-deletion verification passed six runtime test groups after the eight fixed-loop groups on an isolated local database. A fresh browser submitted and refreshed a private request receipt. No live user account was erased. Schema and server guards prevent ordinary reactivation and new personal records after permanent deletion; financial/service holds and recorded retention remain administrator responsibilities.
+
+### VPS and standalone APK verification — October 30, 2026
+
+Release source `1aa23ca` passed GitHub System checks (run `40989949858`) and
+was deployed with protected source/database backups, verified dump manifest,
+rollback images and the previous APKs retained on the VPS. All five migrations
+are applied. Public website, admin, documentation, API health, deletion page
+and both APK downloads returned HTTP 200.
+
+The guarded provisioning scripts configured the dedicated approved pilot
+driver, confirmed directional stops, 19 numbered seats, 10 standing places and
+16 daily half-hour legs. The vehicle remains off duty without fabricated GPS.
+A dedicated live passenger test verified booking, shared driver manifest and
+cancellation restoring availability. A disposable account verified the live
+deletion page's password-authenticated submission, private receipt and refresh.
+
+Signed standalone APKs were installed as updates on the Galaxy A54 (Android 16)
+using the same certificates as the previously installed packages:
+
+| App | Package | Version code | SHA-256 |
+| --- | --- | --- | --- |
+| Passenger | `com.moveapayao.mobile` | 4 | `1f0795dfaa3a7486db3d271c9f549e401851be4ada02ea9089c911833e21e87a` |
+| Driver | `com.moveapayao.driver` | 2 | `8ac2eec8c3b91a6aa3d2e31ef468cc29766459dab9d261490d5f483709ef3eda` |
+
+On the production passenger APK, live sign-in, fixed-loop home, tomorrow's
+departure, numbered-seat availability and seat 4 booking succeeded. The driver
+APK displayed the same reference and seat in its matching run manifest. The
+passenger cancelled that reservation successfully. Both public download
+responses matched the local APK hashes. Neither APK needs Metro or a USB
+connection. This verifies pilot software flows, not an actual vehicle journey,
+native GPS/background tracking, physical stops or fare operations.
