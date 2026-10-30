@@ -11,7 +11,7 @@ export function openLegalDocument(document: "terms" | "privacy") {
 }
 
 export function openSupportEmail() {
-  const email = process.env.EXPO_PUBLIC_SUPPORT_EMAIL || "lgupudtol1@gmail.com";
+  const email = process.env.EXPO_PUBLIC_SUPPORT_EMAIL || "support@moveapayao.com";
   return Linking.openURL(
     `mailto:${email}?subject=${encodeURIComponent("MOVE Apayao app support")}`,
   );
