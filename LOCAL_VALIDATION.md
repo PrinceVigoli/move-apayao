@@ -186,3 +186,28 @@ Validation on the changed source:
 This is a source-code update. New signed APKs have not been built or published
 for this design, so the existing website downloads still contain the October 30
 pilot binaries. No production database changes are required by this UI update.
+### Signed redesign APK publication — November 3, 2026
+
+The source-only note above is superseded by this signed release. Both pilot APKs
+were built from `f713692bd81438a7971ae7621930bc8836e48750` using the production
+EAS environment and existing remote signing credentials. GitHub System checks
+passed in run `41633873410` before publication.
+
+| App | Version code | SHA-256 |
+| --- | --- | --- |
+| Passenger | 5 | `fc86a2e4cf13f4813d37ace855a0c93809080c1a1762f43aec2da3ea2e9c9d76` |
+| Driver | 3 | `9c7eeebda79f307f07c12889f77193abbffbbcf151a04e43b68d8442a0a7ab1f` |
+
+Both retain version name `1.0.0` and the original package IDs. Android signature
+verification passed, and certificate SHA-256 fingerprints match the October 30
+published apps. Package/version checks passed; each APK contains the standalone
+redesigned bundle and permanent production API URL, without a debuggable manifest.
+These checks do not claim a new physical-device journey or GPS validation.
+
+The installers replaced the stable `/downloads/move-apayao-passenger.apk` and
+`/downloads/move-apayao-driver.apk` files on the VPS after upload hash checks.
+Previous installers remain in protected backup storage. The release manifest
+records exact build IDs, package IDs, hashes and certificates without credentials.
+No database migration or running backend/container update was needed.
+Public HTTP downloads returned 200 and matched both release SHA-256 hashes.
+The production API health endpoint also returned 200 after publication.

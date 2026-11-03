@@ -1,0 +1,30 @@
+{
+    "sourceCommit":  "f713692bd81438a7971ae7621930bc8836e48750",
+    "publishedDate":  "2026-11-03",
+    "apps":  [
+                 {
+                     "app":  "passenger",
+                     "package":  "com.moveapayao.mobile",
+                     "version":  "1.0.0",
+                     "versionCode":  5,
+                     "buildId":  "7beedb5f-abf5-47cf-a549-b8a2a7dc3df1",
+                     "filename":  "move-apayao-passenger-1.0.0-5.apk",
+                     "sha256":  "fc86a2e4cf13f4813d37ace855a0c93809080c1a1762f43aec2da3ea2e9c9d76",
+                     "bytes":  125928782,
+                     "url":  "https://moveapayao.com/downloads/move-apayao-passenger.apk",
+                     "certificateSha256":  "a46667ad60fabdad3527a53010a179ff0e0a40b22868b34cddad77c6f048c4dd"
+                 },
+                 {
+                     "app":  "driver",
+                     "package":  "com.moveapayao.driver",
+                     "version":  "1.0.0",
+                     "versionCode":  3,
+                     "buildId":  "d536fd7b-5bb3-44ce-9aa1-474b31acb0d4",
+                     "filename":  "move-apayao-driver-1.0.0-3.apk",
+                     "sha256":  "9c7eeebda79f307f07c12889f77193abbffbbcf151a04e43b68d8442a0a7ab1f",
+                     "bytes":  125839762,
+                     "url":  "https://moveapayao.com/downloads/move-apayao-driver.apk",
+                     "certificateSha256":  "bc8d6341cb917d7b32c07e2b6e498a9825651354126d0cd840f732b2b0b79257"
+                 }
+             ]
+}
