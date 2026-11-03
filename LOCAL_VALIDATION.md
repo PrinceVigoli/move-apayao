@@ -164,3 +164,25 @@ passenger cancelled that reservation successfully. Both public download
 responses matched the local APK hashes. Neither APK needs Metro or a USB
 connection. This verifies pilot software flows, not an actual vehicle journey,
 native GPS/background tracking, physical stops or fare operations.
+
+### Passenger and driver design update — November 3, 2026
+
+The approved fixed-loop design is implemented in the passenger home, vehicle
+summary, reservation flow, seat/standing selector, driver daily runs and boarding
+manifest. Driver primary actions use lime with dark text. Existing API calls,
+availability refreshes, reservation request keys, and boarding/alighting
+confirmations remain connected. Reservation submission now has a review step.
+
+Validation on the changed source:
+
+- Passenger and driver TypeScript checks passed.
+- Both Android Hermes exports passed using Node.js 22.23.1.
+- An isolated React Native Web component preview with sample API data passed
+  320px and 390px width checks, seat selection and mixed seated/standing selection.
+  The preview substitutes platform adapters and icons; it is not a physical-device
+  or live-service test. Implementation screenshots are in `design-previews/*-implemented-v2.png`.
+- `git diff --check` passed.
+
+This is a source-code update. New signed APKs have not been built or published
+for this design, so the existing website downloads still contain the October 30
+pilot binaries. No production database changes are required by this UI update.

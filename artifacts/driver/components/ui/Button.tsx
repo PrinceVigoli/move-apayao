@@ -68,7 +68,7 @@ export function Button({
 
   const backgroundColor =
     variant === "default"
-      ? colors.primary
+      ? colors.accent
       : variant === "secondary"
         ? colors.secondary
         : variant === "destructive"
@@ -77,7 +77,7 @@ export function Button({
 
   const textColor =
     variant === "default"
-      ? colors.primaryForeground
+      ? colors.accentForeground
       : variant === "secondary"
         ? colors.secondaryForeground
         : variant === "destructive"
