@@ -1,22 +1,37 @@
-import { readdirSync } from "node:fs";
-import { join } from "node:path";
+import { realpathSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 
-const store = join(process.cwd(), "node_modules", ".pnpm");
-const entry = readdirSync(store).find((name) =>
-  name.startsWith("image-size@1.2.1_"),
-);
-if (!entry)
-  throw new Error("Patched image-size@1.2.1 installation was not found");
-
-const packageDir = join(store, entry, "node_modules", "image-size");
-if (!entry.includes("patch_hash_")) {
-  throw new Error(
-    "image-size@1.2.1 is installed without the required pnpm security patch",
+// Resolve the parser actually consumed by each Expo CLI. pnpm can shorten
+// store folder names, and old installs can leave unrelated copies behind.
+const packageDirs = new Set();
+for (const app of ["mobile", "driver"]) {
+  const expoRequire = createRequire(
+    realpathSync(
+      join(
+        process.cwd(),
+        "artifacts",
+        app,
+        "node_modules",
+        "expo",
+        "package.json",
+      ),
+    ),
+  );
+  const cliRequire = createRequire(
+    expoRequire.resolve("@expo/cli/package.json"),
+  );
+  const imageUtilsRequire = createRequire(
+    cliRequire.resolve("@expo/image-utils/package.json"),
+  );
+  packageDirs.add(
+    dirname(imageUtilsRequire.resolve("image-size/package.json")),
   );
 }
 
-const probe = `
+for (const packageDir of packageDirs) {
+  const probe = `
 const { imageSize } = require(${JSON.stringify(packageDir)});
 const { findBox } = require(${JSON.stringify(join(packageDir, "dist", "types", "utils.js"))});
 
@@ -35,20 +50,21 @@ zeroBox.write("free", 4, "ascii");
 if (findBox(zeroBox, "jxlp", 0) !== undefined) throw new Error("Malformed ISO box was accepted");
 `;
 
-const result = spawnSync(process.execPath, ["-e", probe], {
-  encoding: "utf8",
-  timeout: 2_000,
-});
+  const result = spawnSync(process.execPath, ["-e", probe], {
+    encoding: "utf8",
+    timeout: 2_000,
+  });
 
-if (result.error?.code === "ETIMEDOUT") {
-  throw new Error(
-    "Malformed image probe timed out; the denial-of-service regression is present",
-  );
-}
-if (result.status !== 0) {
-  throw new Error(
-    `Image parser security regression failed:\n${result.stderr || result.stdout}`,
-  );
+  if (result.error?.code === "ETIMEDOUT") {
+    throw new Error(
+      "Malformed image probe timed out; the denial-of-service regression is present",
+    );
+  }
+  if (result.status !== 0) {
+    throw new Error(
+      `Image parser security regression failed:\n${result.stderr || result.stdout}`,
+    );
+  }
 }
 
 console.log(

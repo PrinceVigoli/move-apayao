@@ -1,3 +1,4 @@
+import { getListFixedLoopOperatorRunsQueryKey } from "@workspace/api-client-react";
 import React, { useMemo } from "react";
 import {
   View,
@@ -21,8 +22,22 @@ import {
   getListTripsQueryKey,
 } from "@workspace/api-client-react";
 import * as Haptics from "expo-haptics";
+import { getManilaDate, useListFixedLoopOperatorRuns } from "@workspace/api-client-react";
+import FixedLoopOperatorPanel from "@/components/FixedLoopOperatorPanel";
+import { Button } from "@/components/ui/Button";
 
 export default function DriveScreen() {
+  const colors = useColors();
+  const profile = useGetProfile();
+  const assignment = useListFixedLoopOperatorRuns({ date: getManilaDate() }, { query: { queryKey: getListFixedLoopOperatorRunsQueryKey({ date: getManilaDate() }), enabled: profile.data?.user.role === "driver", refetchInterval: 15_000 } });
+  if (profile.isLoading || assignment.isLoading) return <View style={{ flex: 1, justifyContent: "center", backgroundColor: colors.background }}><ActivityIndicator color={colors.primary} /></View>;
+  if (profile.data?.user.role !== "driver" && !profile.isError) return <OnDemandDriveScreen />;
+  if (profile.isError || assignment.isError) return <View style={{ flex: 1, justifyContent: "center", padding: 24, gap: 16, backgroundColor: colors.background }}><Text style={{ color: colors.foreground }}>Could not load your service assignment.</Text><Button title="Retry" onPress={() => { profile.refetch(); assignment.refetch(); }} /></View>;
+  if (assignment.data?.service) return <FixedLoopOperatorPanel service={assignment.data.service} />;
+  return <OnDemandDriveScreen />;
+}
+
+function OnDemandDriveScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const router = useRouter();

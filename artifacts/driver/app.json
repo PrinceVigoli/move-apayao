@@ -2,7 +2,7 @@
   "expo": {
     "name": "MOVE Apayao Driver",
     "slug": "driver",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon-route-m.png",
     "scheme": "moveapayaodriver",
@@ -17,12 +17,11 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.moveapayao.driver",
       "infoPlist": {
-        "UIBackgroundModes": [
-          "location"
-        ]
+        "UIBackgroundModes": ["location"]
       }
     },
     "android": {
+      "edgeToEdgeEnabled": true,
       "package": "com.moveapayao.driver",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon-route-m.png",
@@ -40,6 +39,7 @@
       "favicon": "./assets/images/icon-route-m.png"
     },
     "plugins": [
+      "../mobile/plugins/withAndroidRelease",
       "expo-router",
       "expo-font",
       "expo-web-browser",

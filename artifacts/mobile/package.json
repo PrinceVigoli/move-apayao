@@ -4,6 +4,8 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
+    "eas-build-post-install": "node scripts/configure-native-release.cjs",
+    "test": "node --test scripts/configure-native-release.test.cjs",
     "dev": "expo start --dev-client",
     "build:legacy-web": "node scripts/build.js",
     "serve": "node server/serve.js",
@@ -23,6 +25,7 @@
     "@ungap/structured-clone": "^1.3.2",
     "@workspace/api-client-react": "workspace:*",
     "babel-plugin-react-compiler": "19.0.0-beta-ebf51a3-20250411",
+    "babel-preset-expo": "~54.0.12",
     "expo": "~54.0.37",
     "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.14",
@@ -59,6 +62,7 @@
     "zod-validation-error": "^3.5.4"
   },
   "dependencies": {
+    "expo-image-manipulator": "~14.0.8",
     "expo-notifications": "~0.32.17",
     "expo-secure-store": "~15.0.8"
   }

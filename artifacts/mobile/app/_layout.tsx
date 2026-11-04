@@ -5,6 +5,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AdaptiveAppFrame } from "@/components/AdaptiveAppFrame";
+import { StatusBar } from "expo-status-bar";
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -86,7 +88,22 @@ function RootLayoutNav() {
         name="history"
         options={{ headerShown: false, presentation: "card" }}
       />
-      <Stack.Screen name="account" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen
+        name="account"
+        options={{ headerShown: false, presentation: "card" }}
+      />
+      <Stack.Screen
+        name="feedback"
+        options={{ headerShown: false, presentation: "card" }}
+      />
+      <Stack.Screen
+        name="reservations"
+        options={{ headerShown: false, presentation: "card" }}
+      />
+      <Stack.Screen
+        name="reservation/[id]"
+        options={{ headerShown: false, presentation: "card" }}
+      />
       <Stack.Screen name="trip/[id]" options={{ presentation: "modal" }} />
       <Stack.Screen name="trip/[id]/track" options={{ headerShown: false }} />
       <Stack.Screen name="route/[id]" options={{ presentation: "card" }} />
@@ -112,12 +129,15 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
+      <StatusBar style="dark" />
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <KeyboardProvider>
               <AuthProvider>
-                <RootLayoutNav />
+                <AdaptiveAppFrame>
+                  <RootLayoutNav />
+                </AdaptiveAppFrame>
               </AuthProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>

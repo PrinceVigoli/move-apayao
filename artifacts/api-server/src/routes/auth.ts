@@ -28,6 +28,7 @@ import { sendPasswordResetEmail } from "../lib/mailer";
 import { randomBytes, randomInt } from "node:crypto";
 import { z } from "zod";
 import { removeDriverGeo } from "../lib/redis";
+import { validProfilePhoto } from "../lib/profile-photo";
 
 const router: IRouter = Router();
 
@@ -107,7 +108,7 @@ export const RegisterBody = z
     acceptedTerms: z.literal(true, {
       message: "You must accept the Terms and Privacy Policy",
     }),
-    termsVersion: z.string().trim().min(1).max(40).default("2026-08-27"),
+    termsVersion: z.string().trim().min(1).max(40).default("2026-10-30"),
   })
   .superRefine((body, ctx) => {
     if (body.role !== "driver_applicant") return;
@@ -126,7 +127,7 @@ export const RegisterBody = z
  * POST /api/auth/register
  *
  * Creates the account and signs the user straight in. All writes (user,
- * wallet, subscription, driver profile) share one transaction so a failure
+ * wallet, optional driver profile) share one transaction so a failure
  * partway through cannot leave a user without a wallet.
  */
 router.post("/auth/register", sensitiveActionLimiter, async (req, res): Promise<void> => {
@@ -171,18 +172,6 @@ router.post("/auth/register", sensitiveActionLimiter, async (req, res): Promise<
       .returning();
 
     await trx.insert(fareWalletsTable).values({ userId: created!.id });
-
-    if (body.role === "passenger") {
-      const expiresAt = new Date(now);
-      expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-      await trx.insert(subscriptionsTable).values({
-        userId: created!.id,
-        plan: "annual",
-        status: "active",
-        startsAt: now,
-        expiresAt,
-      });
-    }
 
     if (body.role === "driver_applicant") {
       await trx.insert(driverProfilesTable).values({
@@ -558,9 +547,15 @@ router.get("/auth/profile", requireAuth, async (req, res): Promise<void> => {
 });
 
 const UpdateProfileBody = z.object({
-  fullName: z.string().min(1).optional(),
+  fullName: z.string().trim().min(1).max(100).optional(),
   phone: phoneSchema.optional(),
-  avatarUrl: z.string().optional(),
+  avatarUrl: z
+    .string()
+    .refine(
+      validProfilePhoto,
+      "Choose a JPEG profile photo up to 512 pixels and 130 KB.",
+    )
+    .optional(),
 });
 
 router.patch("/auth/profile", requireAuth, async (req, res): Promise<void> => {
@@ -572,6 +567,7 @@ router.patch("/auth/profile", requireAuth, async (req, res): Promise<void> => {
   }
 
   const patch: Record<string, unknown> = { ...parsed.data };
+  if (parsed.data.avatarUrl === "") patch.avatarUrl = null;
   if (parsed.data.phone) patch.phone = normalisePhone(parsed.data.phone);
 
   const [user] = await db

@@ -19,8 +19,10 @@ function secureUrl(name, requiredValue = true) {
 }
 
 const siteUrl = secureUrl("VITE_SITE_URL");
-required("VITE_SUPPORT_EMAIL");
-required("VITE_PRIVACY_EMAIL");
+if (env.VITE_CONTACT_DETAILS_PENDING !== "true") {
+  required("VITE_SUPPORT_EMAIL");
+  required("VITE_PRIVACY_EMAIL");
+}
 required("VITE_GOOGLE_MAPS_BROWSER_API_KEY");
 
 if (siteUrl && /localhost|ngrok-free|example\.(com|org)/i.test(siteUrl)) {

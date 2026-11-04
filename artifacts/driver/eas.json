@@ -31,9 +31,18 @@
       "node": "22.23.1",
       "pnpm": "11.17.0",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.moveapayao.com"
+        "EXPO_PUBLIC_API_URL": "https://api.moveapayao.com",
+        "EXPO_PUBLIC_SUPPORT_EMAIL": "support@moveapayao.com",
+        "EXPO_PUBLIC_LEGAL_BASE_URL": "https://moveapayao.com"
       },
       "autoIncrement": true
+    },
+    "pilot": {
+      "extends": "production",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
     }
   },
   "submit": {

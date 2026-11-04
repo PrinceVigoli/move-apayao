@@ -20,6 +20,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AccountDeletionListResponse,
+  AccountDeletionResponse,
   AnalyticsSummaryResponse,
   AssignIotVehicle201,
   AssignIotVehicleBody,
@@ -29,7 +31,12 @@ import type {
   BadRequestResponse,
   CancelTripBody,
   ChangePasswordBody,
+  CheckInFixedLoopReservationBody,
   ConflictResponse,
+  ControlFixedLoopRunBody,
+  CreateAccountDeletionBody,
+  CreateFeedbackBody,
+  CreateFixedLoopReservationBody,
   CreateIncidentBody,
   CreateIotVehicle201,
   CreateIotVehicleBody,
@@ -48,12 +55,23 @@ import type {
   EarningsResponse,
   ErrorResponse,
   FarePolicyResponse,
+  FeedbackResponse,
+  FixedLoopAvailabilityResponse,
+  FixedLoopManifestResponse,
+  FixedLoopOperatorRunsResponse,
+  FixedLoopReservationResponse,
+  FixedLoopReservationsResponse,
+  FixedLoopRunResponse,
+  FixedLoopRunsResponse,
+  FixedLoopServiceResponse,
   ForgotPasswordBody,
   GenerateGisCandidatesBody,
   GenerateGisCandidatesResponse,
   GetAllTripsParams,
   GetDailyAnalyticsParams,
   GetEarningsParams,
+  GetFixedLoopAvailabilityParams,
+  GetFixedLoopPickupAvatar200,
   GetIotFleet200,
   GetLoopRouteParams,
   GetLoopVehiclesParams,
@@ -67,9 +85,16 @@ import type {
   IncidentResponse,
   IngestGpsLocation202,
   InternalRunbooksResponse,
+  ListAccountDeletionRequestsParams,
+  ListFeedbackParams,
+  ListFeedbackResponse,
+  ListFixedLoopOperatorRunsParams,
+  ListFixedLoopPickupPins200,
+  ListFixedLoopRunsParams,
   ListIncidentsParams,
   ListIncidentsResponse,
   ListLoopRoutesResponse,
+  ListMyFixedLoopReservationsParams,
   ListSubscriptionsParams,
   ListSubscriptionsResponse,
   ListTransactionsParams,
@@ -90,21 +115,26 @@ import type {
   NearbyDriversResponse,
   NotFoundResponse,
   OkResponse,
+  PickupSharingPoint,
   PreviewLoopRouteBody,
   ProfileResponse,
   ProvisionGpsDevice201,
   ProvisionGpsDeviceBody,
   RateTripBody,
+  RecordFixedLoopWalkInBody,
   RefreshBody,
   RegisterNotificationDeviceBody,
   RegisterUserBody,
   ResetPasswordBody,
+  ReviewAccountDeletionBody,
   ReviewGisCandidate200,
   ReviewGisCandidateBody,
   RevokeGpsDevice200,
   SessionResponse,
   SessionTokens,
+  StartFixedLoopPickupSharing201,
   StartTripBody,
+  StopFixedLoopPickupSharingBody,
   SubscriptionResponse,
   TapBody,
   TapResponse,
@@ -116,6 +146,8 @@ import type {
   UnauthorizedResponse,
   UnregisterNotificationDeviceBody,
   UpdateFarePolicyBody,
+  UpdateFeedbackBody,
+  UpdateFixedLoopPickupSharingBody,
   UpdateIncidentBody,
   UpdateLocationBody,
   UpdateLoopLocationBody,
@@ -4230,6 +4262,1084 @@ export function useListWallets<TData = Awaited<ReturnType<typeof listWallets>>, 
 
 
 
+export const getGetFixedLoopServiceUrl = () => {
+
+
+
+
+  return `/api/fixed-loop/service`
+}
+
+export const getFixedLoopService = async ( options?: RequestInit): Promise<FixedLoopServiceResponse> => {
+
+  return customFetch<FixedLoopServiceResponse>(getGetFixedLoopServiceUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFixedLoopServiceQueryKey = () => {
+    return [
+    `/api/fixed-loop/service`
+    ] as const;
+    }
+
+
+export const getGetFixedLoopServiceQueryOptions = <TData = Awaited<ReturnType<typeof getFixedLoopService>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFixedLoopService>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFixedLoopServiceQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFixedLoopService>>> = ({ signal }) => getFixedLoopService({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFixedLoopService>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFixedLoopServiceQueryResult = NonNullable<Awaited<ReturnType<typeof getFixedLoopService>>>
+export type GetFixedLoopServiceQueryError = ErrorType<void>
+
+
+
+export function useGetFixedLoopService<TData = Awaited<ReturnType<typeof getFixedLoopService>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFixedLoopService>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFixedLoopServiceQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListFixedLoopRunsUrl = (params?: ListFixedLoopRunsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/fixed-loop/runs?${stringifiedParams}` : `/api/fixed-loop/runs`
+}
+
+export const listFixedLoopRuns = async (params?: ListFixedLoopRunsParams, options?: RequestInit): Promise<FixedLoopRunsResponse> => {
+
+  return customFetch<FixedLoopRunsResponse>(getListFixedLoopRunsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFixedLoopRunsQueryKey = (params?: ListFixedLoopRunsParams,) => {
+    return [
+    `/api/fixed-loop/runs`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListFixedLoopRunsQueryOptions = <TData = Awaited<ReturnType<typeof listFixedLoopRuns>>, TError = ErrorType<void>>(params?: ListFixedLoopRunsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFixedLoopRuns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFixedLoopRunsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFixedLoopRuns>>> = ({ signal }) => listFixedLoopRuns(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFixedLoopRuns>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFixedLoopRunsQueryResult = NonNullable<Awaited<ReturnType<typeof listFixedLoopRuns>>>
+export type ListFixedLoopRunsQueryError = ErrorType<void>
+
+
+
+export function useListFixedLoopRuns<TData = Awaited<ReturnType<typeof listFixedLoopRuns>>, TError = ErrorType<void>>(
+ params?: ListFixedLoopRunsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFixedLoopRuns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFixedLoopRunsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFixedLoopAvailabilityUrl = (id: number,
+    params?: GetFixedLoopAvailabilityParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/fixed-loop/runs/${id}/availability?${stringifiedParams}` : `/api/fixed-loop/runs/${id}/availability`
+}
+
+export const getFixedLoopAvailability = async (id: number,
+    params?: GetFixedLoopAvailabilityParams, options?: RequestInit): Promise<FixedLoopAvailabilityResponse> => {
+
+  return customFetch<FixedLoopAvailabilityResponse>(getGetFixedLoopAvailabilityUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFixedLoopAvailabilityQueryKey = (id: number,
+    params?: GetFixedLoopAvailabilityParams,) => {
+    return [
+    `/api/fixed-loop/runs/${id}/availability`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetFixedLoopAvailabilityQueryOptions = <TData = Awaited<ReturnType<typeof getFixedLoopAvailability>>, TError = ErrorType<void>>(id: number,
+    params?: GetFixedLoopAvailabilityParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFixedLoopAvailability>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFixedLoopAvailabilityQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFixedLoopAvailability>>> = ({ signal }) => getFixedLoopAvailability(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFixedLoopAvailability>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFixedLoopAvailabilityQueryResult = NonNullable<Awaited<ReturnType<typeof getFixedLoopAvailability>>>
+export type GetFixedLoopAvailabilityQueryError = ErrorType<void>
+
+
+
+export function useGetFixedLoopAvailability<TData = Awaited<ReturnType<typeof getFixedLoopAvailability>>, TError = ErrorType<void>>(
+ id: number,
+    params?: GetFixedLoopAvailabilityParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFixedLoopAvailability>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFixedLoopAvailabilityQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateFixedLoopReservationUrl = () => {
+
+
+
+
+  return `/api/fixed-loop/reservations`
+}
+
+export const createFixedLoopReservation = async (createFixedLoopReservationBody: CreateFixedLoopReservationBody, options?: RequestInit): Promise<FixedLoopReservationResponse> => {
+
+  return customFetch<FixedLoopReservationResponse>(getCreateFixedLoopReservationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createFixedLoopReservationBody)
+  }
+);}
+
+
+
+
+export const getCreateFixedLoopReservationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFixedLoopReservation>>, TError,{data: BodyType<CreateFixedLoopReservationBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createFixedLoopReservation>>, TError,{data: BodyType<CreateFixedLoopReservationBody>}, TContext> => {
+
+const mutationKey = ['createFixedLoopReservation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createFixedLoopReservation>>, {data: BodyType<CreateFixedLoopReservationBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createFixedLoopReservation(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateFixedLoopReservationMutationResult = NonNullable<Awaited<ReturnType<typeof createFixedLoopReservation>>>
+    export type CreateFixedLoopReservationMutationBody = BodyType<CreateFixedLoopReservationBody>
+    export type CreateFixedLoopReservationMutationError = ErrorType<void>
+
+    export const useCreateFixedLoopReservation = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFixedLoopReservation>>, TError,{data: BodyType<CreateFixedLoopReservationBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createFixedLoopReservation>>,
+        TError,
+        {data: BodyType<CreateFixedLoopReservationBody>},
+        TContext
+      > => {
+      return useMutation(getCreateFixedLoopReservationMutationOptions(options));
+    }
+
+export const getListMyFixedLoopReservationsUrl = (params?: ListMyFixedLoopReservationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/fixed-loop/reservations?${stringifiedParams}` : `/api/fixed-loop/reservations`
+}
+
+export const listMyFixedLoopReservations = async (params?: ListMyFixedLoopReservationsParams, options?: RequestInit): Promise<FixedLoopReservationsResponse> => {
+
+  return customFetch<FixedLoopReservationsResponse>(getListMyFixedLoopReservationsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMyFixedLoopReservationsQueryKey = (params?: ListMyFixedLoopReservationsParams,) => {
+    return [
+    `/api/fixed-loop/reservations`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListMyFixedLoopReservationsQueryOptions = <TData = Awaited<ReturnType<typeof listMyFixedLoopReservations>>, TError = ErrorType<void>>(params?: ListMyFixedLoopReservationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyFixedLoopReservations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMyFixedLoopReservationsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMyFixedLoopReservations>>> = ({ signal }) => listMyFixedLoopReservations(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMyFixedLoopReservations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMyFixedLoopReservationsQueryResult = NonNullable<Awaited<ReturnType<typeof listMyFixedLoopReservations>>>
+export type ListMyFixedLoopReservationsQueryError = ErrorType<void>
+
+
+
+export function useListMyFixedLoopReservations<TData = Awaited<ReturnType<typeof listMyFixedLoopReservations>>, TError = ErrorType<void>>(
+ params?: ListMyFixedLoopReservationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyFixedLoopReservations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMyFixedLoopReservationsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFixedLoopReservationUrl = (id: number,) => {
+
+
+
+
+  return `/api/fixed-loop/reservations/${id}`
+}
+
+export const getFixedLoopReservation = async (id: number, options?: RequestInit): Promise<FixedLoopReservationResponse> => {
+
+  return customFetch<FixedLoopReservationResponse>(getGetFixedLoopReservationUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFixedLoopReservationQueryKey = (id: number,) => {
+    return [
+    `/api/fixed-loop/reservations/${id}`
+    ] as const;
+    }
+
+
+export const getGetFixedLoopReservationQueryOptions = <TData = Awaited<ReturnType<typeof getFixedLoopReservation>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFixedLoopReservation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFixedLoopReservationQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFixedLoopReservation>>> = ({ signal }) => getFixedLoopReservation(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFixedLoopReservation>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFixedLoopReservationQueryResult = NonNullable<Awaited<ReturnType<typeof getFixedLoopReservation>>>
+export type GetFixedLoopReservationQueryError = ErrorType<void>
+
+
+
+export function useGetFixedLoopReservation<TData = Awaited<ReturnType<typeof getFixedLoopReservation>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFixedLoopReservation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFixedLoopReservationQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCancelFixedLoopReservationUrl = (id: number,) => {
+
+
+
+
+  return `/api/fixed-loop/reservations/${id}/cancel`
+}
+
+export const cancelFixedLoopReservation = async (id: number, options?: RequestInit): Promise<FixedLoopReservationResponse> => {
+
+  return customFetch<FixedLoopReservationResponse>(getCancelFixedLoopReservationUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCancelFixedLoopReservationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelFixedLoopReservation>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelFixedLoopReservation>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['cancelFixedLoopReservation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelFixedLoopReservation>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  cancelFixedLoopReservation(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelFixedLoopReservationMutationResult = NonNullable<Awaited<ReturnType<typeof cancelFixedLoopReservation>>>
+
+    export type CancelFixedLoopReservationMutationError = ErrorType<void>
+
+    export const useCancelFixedLoopReservation = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelFixedLoopReservation>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelFixedLoopReservation>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getCancelFixedLoopReservationMutationOptions(options));
+    }
+
+export const getListFixedLoopOperatorRunsUrl = (params?: ListFixedLoopOperatorRunsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/fixed-loop/operator/runs?${stringifiedParams}` : `/api/fixed-loop/operator/runs`
+}
+
+export const listFixedLoopOperatorRuns = async (params?: ListFixedLoopOperatorRunsParams, options?: RequestInit): Promise<FixedLoopOperatorRunsResponse> => {
+
+  return customFetch<FixedLoopOperatorRunsResponse>(getListFixedLoopOperatorRunsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFixedLoopOperatorRunsQueryKey = (params?: ListFixedLoopOperatorRunsParams,) => {
+    return [
+    `/api/fixed-loop/operator/runs`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListFixedLoopOperatorRunsQueryOptions = <TData = Awaited<ReturnType<typeof listFixedLoopOperatorRuns>>, TError = ErrorType<void>>(params?: ListFixedLoopOperatorRunsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFixedLoopOperatorRuns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFixedLoopOperatorRunsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFixedLoopOperatorRuns>>> = ({ signal }) => listFixedLoopOperatorRuns(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFixedLoopOperatorRuns>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFixedLoopOperatorRunsQueryResult = NonNullable<Awaited<ReturnType<typeof listFixedLoopOperatorRuns>>>
+export type ListFixedLoopOperatorRunsQueryError = ErrorType<void>
+
+
+
+export function useListFixedLoopOperatorRuns<TData = Awaited<ReturnType<typeof listFixedLoopOperatorRuns>>, TError = ErrorType<void>>(
+ params?: ListFixedLoopOperatorRunsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFixedLoopOperatorRuns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFixedLoopOperatorRunsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFixedLoopManifestUrl = (id: number,) => {
+
+
+
+
+  return `/api/fixed-loop/runs/${id}/manifest`
+}
+
+export const getFixedLoopManifest = async (id: number, options?: RequestInit): Promise<FixedLoopManifestResponse> => {
+
+  return customFetch<FixedLoopManifestResponse>(getGetFixedLoopManifestUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFixedLoopManifestQueryKey = (id: number,) => {
+    return [
+    `/api/fixed-loop/runs/${id}/manifest`
+    ] as const;
+    }
+
+
+export const getGetFixedLoopManifestQueryOptions = <TData = Awaited<ReturnType<typeof getFixedLoopManifest>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFixedLoopManifest>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFixedLoopManifestQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFixedLoopManifest>>> = ({ signal }) => getFixedLoopManifest(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFixedLoopManifest>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFixedLoopManifestQueryResult = NonNullable<Awaited<ReturnType<typeof getFixedLoopManifest>>>
+export type GetFixedLoopManifestQueryError = ErrorType<void>
+
+
+
+export function useGetFixedLoopManifest<TData = Awaited<ReturnType<typeof getFixedLoopManifest>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFixedLoopManifest>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFixedLoopManifestQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRecordFixedLoopWalkInUrl = (id: number,) => {
+
+
+
+
+  return `/api/fixed-loop/runs/${id}/walk-ins`
+}
+
+export const recordFixedLoopWalkIn = async (id: number,
+    recordFixedLoopWalkInBody: RecordFixedLoopWalkInBody, options?: RequestInit): Promise<FixedLoopReservationResponse> => {
+
+  return customFetch<FixedLoopReservationResponse>(getRecordFixedLoopWalkInUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(recordFixedLoopWalkInBody)
+  }
+);}
+
+
+
+
+export const getRecordFixedLoopWalkInMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordFixedLoopWalkIn>>, TError,{id: number;data: BodyType<RecordFixedLoopWalkInBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordFixedLoopWalkIn>>, TError,{id: number;data: BodyType<RecordFixedLoopWalkInBody>}, TContext> => {
+
+const mutationKey = ['recordFixedLoopWalkIn'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordFixedLoopWalkIn>>, {id: number;data: BodyType<RecordFixedLoopWalkInBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  recordFixedLoopWalkIn(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordFixedLoopWalkInMutationResult = NonNullable<Awaited<ReturnType<typeof recordFixedLoopWalkIn>>>
+    export type RecordFixedLoopWalkInMutationBody = BodyType<RecordFixedLoopWalkInBody>
+    export type RecordFixedLoopWalkInMutationError = ErrorType<void>
+
+    export const useRecordFixedLoopWalkIn = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordFixedLoopWalkIn>>, TError,{id: number;data: BodyType<RecordFixedLoopWalkInBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordFixedLoopWalkIn>>,
+        TError,
+        {id: number;data: BodyType<RecordFixedLoopWalkInBody>},
+        TContext
+      > => {
+      return useMutation(getRecordFixedLoopWalkInMutationOptions(options));
+    }
+
+export const getCheckInFixedLoopReservationUrl = (id: number,) => {
+
+
+
+
+  return `/api/fixed-loop/reservations/${id}/check-in`
+}
+
+export const checkInFixedLoopReservation = async (id: number,
+    checkInFixedLoopReservationBody: CheckInFixedLoopReservationBody, options?: RequestInit): Promise<FixedLoopReservationResponse> => {
+
+  return customFetch<FixedLoopReservationResponse>(getCheckInFixedLoopReservationUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(checkInFixedLoopReservationBody)
+  }
+);}
+
+
+
+
+export const getCheckInFixedLoopReservationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkInFixedLoopReservation>>, TError,{id: number;data: BodyType<CheckInFixedLoopReservationBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkInFixedLoopReservation>>, TError,{id: number;data: BodyType<CheckInFixedLoopReservationBody>}, TContext> => {
+
+const mutationKey = ['checkInFixedLoopReservation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkInFixedLoopReservation>>, {id: number;data: BodyType<CheckInFixedLoopReservationBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  checkInFixedLoopReservation(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckInFixedLoopReservationMutationResult = NonNullable<Awaited<ReturnType<typeof checkInFixedLoopReservation>>>
+    export type CheckInFixedLoopReservationMutationBody = BodyType<CheckInFixedLoopReservationBody>
+    export type CheckInFixedLoopReservationMutationError = ErrorType<void>
+
+    export const useCheckInFixedLoopReservation = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkInFixedLoopReservation>>, TError,{id: number;data: BodyType<CheckInFixedLoopReservationBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof checkInFixedLoopReservation>>,
+        TError,
+        {id: number;data: BodyType<CheckInFixedLoopReservationBody>},
+        TContext
+      > => {
+      return useMutation(getCheckInFixedLoopReservationMutationOptions(options));
+    }
+
+export const getControlFixedLoopRunUrl = (id: number,) => {
+
+
+
+
+  return `/api/fixed-loop/runs/${id}/control`
+}
+
+export const controlFixedLoopRun = async (id: number,
+    controlFixedLoopRunBody: ControlFixedLoopRunBody, options?: RequestInit): Promise<FixedLoopRunResponse> => {
+
+  return customFetch<FixedLoopRunResponse>(getControlFixedLoopRunUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(controlFixedLoopRunBody)
+  }
+);}
+
+
+
+
+export const getControlFixedLoopRunMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof controlFixedLoopRun>>, TError,{id: number;data: BodyType<ControlFixedLoopRunBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof controlFixedLoopRun>>, TError,{id: number;data: BodyType<ControlFixedLoopRunBody>}, TContext> => {
+
+const mutationKey = ['controlFixedLoopRun'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof controlFixedLoopRun>>, {id: number;data: BodyType<ControlFixedLoopRunBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  controlFixedLoopRun(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ControlFixedLoopRunMutationResult = NonNullable<Awaited<ReturnType<typeof controlFixedLoopRun>>>
+    export type ControlFixedLoopRunMutationBody = BodyType<ControlFixedLoopRunBody>
+    export type ControlFixedLoopRunMutationError = ErrorType<void>
+
+    export const useControlFixedLoopRun = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof controlFixedLoopRun>>, TError,{id: number;data: BodyType<ControlFixedLoopRunBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof controlFixedLoopRun>>,
+        TError,
+        {id: number;data: BodyType<ControlFixedLoopRunBody>},
+        TContext
+      > => {
+      return useMutation(getControlFixedLoopRunMutationOptions(options));
+    }
+
+export const getCreateFeedbackUrl = () => {
+
+
+
+
+  return `/api/feedback`
+}
+
+/**
+ * @summary Send app feedback
+ */
+export const createFeedback = async (createFeedbackBody: CreateFeedbackBody, options?: RequestInit): Promise<FeedbackResponse> => {
+
+  return customFetch<FeedbackResponse>(getCreateFeedbackUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createFeedbackBody)
+  }
+);}
+
+
+
+
+export const getCreateFeedbackMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFeedback>>, TError,{data: BodyType<CreateFeedbackBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createFeedback>>, TError,{data: BodyType<CreateFeedbackBody>}, TContext> => {
+
+const mutationKey = ['createFeedback'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createFeedback>>, {data: BodyType<CreateFeedbackBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createFeedback(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateFeedbackMutationResult = NonNullable<Awaited<ReturnType<typeof createFeedback>>>
+    export type CreateFeedbackMutationBody = BodyType<CreateFeedbackBody>
+    export type CreateFeedbackMutationError = ErrorType<void>
+
+    /**
+ * @summary Send app feedback
+ */
+export const useCreateFeedback = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFeedback>>, TError,{data: BodyType<CreateFeedbackBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createFeedback>>,
+        TError,
+        {data: BodyType<CreateFeedbackBody>},
+        TContext
+      > => {
+      return useMutation(getCreateFeedbackMutationOptions(options));
+    }
+
+export const getListFeedbackUrl = (params?: ListFeedbackParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/feedback?${stringifiedParams}` : `/api/feedback`
+}
+
+/**
+ * @summary Review app feedback (admin only)
+ */
+export const listFeedback = async (params?: ListFeedbackParams, options?: RequestInit): Promise<ListFeedbackResponse> => {
+
+  return customFetch<ListFeedbackResponse>(getListFeedbackUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFeedbackQueryKey = (params?: ListFeedbackParams,) => {
+    return [
+    `/api/feedback`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListFeedbackQueryOptions = <TData = Awaited<ReturnType<typeof listFeedback>>, TError = ErrorType<void>>(params?: ListFeedbackParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFeedback>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFeedbackQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFeedback>>> = ({ signal }) => listFeedback(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFeedback>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFeedbackQueryResult = NonNullable<Awaited<ReturnType<typeof listFeedback>>>
+export type ListFeedbackQueryError = ErrorType<void>
+
+
+/**
+ * @summary Review app feedback (admin only)
+ */
+
+export function useListFeedback<TData = Awaited<ReturnType<typeof listFeedback>>, TError = ErrorType<void>>(
+ params?: ListFeedbackParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFeedback>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFeedbackQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateFeedbackUrl = (id: number,) => {
+
+
+
+
+  return `/api/feedback/${id}`
+}
+
+/**
+ * @summary Update feedback status (admin only)
+ */
+export const updateFeedback = async (id: number,
+    updateFeedbackBody: UpdateFeedbackBody, options?: RequestInit): Promise<FeedbackResponse> => {
+
+  return customFetch<FeedbackResponse>(getUpdateFeedbackUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateFeedbackBody)
+  }
+);}
+
+
+
+
+export const getUpdateFeedbackMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFeedback>>, TError,{id: number;data: BodyType<UpdateFeedbackBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateFeedback>>, TError,{id: number;data: BodyType<UpdateFeedbackBody>}, TContext> => {
+
+const mutationKey = ['updateFeedback'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateFeedback>>, {id: number;data: BodyType<UpdateFeedbackBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateFeedback(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateFeedbackMutationResult = NonNullable<Awaited<ReturnType<typeof updateFeedback>>>
+    export type UpdateFeedbackMutationBody = BodyType<UpdateFeedbackBody>
+    export type UpdateFeedbackMutationError = ErrorType<void>
+
+    /**
+ * @summary Update feedback status (admin only)
+ */
+export const useUpdateFeedback = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFeedback>>, TError,{id: number;data: BodyType<UpdateFeedbackBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateFeedback>>,
+        TError,
+        {id: number;data: BodyType<UpdateFeedbackBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateFeedbackMutationOptions(options));
+    }
+
 export const getCreateIncidentUrl = () => {
 
 
@@ -5676,3 +6786,643 @@ export const useIngestGpsLocation = <TError = ErrorType<unknown>,
       return useMutation(getIngestGpsLocationMutationOptions(options));
     }
 
+export const getCreateAccountDeletionRequestUrl = () => {
+
+
+
+
+  return `/api/account-deletion/requests`
+}
+
+export const createAccountDeletionRequest = async (createAccountDeletionBody: CreateAccountDeletionBody, options?: RequestInit): Promise<AccountDeletionResponse> => {
+
+  return customFetch<AccountDeletionResponse>(getCreateAccountDeletionRequestUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createAccountDeletionBody)
+  }
+);}
+
+
+
+
+export const getCreateAccountDeletionRequestMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAccountDeletionRequest>>, TError,{data: BodyType<CreateAccountDeletionBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAccountDeletionRequest>>, TError,{data: BodyType<CreateAccountDeletionBody>}, TContext> => {
+
+const mutationKey = ['createAccountDeletionRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAccountDeletionRequest>>, {data: BodyType<CreateAccountDeletionBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAccountDeletionRequest(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAccountDeletionRequestMutationResult = NonNullable<Awaited<ReturnType<typeof createAccountDeletionRequest>>>
+    export type CreateAccountDeletionRequestMutationBody = BodyType<CreateAccountDeletionBody>
+    export type CreateAccountDeletionRequestMutationError = ErrorType<void>
+
+    export const useCreateAccountDeletionRequest = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAccountDeletionRequest>>, TError,{data: BodyType<CreateAccountDeletionBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAccountDeletionRequest>>,
+        TError,
+        {data: BodyType<CreateAccountDeletionBody>},
+        TContext
+      > => {
+      return useMutation(getCreateAccountDeletionRequestMutationOptions(options));
+    }
+
+export const getListAccountDeletionRequestsUrl = (params?: ListAccountDeletionRequestsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/account-deletion/requests?${stringifiedParams}` : `/api/account-deletion/requests`
+}
+
+export const listAccountDeletionRequests = async (params?: ListAccountDeletionRequestsParams, options?: RequestInit): Promise<AccountDeletionListResponse> => {
+
+  return customFetch<AccountDeletionListResponse>(getListAccountDeletionRequestsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAccountDeletionRequestsQueryKey = (params?: ListAccountDeletionRequestsParams,) => {
+    return [
+    `/api/account-deletion/requests`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAccountDeletionRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listAccountDeletionRequests>>, TError = ErrorType<void>>(params?: ListAccountDeletionRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAccountDeletionRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAccountDeletionRequestsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAccountDeletionRequests>>> = ({ signal }) => listAccountDeletionRequests(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAccountDeletionRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAccountDeletionRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listAccountDeletionRequests>>>
+export type ListAccountDeletionRequestsQueryError = ErrorType<void>
+
+
+
+export function useListAccountDeletionRequests<TData = Awaited<ReturnType<typeof listAccountDeletionRequests>>, TError = ErrorType<void>>(
+ params?: ListAccountDeletionRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAccountDeletionRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAccountDeletionRequestsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAccountDeletionRequestUrl = (id: string,) => {
+
+
+
+
+  return `/api/account-deletion/requests/${id}`
+}
+
+export const getAccountDeletionRequest = async (id: string, options?: RequestInit): Promise<AccountDeletionResponse> => {
+
+  return customFetch<AccountDeletionResponse>(getGetAccountDeletionRequestUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAccountDeletionRequestQueryKey = (id: string,) => {
+    return [
+    `/api/account-deletion/requests/${id}`
+    ] as const;
+    }
+
+
+export const getGetAccountDeletionRequestQueryOptions = <TData = Awaited<ReturnType<typeof getAccountDeletionRequest>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccountDeletionRequest>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAccountDeletionRequestQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAccountDeletionRequest>>> = ({ signal }) => getAccountDeletionRequest(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAccountDeletionRequest>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAccountDeletionRequestQueryResult = NonNullable<Awaited<ReturnType<typeof getAccountDeletionRequest>>>
+export type GetAccountDeletionRequestQueryError = ErrorType<void>
+
+
+
+export function useGetAccountDeletionRequest<TData = Awaited<ReturnType<typeof getAccountDeletionRequest>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccountDeletionRequest>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAccountDeletionRequestQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReviewAccountDeletionRequestUrl = (id: string,) => {
+
+
+
+
+  return `/api/account-deletion/requests/${id}`
+}
+
+export const reviewAccountDeletionRequest = async (id: string,
+    reviewAccountDeletionBody: ReviewAccountDeletionBody, options?: RequestInit): Promise<AccountDeletionResponse> => {
+
+  return customFetch<AccountDeletionResponse>(getReviewAccountDeletionRequestUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(reviewAccountDeletionBody)
+  }
+);}
+
+
+
+
+export const getReviewAccountDeletionRequestMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewAccountDeletionRequest>>, TError,{id: string;data: BodyType<ReviewAccountDeletionBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewAccountDeletionRequest>>, TError,{id: string;data: BodyType<ReviewAccountDeletionBody>}, TContext> => {
+
+const mutationKey = ['reviewAccountDeletionRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewAccountDeletionRequest>>, {id: string;data: BodyType<ReviewAccountDeletionBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  reviewAccountDeletionRequest(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewAccountDeletionRequestMutationResult = NonNullable<Awaited<ReturnType<typeof reviewAccountDeletionRequest>>>
+    export type ReviewAccountDeletionRequestMutationBody = BodyType<ReviewAccountDeletionBody>
+    export type ReviewAccountDeletionRequestMutationError = ErrorType<void>
+
+    export const useReviewAccountDeletionRequest = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewAccountDeletionRequest>>, TError,{id: string;data: BodyType<ReviewAccountDeletionBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewAccountDeletionRequest>>,
+        TError,
+        {id: string;data: BodyType<ReviewAccountDeletionBody>},
+        TContext
+      > => {
+      return useMutation(getReviewAccountDeletionRequestMutationOptions(options));
+    }
+
+export const getStartFixedLoopPickupSharingUrl = (id: number,) => {
+
+
+
+
+  return `/api/fixed-loop/reservations/${id}/location-sharing`
+}
+
+/**
+ * Requires an owned confirmed app reservation from one hour before departure until boarding or passing the pickup stop. Live data expires within 60 seconds without updates. No-store responses.
+ * @summary Passenger opts in to share a fresh pickup position with their assigned driver
+ */
+export const startFixedLoopPickupSharing = async (id: number,
+    pickupSharingPoint: PickupSharingPoint, options?: RequestInit): Promise<StartFixedLoopPickupSharing201> => {
+
+  return customFetch<StartFixedLoopPickupSharing201>(getStartFixedLoopPickupSharingUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(pickupSharingPoint)
+  }
+);}
+
+
+
+
+export const getStartFixedLoopPickupSharingMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startFixedLoopPickupSharing>>, TError,{id: number;data: BodyType<PickupSharingPoint>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startFixedLoopPickupSharing>>, TError,{id: number;data: BodyType<PickupSharingPoint>}, TContext> => {
+
+const mutationKey = ['startFixedLoopPickupSharing'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startFixedLoopPickupSharing>>, {id: number;data: BodyType<PickupSharingPoint>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  startFixedLoopPickupSharing(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartFixedLoopPickupSharingMutationResult = NonNullable<Awaited<ReturnType<typeof startFixedLoopPickupSharing>>>
+    export type StartFixedLoopPickupSharingMutationBody = BodyType<PickupSharingPoint>
+    export type StartFixedLoopPickupSharingMutationError = ErrorType<void>
+
+    /**
+ * @summary Passenger opts in to share a fresh pickup position with their assigned driver
+ */
+export const useStartFixedLoopPickupSharing = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startFixedLoopPickupSharing>>, TError,{id: number;data: BodyType<PickupSharingPoint>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startFixedLoopPickupSharing>>,
+        TError,
+        {id: number;data: BodyType<PickupSharingPoint>},
+        TContext
+      > => {
+      return useMutation(getStartFixedLoopPickupSharingMutationOptions(options));
+    }
+
+export const getUpdateFixedLoopPickupSharingUrl = (id: number,) => {
+
+
+
+
+  return `/api/fixed-loop/reservations/${id}/location-sharing`
+}
+
+/**
+ * @summary Refresh an existing pickup sharing session
+ */
+export const updateFixedLoopPickupSharing = async (id: number,
+    updateFixedLoopPickupSharingBody: UpdateFixedLoopPickupSharingBody, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getUpdateFixedLoopPickupSharingUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateFixedLoopPickupSharingBody)
+  }
+);}
+
+
+
+
+export const getUpdateFixedLoopPickupSharingMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFixedLoopPickupSharing>>, TError,{id: number;data: BodyType<UpdateFixedLoopPickupSharingBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateFixedLoopPickupSharing>>, TError,{id: number;data: BodyType<UpdateFixedLoopPickupSharingBody>}, TContext> => {
+
+const mutationKey = ['updateFixedLoopPickupSharing'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateFixedLoopPickupSharing>>, {id: number;data: BodyType<UpdateFixedLoopPickupSharingBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateFixedLoopPickupSharing(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateFixedLoopPickupSharingMutationResult = NonNullable<Awaited<ReturnType<typeof updateFixedLoopPickupSharing>>>
+    export type UpdateFixedLoopPickupSharingMutationBody = BodyType<UpdateFixedLoopPickupSharingBody>
+    export type UpdateFixedLoopPickupSharingMutationError = ErrorType<void>
+
+    /**
+ * @summary Refresh an existing pickup sharing session
+ */
+export const useUpdateFixedLoopPickupSharing = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFixedLoopPickupSharing>>, TError,{id: number;data: BodyType<UpdateFixedLoopPickupSharingBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateFixedLoopPickupSharing>>,
+        TError,
+        {id: number;data: BodyType<UpdateFixedLoopPickupSharingBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateFixedLoopPickupSharingMutationOptions(options));
+    }
+
+export const getStopFixedLoopPickupSharingUrl = (id: number,) => {
+
+
+
+
+  return `/api/fixed-loop/reservations/${id}/location-sharing`
+}
+
+/**
+ * @summary Revoke a pickup sharing session without revoking a newer session
+ */
+export const stopFixedLoopPickupSharing = async (id: number,
+    stopFixedLoopPickupSharingBody: StopFixedLoopPickupSharingBody, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getStopFixedLoopPickupSharingUrl(id),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(stopFixedLoopPickupSharingBody)
+  }
+);}
+
+
+
+
+export const getStopFixedLoopPickupSharingMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof stopFixedLoopPickupSharing>>, TError,{id: number;data: BodyType<StopFixedLoopPickupSharingBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof stopFixedLoopPickupSharing>>, TError,{id: number;data: BodyType<StopFixedLoopPickupSharingBody>}, TContext> => {
+
+const mutationKey = ['stopFixedLoopPickupSharing'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof stopFixedLoopPickupSharing>>, {id: number;data: BodyType<StopFixedLoopPickupSharingBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  stopFixedLoopPickupSharing(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StopFixedLoopPickupSharingMutationResult = NonNullable<Awaited<ReturnType<typeof stopFixedLoopPickupSharing>>>
+    export type StopFixedLoopPickupSharingMutationBody = BodyType<StopFixedLoopPickupSharingBody>
+    export type StopFixedLoopPickupSharingMutationError = ErrorType<void>
+
+    /**
+ * @summary Revoke a pickup sharing session without revoking a newer session
+ */
+export const useStopFixedLoopPickupSharing = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof stopFixedLoopPickupSharing>>, TError,{id: number;data: BodyType<StopFixedLoopPickupSharingBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof stopFixedLoopPickupSharing>>,
+        TError,
+        {id: number;data: BodyType<StopFixedLoopPickupSharingBody>},
+        TContext
+      > => {
+      return useMutation(getStopFixedLoopPickupSharingMutationOptions(options));
+    }
+
+export const getListFixedLoopPickupPinsUrl = (id: number,) => {
+
+
+
+
+  return `/api/fixed-loop/runs/${id}/passenger-locations`
+}
+
+/**
+ * Excludes stale positions, boarded/cancelled reservations and passed pickup stops. Photos are loaded separately to avoid resending images on every GPS poll.
+ * @summary Assigned approved driver reads consenting passengers awaiting pickup
+ */
+export const listFixedLoopPickupPins = async (id: number, options?: RequestInit): Promise<ListFixedLoopPickupPins200> => {
+
+  return customFetch<ListFixedLoopPickupPins200>(getListFixedLoopPickupPinsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFixedLoopPickupPinsQueryKey = (id: number,) => {
+    return [
+    `/api/fixed-loop/runs/${id}/passenger-locations`
+    ] as const;
+    }
+
+
+export const getListFixedLoopPickupPinsQueryOptions = <TData = Awaited<ReturnType<typeof listFixedLoopPickupPins>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFixedLoopPickupPins>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFixedLoopPickupPinsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFixedLoopPickupPins>>> = ({ signal }) => listFixedLoopPickupPins(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFixedLoopPickupPins>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFixedLoopPickupPinsQueryResult = NonNullable<Awaited<ReturnType<typeof listFixedLoopPickupPins>>>
+export type ListFixedLoopPickupPinsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Assigned approved driver reads consenting passengers awaiting pickup
+ */
+
+export function useListFixedLoopPickupPins<TData = Awaited<ReturnType<typeof listFixedLoopPickupPins>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFixedLoopPickupPins>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFixedLoopPickupPinsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFixedLoopPickupAvatarUrl = (id: number,) => {
+
+
+
+
+  return `/api/fixed-loop/reservations/${id}/passenger-avatar`
+}
+
+/**
+ * @summary Assigned driver reads an actively sharing passenger's profile photo
+ */
+export const getFixedLoopPickupAvatar = async (id: number, options?: RequestInit): Promise<GetFixedLoopPickupAvatar200> => {
+
+  return customFetch<GetFixedLoopPickupAvatar200>(getGetFixedLoopPickupAvatarUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFixedLoopPickupAvatarQueryKey = (id: number,) => {
+    return [
+    `/api/fixed-loop/reservations/${id}/passenger-avatar`
+    ] as const;
+    }
+
+
+export const getGetFixedLoopPickupAvatarQueryOptions = <TData = Awaited<ReturnType<typeof getFixedLoopPickupAvatar>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFixedLoopPickupAvatar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFixedLoopPickupAvatarQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFixedLoopPickupAvatar>>> = ({ signal }) => getFixedLoopPickupAvatar(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFixedLoopPickupAvatar>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFixedLoopPickupAvatarQueryResult = NonNullable<Awaited<ReturnType<typeof getFixedLoopPickupAvatar>>>
+export type GetFixedLoopPickupAvatarQueryError = ErrorType<void>
+
+
+/**
+ * @summary Assigned driver reads an actively sharing passenger's profile photo
+ */
+
+export function useGetFixedLoopPickupAvatar<TData = Awaited<ReturnType<typeof getFixedLoopPickupAvatar>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFixedLoopPickupAvatar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFixedLoopPickupAvatarQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}

@@ -16,6 +16,7 @@ import { PremiumField } from "@/components/PremiumField";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useAuth } from "@/contexts/AuthContext";
+import { openLegalDocument } from "@/lib/legal";
 
 export default function AccountScreen() {
   const colors = useColors();
@@ -121,6 +122,11 @@ export default function AccountScreen() {
           <Button title="Change password" onPress={savePassword} loading={changePassword.isPending} />
         </Card>
 
+        <Text style={[styles.section, { color: colors.destructive }]}>Delete account and personal data</Text>
+        <Card style={styles.card}>
+          <Text style={{ color: colors.mutedForeground, lineHeight: 19 }}>Request permanent deletion on our secure website. Verify your account there and keep your private request reference to follow its progress. Active journeys or balances must be resolved first.</Text>
+          <Button title="Request account deletion" variant="destructive" onPress={() => openLegalDocument("delete-account").catch(() => Alert.alert("Could not open page", "Open https://moveapayao.com/delete-account in your browser."))} />
+        </Card>
         <Text style={[styles.section, { color: colors.destructive }]}>Deactivate account</Text>
         <Card style={styles.card}>
           <Text style={{ color: colors.mutedForeground, lineHeight: 19 }}>

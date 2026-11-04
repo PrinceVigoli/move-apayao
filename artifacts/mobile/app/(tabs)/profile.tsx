@@ -6,6 +6,7 @@ import {
   ScrollView,
   Platform,
   Pressable,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,10 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Badge } from "@/components/ui/Badge";
 import { Feather } from "@expo/vector-icons";
-import {
-  useGetProfile,
-  useGetMySubscription,
-} from "@workspace/api-client-react";
+import { useGetProfile } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { openLegalDocument, openSupportEmail } from "@/lib/legal";
 
@@ -29,7 +27,6 @@ export default function ProfileScreen() {
   const { signOut } = useAuth();
 
   const { data: profileData, isLoading: isLoadingProfile } = useGetProfile();
-  const { data: subData, isLoading: isLoadingSub } = useGetMySubscription();
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -52,9 +49,17 @@ export default function ProfileScreen() {
               <View
                 style={[styles.avatar, { backgroundColor: colors.primary }]}
               >
-                <Text style={styles.avatarText}>
-                  {profileData?.user?.fullName?.[0]?.toUpperCase() || "U"}
-                </Text>
+                {profileData?.user?.avatarUrl ? (
+                  <Image
+                    source={{ uri: profileData.user.avatarUrl }}
+                    accessibilityLabel="Your profile photo"
+                    style={{ width: "100%", height: "100%", borderRadius: 40 }}
+                  />
+                ) : (
+                  <Text style={styles.avatarText}>
+                    {profileData?.user?.fullName?.[0]?.toUpperCase() || "U"}
+                  </Text>
+                )}
               </View>
               <View style={styles.profileInfo}>
                 <Text style={[styles.name, { color: colors.foreground }]}>
@@ -80,56 +85,42 @@ export default function ProfileScreen() {
             { color: colors.foreground, marginTop: 24 },
           ]}
         >
-          Subscription
-        </Text>
-
-        <Card style={styles.subCard}>
-          {isLoadingSub ? (
-            <Skeleton style={{ height: 60, width: "100%" }} />
-          ) : subData?.subscription ? (
-            <View style={styles.subRow}>
-              <View>
-                <Text style={[styles.subPlan, { color: colors.foreground }]}>
-                  {subData.subscription.plan.toUpperCase()} PLAN
-                </Text>
-                <Text
-                  style={[styles.subDate, { color: colors.mutedForeground }]}
-                >
-                  Expires:{" "}
-                  {new Date(
-                    subData.subscription.expiresAt,
-                  ).toLocaleDateString()}
-                </Text>
-              </View>
-              <Badge
-                label={subData.subscription.status}
-                variant={
-                  subData.subscription.status === "active"
-                    ? "success"
-                    : "secondary"
-                }
-              />
-            </View>
-          ) : (
-            <View style={{ alignItems: "center", paddingVertical: 16 }}>
-              <Text style={{ color: colors.mutedForeground, marginBottom: 12 }}>
-                You don't have an active subscription
-              </Text>
-              <Button title="View Plans" variant="outline" onPress={() => {}} />
-            </View>
-          )}
-        </Card>
-
-        <Text
-          style={[
-            styles.sectionTitle,
-            { color: colors.foreground, marginTop: 24 },
-          ]}
-        >
           Settings
         </Text>
 
         <Card style={{ padding: 0 }}>
+          <Pressable
+            style={[
+              styles.settingRow,
+              { borderBottomColor: colors.border, borderBottomWidth: 1 },
+            ]}
+            onPress={() => router.push("/feedback" as never)}
+          >
+            <Feather
+              name="message-square"
+              size={20}
+              color={colors.foreground}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.settingText, { color: colors.foreground }]}>
+                Send feedback
+              </Text>
+              <Text
+                style={{
+                  color: colors.mutedForeground,
+                  fontSize: 12,
+                  marginTop: 4,
+                }}
+              >
+                App bugs and suggestions
+              </Text>
+            </View>
+            <Feather
+              name="chevron-right"
+              size={20}
+              color={colors.mutedForeground}
+            />
+          </Pressable>
           <Pressable
             style={[
               styles.settingRow,
@@ -230,7 +221,7 @@ export default function ProfileScreen() {
               color={colors.foreground}
             />
             <Text style={[styles.settingText, { color: colors.foreground }]}>
-              Report an Issue
+              Report a ride issue
             </Text>
             <Feather
               name="chevron-right"
@@ -298,23 +289,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: "Inter_600SemiBold",
     marginBottom: 16,
-  },
-  subCard: {
-    padding: 16,
-  },
-  subRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  subPlan: {
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-    marginBottom: 4,
-  },
-  subDate: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
   },
   settingRow: {
     flexDirection: "row",

@@ -21,7 +21,7 @@ const NAV = [
   { href: "#how", label: "How it works" },
   { href: "#coverage", label: "Coverage" },
   { href: "#drivers", label: "For drivers" },
-  { href: "#partners", label: "For the LGU" },
+  { href: "#partners", label: "DOST and partners" },
   { href: "#faq", label: "FAQ" },
   { href: "#contact", label: "Contact" },
 ];
@@ -162,13 +162,11 @@ export function Hero() {
             </div>
 
             <h1 className="display mt-6 text-[clamp(3.2rem,5.7vw,5.25rem)] text-foreground">
-              E-trike rides you can{" "}
-              <span className="text-primary">actually track.</span>
+              {hero.title}
             </h1>
 
             <p className="mt-7 max-w-xl text-lg leading-8 text-muted-foreground sm:text-xl">
-              Book from your barangay, follow your driver live, and arrive with
-              confidence.
+              {hero.body}
             </p>
 
             <div className="hero-actions mt-9 flex flex-wrap gap-3">
@@ -195,9 +193,9 @@ export function Hero() {
 
             <div className="hero-trust mt-10 grid max-w-xl grid-cols-3 gap-2 border-t border-foreground/10 pt-6 sm:gap-5">
               {[
-                { Icon: ShieldCheck, label: "Local & trusted" },
-                { Icon: MapPin, label: "Live driver tracking" },
-                { Icon: Users, label: "Group booking" },
+                { Icon: ShieldCheck, label: "DOST project" },
+                { Icon: MapPin, label: "Daily departures" },
+                { Icon: Users, label: "Numbered places" },
               ].map(({ Icon, label }) => (
                 <div key={label} className="hero-trust-item">
                   <Icon size={20} />
@@ -215,9 +213,9 @@ export function Hero() {
                 <CarFront size={18} />
               </span>
               <span>
-                <strong>Driver nearby</strong>Live location updated
+                <strong>Fixed-loop e-jeep</strong>19 seats + 10 standing places
               </span>
-              <span className="arrival-live">LIVE</span>
+              <span className="arrival-live">PILOT</span>
             </div>
           </div>
         </div>

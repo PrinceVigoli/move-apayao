@@ -339,7 +339,7 @@ export function Contact() {
             <div>
               <p className="eyebrow text-primary">Contact and support</p>
               <h2 className="display mt-4 max-w-xl text-4xl sm:text-5xl">
-                A local team behind every trip.
+                A DOST project for Apayao.
               </h2>
               <p className="mt-5 max-w-xl leading-7 text-muted-foreground">
                 Ask about pilot access, driver applications, bookings,
@@ -348,13 +348,13 @@ export function Contact() {
               </p>
             </div>
             <div className="contact-grid">
-              <a href={links.email} className="contact-card">
+              {publicContact.supportEmail ? <a href={links.email} className="contact-card">
                 <span>
                   <Mail size={20} />
                 </span>
                 <small>Service support</small>
                 <strong>{publicContact.supportEmail}</strong>
-              </a>
+              </a> : <div className="contact-card"><span><Mail size={20} /></span><small>Project support</small><strong>Contact details to be announced</strong></div>}
               {links.phone ? (
                 <a href={links.phone} className="contact-card">
                   <span>
@@ -368,7 +368,7 @@ export function Contact() {
                   <span>
                     <Building2 size={20} />
                   </span>
-                  <small>Visit</small>
+                  <small>Pilot area</small>
                   <strong>{publicContact.address}</strong>
                 </div>
               )}
@@ -381,8 +381,8 @@ export function Contact() {
                 <span>
                   <ExternalLink size={20} />
                 </span>
-                <small>Official LGU website</small>
-                <strong>lgupudtol.ph</strong>
+                <small>Official DOST website</small>
+                <strong>dost.gov.ph</strong>
               </a>
             </div>
           </div>
@@ -441,7 +441,7 @@ export function Footer() {
                 <a href="#drivers">Drive with us</a>
               </li>
               <li>
-                <a href="#partners">For the LGU</a>
+                <a href="#partners">DOST and partners</a>
               </li>
             </ul>
           </div>
