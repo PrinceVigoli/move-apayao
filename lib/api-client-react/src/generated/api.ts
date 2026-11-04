@@ -71,6 +71,7 @@ import type {
   GetDailyAnalyticsParams,
   GetEarningsParams,
   GetFixedLoopAvailabilityParams,
+  GetFixedLoopPickupAvatar200,
   GetIotFleet200,
   GetLoopRouteParams,
   GetLoopVehiclesParams,
@@ -88,6 +89,7 @@ import type {
   ListFeedbackParams,
   ListFeedbackResponse,
   ListFixedLoopOperatorRunsParams,
+  ListFixedLoopPickupPins200,
   ListFixedLoopRunsParams,
   ListIncidentsParams,
   ListIncidentsResponse,
@@ -113,6 +115,7 @@ import type {
   NearbyDriversResponse,
   NotFoundResponse,
   OkResponse,
+  PickupSharingPoint,
   PreviewLoopRouteBody,
   ProfileResponse,
   ProvisionGpsDevice201,
@@ -129,7 +132,9 @@ import type {
   RevokeGpsDevice200,
   SessionResponse,
   SessionTokens,
+  StartFixedLoopPickupSharing201,
   StartTripBody,
+  StopFixedLoopPickupSharingBody,
   SubscriptionResponse,
   TapBody,
   TapResponse,
@@ -142,6 +147,7 @@ import type {
   UnregisterNotificationDeviceBody,
   UpdateFarePolicyBody,
   UpdateFeedbackBody,
+  UpdateFixedLoopPickupSharingBody,
   UpdateIncidentBody,
   UpdateLocationBody,
   UpdateLoopLocationBody,
@@ -7058,3 +7064,365 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getReviewAccountDeletionRequestMutationOptions(options));
     }
 
+export const getStartFixedLoopPickupSharingUrl = (id: number,) => {
+
+
+
+
+  return `/api/fixed-loop/reservations/${id}/location-sharing`
+}
+
+/**
+ * Requires an owned confirmed app reservation from one hour before departure until boarding or passing the pickup stop. Live data expires within 60 seconds without updates. No-store responses.
+ * @summary Passenger opts in to share a fresh pickup position with their assigned driver
+ */
+export const startFixedLoopPickupSharing = async (id: number,
+    pickupSharingPoint: PickupSharingPoint, options?: RequestInit): Promise<StartFixedLoopPickupSharing201> => {
+
+  return customFetch<StartFixedLoopPickupSharing201>(getStartFixedLoopPickupSharingUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(pickupSharingPoint)
+  }
+);}
+
+
+
+
+export const getStartFixedLoopPickupSharingMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startFixedLoopPickupSharing>>, TError,{id: number;data: BodyType<PickupSharingPoint>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startFixedLoopPickupSharing>>, TError,{id: number;data: BodyType<PickupSharingPoint>}, TContext> => {
+
+const mutationKey = ['startFixedLoopPickupSharing'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startFixedLoopPickupSharing>>, {id: number;data: BodyType<PickupSharingPoint>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  startFixedLoopPickupSharing(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartFixedLoopPickupSharingMutationResult = NonNullable<Awaited<ReturnType<typeof startFixedLoopPickupSharing>>>
+    export type StartFixedLoopPickupSharingMutationBody = BodyType<PickupSharingPoint>
+    export type StartFixedLoopPickupSharingMutationError = ErrorType<void>
+
+    /**
+ * @summary Passenger opts in to share a fresh pickup position with their assigned driver
+ */
+export const useStartFixedLoopPickupSharing = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startFixedLoopPickupSharing>>, TError,{id: number;data: BodyType<PickupSharingPoint>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startFixedLoopPickupSharing>>,
+        TError,
+        {id: number;data: BodyType<PickupSharingPoint>},
+        TContext
+      > => {
+      return useMutation(getStartFixedLoopPickupSharingMutationOptions(options));
+    }
+
+export const getUpdateFixedLoopPickupSharingUrl = (id: number,) => {
+
+
+
+
+  return `/api/fixed-loop/reservations/${id}/location-sharing`
+}
+
+/**
+ * @summary Refresh an existing pickup sharing session
+ */
+export const updateFixedLoopPickupSharing = async (id: number,
+    updateFixedLoopPickupSharingBody: UpdateFixedLoopPickupSharingBody, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getUpdateFixedLoopPickupSharingUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateFixedLoopPickupSharingBody)
+  }
+);}
+
+
+
+
+export const getUpdateFixedLoopPickupSharingMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFixedLoopPickupSharing>>, TError,{id: number;data: BodyType<UpdateFixedLoopPickupSharingBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateFixedLoopPickupSharing>>, TError,{id: number;data: BodyType<UpdateFixedLoopPickupSharingBody>}, TContext> => {
+
+const mutationKey = ['updateFixedLoopPickupSharing'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateFixedLoopPickupSharing>>, {id: number;data: BodyType<UpdateFixedLoopPickupSharingBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateFixedLoopPickupSharing(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateFixedLoopPickupSharingMutationResult = NonNullable<Awaited<ReturnType<typeof updateFixedLoopPickupSharing>>>
+    export type UpdateFixedLoopPickupSharingMutationBody = BodyType<UpdateFixedLoopPickupSharingBody>
+    export type UpdateFixedLoopPickupSharingMutationError = ErrorType<void>
+
+    /**
+ * @summary Refresh an existing pickup sharing session
+ */
+export const useUpdateFixedLoopPickupSharing = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFixedLoopPickupSharing>>, TError,{id: number;data: BodyType<UpdateFixedLoopPickupSharingBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateFixedLoopPickupSharing>>,
+        TError,
+        {id: number;data: BodyType<UpdateFixedLoopPickupSharingBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateFixedLoopPickupSharingMutationOptions(options));
+    }
+
+export const getStopFixedLoopPickupSharingUrl = (id: number,) => {
+
+
+
+
+  return `/api/fixed-loop/reservations/${id}/location-sharing`
+}
+
+/**
+ * @summary Revoke a pickup sharing session without revoking a newer session
+ */
+export const stopFixedLoopPickupSharing = async (id: number,
+    stopFixedLoopPickupSharingBody: StopFixedLoopPickupSharingBody, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getStopFixedLoopPickupSharingUrl(id),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(stopFixedLoopPickupSharingBody)
+  }
+);}
+
+
+
+
+export const getStopFixedLoopPickupSharingMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof stopFixedLoopPickupSharing>>, TError,{id: number;data: BodyType<StopFixedLoopPickupSharingBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof stopFixedLoopPickupSharing>>, TError,{id: number;data: BodyType<StopFixedLoopPickupSharingBody>}, TContext> => {
+
+const mutationKey = ['stopFixedLoopPickupSharing'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof stopFixedLoopPickupSharing>>, {id: number;data: BodyType<StopFixedLoopPickupSharingBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  stopFixedLoopPickupSharing(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StopFixedLoopPickupSharingMutationResult = NonNullable<Awaited<ReturnType<typeof stopFixedLoopPickupSharing>>>
+    export type StopFixedLoopPickupSharingMutationBody = BodyType<StopFixedLoopPickupSharingBody>
+    export type StopFixedLoopPickupSharingMutationError = ErrorType<void>
+
+    /**
+ * @summary Revoke a pickup sharing session without revoking a newer session
+ */
+export const useStopFixedLoopPickupSharing = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof stopFixedLoopPickupSharing>>, TError,{id: number;data: BodyType<StopFixedLoopPickupSharingBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof stopFixedLoopPickupSharing>>,
+        TError,
+        {id: number;data: BodyType<StopFixedLoopPickupSharingBody>},
+        TContext
+      > => {
+      return useMutation(getStopFixedLoopPickupSharingMutationOptions(options));
+    }
+
+export const getListFixedLoopPickupPinsUrl = (id: number,) => {
+
+
+
+
+  return `/api/fixed-loop/runs/${id}/passenger-locations`
+}
+
+/**
+ * Excludes stale positions, boarded/cancelled reservations and passed pickup stops. Photos are loaded separately to avoid resending images on every GPS poll.
+ * @summary Assigned approved driver reads consenting passengers awaiting pickup
+ */
+export const listFixedLoopPickupPins = async (id: number, options?: RequestInit): Promise<ListFixedLoopPickupPins200> => {
+
+  return customFetch<ListFixedLoopPickupPins200>(getListFixedLoopPickupPinsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFixedLoopPickupPinsQueryKey = (id: number,) => {
+    return [
+    `/api/fixed-loop/runs/${id}/passenger-locations`
+    ] as const;
+    }
+
+
+export const getListFixedLoopPickupPinsQueryOptions = <TData = Awaited<ReturnType<typeof listFixedLoopPickupPins>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFixedLoopPickupPins>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFixedLoopPickupPinsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFixedLoopPickupPins>>> = ({ signal }) => listFixedLoopPickupPins(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFixedLoopPickupPins>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFixedLoopPickupPinsQueryResult = NonNullable<Awaited<ReturnType<typeof listFixedLoopPickupPins>>>
+export type ListFixedLoopPickupPinsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Assigned approved driver reads consenting passengers awaiting pickup
+ */
+
+export function useListFixedLoopPickupPins<TData = Awaited<ReturnType<typeof listFixedLoopPickupPins>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFixedLoopPickupPins>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFixedLoopPickupPinsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFixedLoopPickupAvatarUrl = (id: number,) => {
+
+
+
+
+  return `/api/fixed-loop/reservations/${id}/passenger-avatar`
+}
+
+/**
+ * @summary Assigned driver reads an actively sharing passenger's profile photo
+ */
+export const getFixedLoopPickupAvatar = async (id: number, options?: RequestInit): Promise<GetFixedLoopPickupAvatar200> => {
+
+  return customFetch<GetFixedLoopPickupAvatar200>(getGetFixedLoopPickupAvatarUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFixedLoopPickupAvatarQueryKey = (id: number,) => {
+    return [
+    `/api/fixed-loop/reservations/${id}/passenger-avatar`
+    ] as const;
+    }
+
+
+export const getGetFixedLoopPickupAvatarQueryOptions = <TData = Awaited<ReturnType<typeof getFixedLoopPickupAvatar>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFixedLoopPickupAvatar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFixedLoopPickupAvatarQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFixedLoopPickupAvatar>>> = ({ signal }) => getFixedLoopPickupAvatar(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFixedLoopPickupAvatar>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFixedLoopPickupAvatarQueryResult = NonNullable<Awaited<ReturnType<typeof getFixedLoopPickupAvatar>>>
+export type GetFixedLoopPickupAvatarQueryError = ErrorType<void>
+
+
+/**
+ * @summary Assigned driver reads an actively sharing passenger's profile photo
+ */
+
+export function useGetFixedLoopPickupAvatar<TData = Awaited<ReturnType<typeof getFixedLoopPickupAvatar>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFixedLoopPickupAvatar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFixedLoopPickupAvatarQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}

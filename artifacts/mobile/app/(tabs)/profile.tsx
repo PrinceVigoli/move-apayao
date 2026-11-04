@@ -6,6 +6,7 @@ import {
   ScrollView,
   Platform,
   Pressable,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -48,9 +49,17 @@ export default function ProfileScreen() {
               <View
                 style={[styles.avatar, { backgroundColor: colors.primary }]}
               >
-                <Text style={styles.avatarText}>
-                  {profileData?.user?.fullName?.[0]?.toUpperCase() || "U"}
-                </Text>
+                {profileData?.user?.avatarUrl ? (
+                  <Image
+                    source={{ uri: profileData.user.avatarUrl }}
+                    accessibilityLabel="Your profile photo"
+                    style={{ width: "100%", height: "100%", borderRadius: 40 }}
+                  />
+                ) : (
+                  <Text style={styles.avatarText}>
+                    {profileData?.user?.fullName?.[0]?.toUpperCase() || "U"}
+                  </Text>
+                )}
               </View>
               <View style={styles.profileInfo}>
                 <Text style={[styles.name, { color: colors.foreground }]}>
@@ -80,13 +89,37 @@ export default function ProfileScreen() {
         </Text>
 
         <Card style={{ padding: 0 }}>
-          <Pressable style={[styles.settingRow, { borderBottomColor: colors.border, borderBottomWidth: 1 }]} onPress={() => router.push("/feedback" as never)}>
-            <Feather name="message-square" size={20} color={colors.foreground} />
+          <Pressable
+            style={[
+              styles.settingRow,
+              { borderBottomColor: colors.border, borderBottomWidth: 1 },
+            ]}
+            onPress={() => router.push("/feedback" as never)}
+          >
+            <Feather
+              name="message-square"
+              size={20}
+              color={colors.foreground}
+            />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.settingText, { color: colors.foreground }]}>Send feedback</Text>
-              <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: 4 }}>App bugs and suggestions</Text>
+              <Text style={[styles.settingText, { color: colors.foreground }]}>
+                Send feedback
+              </Text>
+              <Text
+                style={{
+                  color: colors.mutedForeground,
+                  fontSize: 12,
+                  marginTop: 4,
+                }}
+              >
+                App bugs and suggestions
+              </Text>
             </View>
-            <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+            <Feather
+              name="chevron-right"
+              size={20}
+              color={colors.mutedForeground}
+            />
           </Pressable>
           <Pressable
             style={[

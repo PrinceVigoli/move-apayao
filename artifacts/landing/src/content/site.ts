@@ -3,6 +3,7 @@ const emailLink = (email: string, subject?: string) =>
   email ? `mailto:${email}${subject ? `?subject=${encodeURIComponent(subject)}` : ""}` : "#contact";
 
 export const legalVersion = "2026-10-30";
+export const privacyVersion = "2026-11-04";
 
 export const publicContact = {
   operator:

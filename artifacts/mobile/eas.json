@@ -35,13 +35,23 @@
         "EXPO_PUBLIC_SUPPORT_EMAIL": "support@moveapayao.com",
         "EXPO_PUBLIC_LEGAL_BASE_URL": "https://moveapayao.com"
       },
-      "autoIncrement": true
+      "autoIncrement": true,
+      "android": {
+        "gradleCommand": ":app:bundleRelease :app:assembleRelease",
+        "applicationArchivePath": "android/app/build/outputs/bundle/release/*.aab"
+      },
+      "buildArtifactPaths": [
+        "android/app/build/outputs/apk/release/*.apk",
+        "android/app/build/outputs/mapping/release/mapping.txt"
+      ]
     },
     "pilot": {
       "extends": "production",
       "distribution": "internal",
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease",
+        "applicationArchivePath": "android/app/build/outputs/apk/release/*.apk"
       }
     }
   },

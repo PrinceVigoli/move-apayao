@@ -532,8 +532,13 @@ export default function FixedLoopBookingScreen() {
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
               padding: 22,
+              paddingLeft: Math.max(insets.left, 22),
+              paddingRight: Math.max(insets.right, 22),
               paddingBottom: insets.bottom + 24,
               maxHeight: "80%",
+              width: "100%",
+              maxWidth: 900,
+              alignSelf: "center",
             }}
           >
             <Text

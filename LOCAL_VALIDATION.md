@@ -211,3 +211,53 @@ records exact build IDs, package IDs, hashes and certificates without credential
 No database migration or running backend/container update was needed.
 Public HTTP downloads returned 200 and matched both release SHA-256 hashes.
 The production API health endpoint also returned 200 after publication.
+
+### Profile photos and passenger pickup map — November 4, 2026
+
+Version 1.0.1 adds passenger profile photos (gallery selection, resized JPEG
+upload, replacement and removal). Names and phone numbers remain editable.
+The profile tab and home avatar display the saved photo. Photos use the existing
+user avatar column and are deleted by the existing account-deletion flow; no
+database migration is required.
+
+A confirmed fixed-loop passenger can opt in on their reservation screen to
+share pickup GPS, name and photo with the assigned approved driver. Sharing is
+limited to the pickup window, stops on leaving the screen/backgrounding or
+boarding, and expires without fresh updates. The driver run screen shows photo
+markers and booked pickup stops. Redis sessions use compare-and-update/revoke
+operations so delayed requests cannot restore a stopped session or revoke a
+newer one. Live GPS polling does not resend photo data; the driver loads photos
+separately through an authenticated, assignment-checked endpoint.
+
+Release prebuild enables R8 minification, resource shrinking, optimised ProGuard
+rules, edge-to-edge, rotation and resizing. Development launcher/menu modules
+are excluded from release builds; development builds retain them. The passenger
+uses the system photo picker without broad photo-library/storage permissions.
+The image picker is intentionally retained for profile photos. Compatibility
+calls inside React Native, Material and image-picker dependencies may still be
+reported by Google Play; their disappearance and Play's optimisation percentages
+must be checked against the final uploaded binary, not inferred from config.
+
+Source validation: full workspace typechecks, 25 API unit tests, the patched
+image-parser security regression, both final Android Hermes exports, the landing
+build, 8 booking integration groups, 5 new profile/location-sharing integration
+groups and 6 account-deletion integration groups passed. Integration tests used
+the disposable `move_apayao_validation_suite_release_20261104` database and
+localhost-only MOVE Apayao containers. They verified owner/driver access,
+invalid/stale/future fixes, persisted/removable photos, session revocation races,
+boarding, passed pickup stops and live-store expiry. No live bookings were used.
+
+The published service was checked read-only: the vehicle was off duty with no
+GPS position or active run, explaining the absent passenger map. Physical-device
+GPS, real pickup journeys and Android 16 rotation remain to be tested. Native
+artifact signing and publication are tracked separately after the builds finish.
+The privacy notice describes optional photos and pickup sharing. Google Play
+Data safety must include optional photo collection before publishing this feature.
+
+Final source checks also passed `pnpm run release:check` and the native release
+hook test. The isolated Android release bundle/manifest tasks completed
+successfully. Inspection of the merged manifest confirmed an unrestricted,
+resizable MainActivity and absence of the development launcher, ML Kit barcode
+scanning activity and broad gallery/storage permissions. EAS uses a release-only
+post-install hook to configure package-level autolinking exclusions; the image
+picker and image manipulator remain linked for the requested profile-photo flow.

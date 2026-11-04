@@ -207,7 +207,9 @@ export function FixedLoopVehicleCard({
           >
             {point
               ? "Live e-jeep location · updates automatically"
-              : "GPS location unavailable. You can still reserve a scheduled departure."}
+              : service.vehicleStatus === "off_duty"
+                ? "The driver is off duty. Live location appears when the driver goes online and shares GPS. You can still reserve a departure."
+                : "Waiting for a recent GPS update from the driver. You can still reserve a scheduled departure."}
           </Text>
         </View>
       )}

@@ -7,16 +7,9 @@ import {
 } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { BrandLockup } from "@/components/Brand";
-import { legalVersion, links, publicContact } from "@/content/site";
+import { legalVersion, privacyVersion, links, publicContact } from "@/content/site";
 
 type LegalKind = "terms" | "privacy";
-
-const lastUpdated = new Intl.DateTimeFormat("en-PH", {
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-  timeZone: "Asia/Manila",
-}).format(new Date(`${legalVersion}T00:00:00+08:00`));
 
 function Section({
   id,
@@ -43,6 +36,8 @@ function LegalShell({
   children: ReactNode;
 }) {
   const isPrivacy = kind === "privacy";
+  const effectiveVersion = isPrivacy ? privacyVersion : legalVersion;
+  const lastUpdated = new Intl.DateTimeFormat("en-PH", { year: "numeric", month: "long", day: "numeric", timeZone: "Asia/Manila" }).format(new Date(`${effectiveVersion}T00:00:00+08:00`));
   const title = isPrivacy ? "Privacy Notice" : "Terms of Service";
   const description = isPrivacy
     ? "How MOVE Apayao collects, uses, shares, retains, and protects personal data."
@@ -80,7 +75,7 @@ function LegalShell({
             </p>
             <div className="legal-meta mt-7">
               <ShieldCheck size={18} /> Effective and last updated {lastUpdated}{" "}
-              · Version {legalVersion}
+              · Version {effectiveVersion}
             </div>
           </div>
         </div>
@@ -122,9 +117,16 @@ function ContactCard({ privacy = false }: { privacy?: boolean }) {
       <p className="flex items-start gap-2">
         <MapPin size={16} /> {publicContact.address}
       </p>
-      {email ? <a href={privacy ? links.privacyEmail : links.email}>
-        <Mail size={16} /> {email}
-      </a> : <p>Project support and privacy contact details will be announced here once confirmed.</p>}
+      {email ? (
+        <a href={privacy ? links.privacyEmail : links.email}>
+          <Mail size={16} /> {email}
+        </a>
+      ) : (
+        <p>
+          Project support and privacy contact details will be announced here
+          once confirmed.
+        </p>
+      )}
       <p>Office availability: {publicContact.hours}</p>
     </div>
   );
@@ -260,9 +262,9 @@ export function PrivacyPage() {
       <p className="legal-lead">
         MOVE Apayao is a project of the Department of Science and Technology
         (DOST). The responsible project privacy contact will be identified here
-        once confirmed. This notice explains the processing performed
-        across the passenger app, driver app, public site, operations dashboard,
-        API, GPS and IoT tracking, and support channels.
+        once confirmed. This notice explains the processing performed across the
+        passenger app, driver app, public site, operations dashboard, API, GPS
+        and IoT tracking, and support channels.
       </p>
       <Section id="collection" title="1. Personal data we collect">
         <ul>
@@ -358,9 +360,30 @@ export function PrivacyPage() {
           request erasure or blocking, and the operator will explain any record
           that must lawfully be retained.
         </p>
-        <p><a href="/delete-account">Request permanent account deletion</a> from our website, including after uninstalling the app. The page explains identity verification, removed data, required retained records and how to check your request. This is separate from recoverable deactivation.</p>
+        <p>
+          <a href="/delete-account">Request permanent account deletion</a> from
+          our website, including after uninstalling the app. The page explains
+          identity verification, removed data, required retained records and how
+          to check your request. This is separate from recoverable deactivation.
+        </p>
       </Section>
       <Section id="security" title="6. Security and location controls">
+        <p>
+          Profile photos are optional. You can upload, replace or remove your
+          photo in Edit profile. Photos are resized before upload and stored
+          with your account until replaced, removed or deleted with your
+          account.
+        </p>
+        <p>
+          For fixed-loop pickup, you may choose to share your current position,
+          name and profile photo with the driver assigned to your confirmed
+          reservation. Sharing is available near departure while your
+          reservation screen is open. It stops when you leave that screen, stop
+          sharing, board, cancel or pass the pickup stop. Live pickup points
+          expire from the live map within one minute without updates and are not
+          added to a passenger trip-location history. An interrupted connection may leave the
+          last pin visible until it expires.
+        </p>
         <p>
           MOVE Apayao uses role-based access, protected authentication,
           encrypted network connections in deployment, audit logs, restricted

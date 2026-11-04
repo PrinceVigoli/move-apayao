@@ -36,6 +36,7 @@ import { useDriverStatus } from "@/contexts/DriverStatusContext";
 import { Feather } from "@expo/vector-icons";
 import { Button } from "@/components/ui/Button";
 import { FixedLoopPlacePicker } from "./FixedLoopPlacePicker";
+import { PassengerPickupMap } from "./PassengerPickupMap";
 
 export default function FixedLoopOperatorPanel({
   service,
@@ -664,6 +665,7 @@ export default function FixedLoopOperatorPanel({
                 {tickets.length} bookings
               </Text>
             </View>
+            <PassengerPickupMap key={run.id} run={run} />
             {!tickets.length && (
               <View style={box}>
                 <Feather

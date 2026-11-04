@@ -28,6 +28,7 @@ import { sendPasswordResetEmail } from "../lib/mailer";
 import { randomBytes, randomInt } from "node:crypto";
 import { z } from "zod";
 import { removeDriverGeo } from "../lib/redis";
+import { validProfilePhoto } from "../lib/profile-photo";
 
 const router: IRouter = Router();
 
@@ -546,9 +547,15 @@ router.get("/auth/profile", requireAuth, async (req, res): Promise<void> => {
 });
 
 const UpdateProfileBody = z.object({
-  fullName: z.string().min(1).optional(),
+  fullName: z.string().trim().min(1).max(100).optional(),
   phone: phoneSchema.optional(),
-  avatarUrl: z.string().optional(),
+  avatarUrl: z
+    .string()
+    .refine(
+      validProfilePhoto,
+      "Choose a JPEG profile photo up to 512 pixels and 130 KB.",
+    )
+    .optional(),
 });
 
 router.patch("/auth/profile", requireAuth, async (req, res): Promise<void> => {
@@ -560,6 +567,7 @@ router.patch("/auth/profile", requireAuth, async (req, res): Promise<void> => {
   }
 
   const patch: Record<string, unknown> = { ...parsed.data };
+  if (parsed.data.avatarUrl === "") patch.avatarUrl = null;
   if (parsed.data.phone) patch.phone = normalisePhone(parsed.data.phone);
 
   const [user] = await db

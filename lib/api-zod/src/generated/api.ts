@@ -248,10 +248,14 @@ export const GetProfileResponse = zod.object({
 /**
  * @summary Update user profile
  */
+export const updateProfileBodyAvatarUrlMax = 180000;
+
+
+
 export const UpdateProfileBody = zod.object({
   "fullName": zod.string().optional(),
   "phone": zod.string().optional(),
-  "avatarUrl": zod.string().optional()
+  "avatarUrl": zod.string().max(updateProfileBodyAvatarUrlMax).optional().describe('Optional JPEG data URL, at most 512x512 pixels and 130KB decoded. Empty string removes the photo. External URLs and SVG are rejected.')
 })
 
 export const UpdateProfileResponse = zod.object({
@@ -3053,4 +3057,141 @@ export const ReviewAccountDeletionRequestResponse = zod.object({
   "retentionReason": zod.string().nullable(),
   "retentionUntil": zod.coerce.date().nullable()
 })
+})
+
+
+/**
+ * Requires an owned confirmed app reservation from one hour before departure until boarding or passing the pickup stop. Live data expires within 60 seconds without updates. No-store responses.
+ * @summary Passenger opts in to share a fresh pickup position with their assigned driver
+ */
+
+
+
+export const StartFixedLoopPickupSharingParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const startFixedLoopPickupSharingBodyLatMin = -90;
+export const startFixedLoopPickupSharingBodyLatMax = 90;
+
+export const startFixedLoopPickupSharingBodyLonMin = -180;
+export const startFixedLoopPickupSharingBodyLonMax = 180;
+
+export const startFixedLoopPickupSharingBodyAccuracyMMin = 0;
+export const startFixedLoopPickupSharingBodyAccuracyMMax = 20000;
+
+
+
+export const StartFixedLoopPickupSharingBody = zod.object({
+  "lat": zod.number().min(startFixedLoopPickupSharingBodyLatMin).max(startFixedLoopPickupSharingBodyLatMax),
+  "lon": zod.number().min(startFixedLoopPickupSharingBodyLonMin).max(startFixedLoopPickupSharingBodyLonMax),
+  "accuracyM": zod.number().min(startFixedLoopPickupSharingBodyAccuracyMMin).max(startFixedLoopPickupSharingBodyAccuracyMMax).nullable(),
+  "capturedAt": zod.coerce.date()
+})
+
+export const StartFixedLoopPickupSharingResponse = zod.object({
+  "sharingId": zod.string().uuid()
+})
+
+
+/**
+ * @summary Refresh an existing pickup sharing session
+ */
+
+
+
+export const UpdateFixedLoopPickupSharingParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const updateFixedLoopPickupSharingBodyOneLatMin = -90;
+export const updateFixedLoopPickupSharingBodyOneLatMax = 90;
+
+export const updateFixedLoopPickupSharingBodyOneLonMin = -180;
+export const updateFixedLoopPickupSharingBodyOneLonMax = 180;
+
+export const updateFixedLoopPickupSharingBodyOneAccuracyMMin = 0;
+export const updateFixedLoopPickupSharingBodyOneAccuracyMMax = 20000;
+
+
+
+export const UpdateFixedLoopPickupSharingBody = zod.object({
+  "lat": zod.number().min(updateFixedLoopPickupSharingBodyOneLatMin).max(updateFixedLoopPickupSharingBodyOneLatMax),
+  "lon": zod.number().min(updateFixedLoopPickupSharingBodyOneLonMin).max(updateFixedLoopPickupSharingBodyOneLonMax),
+  "accuracyM": zod.number().min(updateFixedLoopPickupSharingBodyOneAccuracyMMin).max(updateFixedLoopPickupSharingBodyOneAccuracyMMax).nullable(),
+  "capturedAt": zod.coerce.date()
+}).and(zod.object({
+  "sharingId": zod.string().uuid()
+}))
+
+export const UpdateFixedLoopPickupSharingResponse = zod.unknown()
+
+
+/**
+ * @summary Revoke a pickup sharing session without revoking a newer session
+ */
+
+
+
+export const StopFixedLoopPickupSharingParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const StopFixedLoopPickupSharingBody = zod.object({
+  "sharingId": zod.string().uuid()
+})
+
+export const StopFixedLoopPickupSharingResponse = zod.unknown()
+
+
+/**
+ * Excludes stale positions, boarded/cancelled reservations and passed pickup stops. Photos are loaded separately to avoid resending images on every GPS poll.
+ * @summary Assigned approved driver reads consenting passengers awaiting pickup
+ */
+
+
+
+export const ListFixedLoopPickupPinsParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const listFixedLoopPickupPinsResponsePassengersItemOneLatMin = -90;
+export const listFixedLoopPickupPinsResponsePassengersItemOneLatMax = 90;
+
+export const listFixedLoopPickupPinsResponsePassengersItemOneLonMin = -180;
+export const listFixedLoopPickupPinsResponsePassengersItemOneLonMax = 180;
+
+export const listFixedLoopPickupPinsResponsePassengersItemOneAccuracyMMin = 0;
+export const listFixedLoopPickupPinsResponsePassengersItemOneAccuracyMMax = 20000;
+
+
+
+export const ListFixedLoopPickupPinsResponse = zod.object({
+  "passengers": zod.array(zod.object({
+  "lat": zod.number().min(listFixedLoopPickupPinsResponsePassengersItemOneLatMin).max(listFixedLoopPickupPinsResponsePassengersItemOneLatMax),
+  "lon": zod.number().min(listFixedLoopPickupPinsResponsePassengersItemOneLonMin).max(listFixedLoopPickupPinsResponsePassengersItemOneLonMax),
+  "accuracyM": zod.number().min(listFixedLoopPickupPinsResponsePassengersItemOneAccuracyMMin).max(listFixedLoopPickupPinsResponsePassengersItemOneAccuracyMMax).nullable(),
+  "capturedAt": zod.coerce.date()
+}).and(zod.object({
+  "reservationId": zod.number(),
+  "name": zod.string(),
+  "pickupName": zod.string(),
+  "hasAvatar": zod.boolean(),
+  "avatarVersion": zod.coerce.date()
+})))
+})
+
+
+/**
+ * @summary Assigned driver reads an actively sharing passenger's profile photo
+ */
+
+
+
+export const GetFixedLoopPickupAvatarParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const GetFixedLoopPickupAvatarResponse = zod.object({
+  "avatarUrl": zod.string().nullable()
 })

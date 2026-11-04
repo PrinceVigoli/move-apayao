@@ -5,3 +5,4 @@ export type { AuthTokenGetter } from "./custom-fetch";
 export { decodeRoutePolyline } from "./polyline";
 export type { DecodedRoutePoint } from "./polyline";
 export * from "./fixed-loop";
+export * from "./passenger-sharing";

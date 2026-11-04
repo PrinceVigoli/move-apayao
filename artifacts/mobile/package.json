@@ -4,6 +4,8 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
+    "eas-build-post-install": "node scripts/configure-native-release.cjs",
+    "test": "node --test scripts/configure-native-release.test.cjs",
     "dev": "expo start --dev-client",
     "build:legacy-web": "node scripts/build.js",
     "serve": "node server/serve.js",
@@ -60,6 +62,7 @@
     "zod-validation-error": "^3.5.4"
   },
   "dependencies": {
+    "expo-image-manipulator": "~14.0.8",
     "expo-notifications": "~0.32.17",
     "expo-secure-store": "~15.0.8"
   }

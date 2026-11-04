@@ -5,6 +5,33 @@
  * MOVE Apayao — Transit & Trip Booking API
  * OpenAPI spec version: 1.0.0
  */
+export interface PickupSharingPoint {
+  /**
+     * @minimum -90
+     * @maximum 90
+     */
+  lat: number;
+  /**
+     * @minimum -180
+     * @maximum 180
+     */
+  lon: number;
+  /**
+     * @minimum 0
+     * @maximum 20000
+     */
+  accuracyM: number | null;
+  capturedAt: string;
+}
+
+export type PickupPassengerPin = PickupSharingPoint & {
+  reservationId: number;
+  name: string;
+  pickupName: string;
+  hasAvatar: boolean;
+  avatarVersion: string;
+};
+
 export type AccountDeletionReceiptStatus = typeof AccountDeletionReceiptStatus[keyof typeof AccountDeletionReceiptStatus];
 
 
@@ -314,6 +341,10 @@ export interface ProfileResponse {
 export interface UpdateProfileBody {
   fullName?: string;
   phone?: string;
+  /**
+     * Optional JPEG data URL, at most 512x512 pixels and 130KB decoded. Empty string removes the photo. External URLs and SVG are rejected.
+     * @maxLength 180000
+     */
   avatarUrl?: string;
 }
 
@@ -1859,4 +1890,24 @@ export const ListAccountDeletionRequestsStatus = {
   reviewing: 'reviewing',
   completed: 'completed',
 } as const;
+
+export type StartFixedLoopPickupSharing201 = {
+  sharingId: string;
+};
+
+export type UpdateFixedLoopPickupSharingBody = PickupSharingPoint & {
+  sharingId: string;
+};
+
+export type StopFixedLoopPickupSharingBody = {
+  sharingId: string;
+};
+
+export type ListFixedLoopPickupPins200 = {
+  passengers: PickupPassengerPin[];
+};
+
+export type GetFixedLoopPickupAvatar200 = {
+  avatarUrl: string | null;
+};
 

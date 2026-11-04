@@ -1,6 +1,7 @@
 import React from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -146,15 +147,23 @@ export default function HomeScreen() {
             justifyContent: "center",
           }}
         >
-          <Text
-            style={{
-              fontFamily: "Inter_700Bold",
-              fontSize: 19,
-              color: colors.accentForeground,
-            }}
-          >
-            {firstName[0]?.toUpperCase()}
-          </Text>
+          {profile.data?.user.avatarUrl ? (
+            <Image
+              source={{ uri: profile.data.user.avatarUrl }}
+              style={{ width: 44, height: 44, borderRadius: 22 }}
+              accessibilityLabel="Your profile photo"
+            />
+          ) : (
+            <Text
+              style={{
+                fontFamily: "Inter_700Bold",
+                fontSize: 19,
+                color: colors.accentForeground,
+              }}
+            >
+              {firstName[0]?.toUpperCase()}
+            </Text>
+          )}
         </Pressable>
       </View>
       <View style={{ gap: 7 }}>

@@ -2271,6 +2271,136 @@ paths:
         '409':
           description: Resolve active service, balance or retention review first
 
+  /fixed-loop/reservations/{id}/location-sharing:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      operationId: startFixedLoopPickupSharing
+      tags: [fixed-loop]
+      summary: Passenger opts in to share a fresh pickup position with their assigned driver
+      description: Requires an owned confirmed app reservation from one hour before departure until boarding or passing the pickup stop. Live data expires within 60 seconds without updates. No-store responses.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PickupSharingPoint' }
+      responses:
+        '201':
+          description: Sharing started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sharingId: { type: string, format: uuid }
+                required: [sharingId]
+        '400': { description: Invalid or stale GPS fix }
+        '401': { description: Authentication required }
+        '403': { description: Passenger account required }
+        '404': { description: Reservation not owned by this passenger }
+        '409': { description: Outside the pickup sharing window }
+        '503': { description: Live location store unavailable }
+    put:
+      operationId: updateFixedLoopPickupSharing
+      tags: [fixed-loop]
+      summary: Refresh an existing pickup sharing session
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - { $ref: '#/components/schemas/PickupSharingPoint' }
+                - type: object
+                  properties:
+                    sharingId: { type: string, format: uuid }
+                  required: [sharingId]
+      responses:
+        '200': { description: Position refreshed }
+        '400': { description: Invalid or stale GPS fix }
+        '401': { description: Authentication required }
+        '403': { description: Passenger account required }
+        '404': { description: Reservation not owned by this passenger }
+        '409': { description: Sharing revoked or reservation no longer awaiting pickup }
+    delete:
+      operationId: stopFixedLoopPickupSharing
+      tags: [fixed-loop]
+      summary: Revoke a pickup sharing session without revoking a newer session
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sharingId: { type: string, format: uuid }
+              required: [sharingId]
+      responses:
+        '200': { description: Session stopped or already revoked }
+        '400': { description: Invalid session identifier }
+        '401': { description: Authentication required }
+        '403': { description: Passenger account required }
+        '404': { description: Reservation not owned by this passenger }
+  /fixed-loop/runs/{id}/passenger-locations:
+    get:
+      operationId: listFixedLoopPickupPins
+      tags: [fixed-loop]
+      summary: Assigned approved driver reads consenting passengers awaiting pickup
+      description: Excludes stale positions, boarded/cancelled reservations and passed pickup stops. Photos are loaded separately to avoid resending images on every GPS poll.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Recent consenting passenger positions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  passengers:
+                    type: array
+                    items: { $ref: '#/components/schemas/PickupPassengerPin' }
+                required: [passengers]
+        '400': { description: Invalid run identifier }
+        '401': { description: Authentication required }
+        '403': { description: Run not assigned to this approved driver }
+        '404': { description: Run not found }
+  /fixed-loop/reservations/{id}/passenger-avatar:
+    get:
+      operationId: getFixedLoopPickupAvatar
+      tags: [fixed-loop]
+      summary: Assigned driver reads an actively sharing passenger's profile photo
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Optional resized profile photo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  avatarUrl: { type: string, nullable: true }
+                required: [avatarUrl]
+        '400': { description: Invalid reservation identifier }
+        '401': { description: Authentication required }
+        '403': { description: Driver is not assigned to this reservation }
+        '404': { description: Passenger is not sharing a pickup location }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2305,6 +2435,25 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
 
   schemas:
+    PickupSharingPoint:
+      type: object
+      properties:
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lon: { type: number, minimum: -180, maximum: 180 }
+        accuracyM: { type: number, minimum: 0, maximum: 20000, nullable: true }
+        capturedAt: { type: string, format: date-time }
+      required: [lat, lon, accuracyM, capturedAt]
+    PickupPassengerPin:
+      allOf:
+        - { $ref: '#/components/schemas/PickupSharingPoint' }
+        - type: object
+          properties:
+            reservationId: { type: integer }
+            name: { type: string }
+            pickupName: { type: string }
+            hasAvatar: { type: boolean }
+            avatarVersion: { type: string, format: date-time }
+          required: [reservationId, name, pickupName, hasAvatar, avatarVersion]
     AccountDeletionReceipt:
       type: object
       properties:
@@ -2675,6 +2824,8 @@ components:
           type: string
         avatarUrl:
           type: string
+          maxLength: 180000
+          description: Optional JPEG data URL, at most 512x512 pixels and 130KB decoded. Empty string removes the photo. External URLs and SVG are rejected.
 
     UpdateProfileResponse:
       type: object

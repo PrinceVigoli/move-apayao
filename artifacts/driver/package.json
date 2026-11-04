@@ -4,6 +4,7 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
+    "eas-build-post-install": "node ../mobile/scripts/configure-native-release.cjs",
     "dev": "expo start --dev-client",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
